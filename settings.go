@@ -106,4 +106,3 @@ var SETTINGS = Settings{
 	Parsers:    make(map[string]func(string) string),
 	ParsersInt: make(map[string]func(int) int),
 }
-
