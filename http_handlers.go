@@ -95,7 +95,7 @@ func formatResponseJSON(w http.ResponseWriter, r *http.Request, items Items) {
 
 // API
 
-func contextListRest(itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filterMap, excludeMap := parseURLParameters(r)
 		fmt.Println("request", r.URL, "items", len(ITEMS))
@@ -129,7 +129,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	}
 }
 
-func contextAddRest(itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jsonDecoder := json.NewDecoder(r.Body)
 		var items Items
