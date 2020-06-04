@@ -22,9 +22,8 @@ type ItemsChannel chan Items
 var ITEMS Items
 
 type jwtConfig struct {
-	Enabled bool
+	Enabled      bool
 	SharedSecret string
-
 }
 
 func init() {
@@ -35,10 +34,6 @@ func init() {
 
 	ITEMS = make(Items, 0, 100*1000)
 
-	registerFormat = make(registerFormatMap)
-	registerFormat["json"] = formatResponseJSON
-	registerFormat["csv"] = formatResponseCSV
-
 	fmt.Println(Operations)
 }
 
@@ -48,10 +43,9 @@ func main() {
 
 	go ItemChanWorker(itemChan)
 	JWTConfig := jwtConfig{
-		Enabled: SETTINGS.Get("JWTENABLED") == "yes",
+		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
 	}
-
 
 	listRest := contextListRest(JWTConfig, itemChan, Operations)
 	addRest := contextAddRest(JWTConfig, itemChan, Operations)
