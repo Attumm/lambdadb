@@ -123,16 +123,17 @@ func earlyExitFilter(items Items, filters filterType, excludes filterType, regis
 func filtered(items Items, filters filterType, excludes filterType, operations GroupedOperations) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0, len(items))
+
 	for _, item := range items {
-		if !any(item, filters, registerFuncs) {
-			continue
-		}
+		//if !any(item, filters, registerFuncs) {
+		//	continue
+		//}
 		if !all(item, filters, registerFuncs) {
 			continue
 		}
-		if !exclude(item, excludes, registerFuncs) {
-			continue
-		}
+		//if !exclude(item, excludes, registerFuncs) {
+		//	continue
+		//}
 		filteredItems = append(filteredItems, item)
 	}
 	return filteredItems

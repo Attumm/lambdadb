@@ -1,45 +1,53 @@
 package main
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
+	"sort"
 	"strconv"
 	"time"
 )
 
-func sortLimit(w http.ResponseWriter, r *http.Request, items Items) Items {
+type HeaderData map[string]string
+
+func sortLimit(r *http.Request, items Items) (Items, HeaderData) {
 
 	pageStr, pageGiven := r.URL.Query()["page"]
 	pageSizeStr, pageSizeGiven := r.URL.Query()["pagesize"]
 	limitStr, limitGiven := r.URL.Query()["limit"]
-
-	if !limitGiven && !pageGiven {
-		return items
-	}
+	headerData := make(HeaderData)
 
 	limit := len(items)
 	if limitGiven {
 		limit = intMoreDefault(limitStr[0], 1)
+		headerData["Limit"] = strconv.Itoa(limit)
 	}
 
 	pageSize := 10
 	if pageSizeGiven {
 		pageSize = intMoreDefault(pageSizeStr[0], 1)
+
 	}
 
 	page := 1
 	if pageGiven {
 		page = intMoreDefault(pageStr[0], 1)
+		headerData["Page"] = strconv.Itoa(page)
+		headerData["Page-Size"] = strconv.Itoa(pageSize)
+		headerData["Total-Pages"] = strconv.Itoa((len(items) / pageSize) + 1)
 	}
 
-	w.Header().Set("Page", strconv.Itoa(page))
-	w.Header().Set("Page-Size", strconv.Itoa(pageSize))
-	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
-	w.Header().Set("Total-Pages", strconv.Itoa(len(items)/pageSize))
+	headerData["Total-Items"] = strconv.Itoa(len(items))
+
+	if !limitGiven && !pageGiven {
+		return items, headerData
+	}
+	sortingL, sortingGiven := r.URL.Query()["sortby"]
+	if sortingGiven {
+		items, _ = sortBy(items, sortingL)
+	}
 	//TODO fix below
 	start := (page - 1) * pageSize
 	end := start + pageSize
@@ -47,63 +55,30 @@ func sortLimit(w http.ResponseWriter, r *http.Request, items Items) Items {
 		end = len(items)
 	}
 	if len(items) <= limit {
-		return items[start:end]
+		return items[start:end], headerData
 	}
 	items = items[start:end]
 	if len(items) < limit {
-		return items
+		return items, headerData
 	}
-	return items[:limit]
-}
-
-func formatResponseCSV(w http.ResponseWriter, r *http.Request, items Items) {
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment;filename=output.csv")
-	wr := csv.NewWriter(w)
-	if err := wr.Write(items[0].Columns()); err != nil {
-		log.Fatal(err)
-	}
-	for _, item := range items { // make a loop for 100 rows just for testing purposes
-		if err := wr.Write(item.Row()); err != nil {
-			log.Fatal(err)
-		}
-	}
-	wr.Flush() // writes the csv writer data to  the buffered data io writer(b(bytes.buffer))
-}
-
-func FormatAndSend(w http.ResponseWriter, r *http.Request, items Items) {
-	respFormatSlice, respFormatFound := r.URL.Query()["format"]
-	respFormat := ""
-	if respFormatFound {
-		respFormat = respFormatSlice[0]
-	}
-
-	w.Header().Set("Total-Items", strconv.Itoa(len(items)))
-	w.WriteHeader(http.StatusOK)
-
-	respFormatFunc, found := registerFormat[respFormat]
-	if !found {
-		respFormatFunc = registerFormat["json"]
-	}
-	respFormatFunc(w, r, items)
-}
-
-func formatResponseJSON(w http.ResponseWriter, r *http.Request, items Items) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(items)
+	return items[:limit], headerData
 }
 
 // API
 
-func contextListRest(itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		filterMap, excludeMap := parseURLParameters(r)
 		fmt.Println("request", r.URL, "items", len(ITEMS))
 		items := filtered(ITEMS, filterMap, excludeMap, operations)
 
-		items = sortLimit(w, r, items)
+		items, headerData := sortLimit(r, items)
 
 		w.Header().Set("Content-Type", "application/json")
+		for key, val := range headerData {
+			w.Header().Set(key, val)
+		}
+
 		w.WriteHeader(http.StatusOK)
 
 		groupByS, groupByFound := r.URL.Query()["groupby"]
@@ -129,7 +104,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	}
 }
 
-func contextAddRest(itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jsonDecoder := json.NewDecoder(r.Body)
 		var items Items
@@ -160,14 +135,26 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 	for k := range RegisterFuncMap {
 		registeredFilters = append(registeredFilters, k)
 	}
+
 	registeredGroupbys := []string{}
 	for k := range RegisterGroupBy {
 		registeredGroupbys = append(registeredGroupbys, k)
 	}
+
+	_, registeredSortings := sortBy(ITEMS, []string{})
+
+	sort.Strings(registeredFilters)
+	sort.Strings(registeredGroupbys)
+	sort.Strings(registeredSortings)
 	response["filters"] = registeredFilters
 	response["groupby"] = registeredGroupbys
+	response["sortby"] = registeredSortings
 	totalItems := strconv.Itoa(len(ITEMS))
-	response["total-items"] = []string{"total size", totalItems}
+	response["total-items"] = []string{totalItems}
+	response["settings"] = []string{
+		fmt.Sprintf("host: %s", SETTINGS.Get("http_db_host")),
+		fmt.Sprintf("JWT: %s", SETTINGS.Get("JWTENABLED")),
+	}
 	w.WriteHeader(http.StatusOK)
 
 	json.NewEncoder(w).Encode(response)

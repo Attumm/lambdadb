@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 )
@@ -82,18 +81,124 @@ func FilterValueContainsCase(i *Item, s string) bool {
 	return strings.Contains(strings.ToLower(i.Value), strings.ToLower(s))
 }
 
+// match
+func FilterMatchID(i *Item, s string) bool {
+	return i.ID == s
+}
+
+func FilterMatchType(i *Item, s string) bool {
+	return i.Type == s
+}
+
+func FilterMatchName(i *Item, s string) bool {
+	return i.Name == s
+}
+
+func FilterMatchVendor(i *Item, s string) bool {
+	return i.Vendor == s
+}
+
+func FilterMatchIP(i *Item, s string) bool {
+	return i.IP == s
+}
+
+func FilterMatchValueType(i *Item, s string) bool {
+	return i.ValueType == s
+}
+
+func FilterMatchCountry(i *Item, s string) bool {
+	return i.Country == s
+}
+
+// Contains
+func FilterContainsID(i *Item, s string) bool {
+	return strings.Contains(i.ID, s)
+}
+
+func FilterContainsType(i *Item, s string) bool {
+	return strings.Contains(i.Type, s)
+}
+
+func FilterContainsName(i *Item, s string) bool {
+	return strings.Contains(i.Name, s)
+}
+
+func FilterContainsVendor(i *Item, s string) bool {
+	return strings.Contains(i.Vendor, s)
+}
+
+func FilterContainsIP(i *Item, s string) bool {
+	return strings.Contains(i.IP, s)
+}
+
+func FilterContainsValueType(i *Item, s string) bool {
+	return strings.Contains(i.ValueType, s)
+}
+
+func FilterContainsCountry(i *Item, s string) bool {
+	return strings.Contains(i.Country, s)
+}
+
+// StartsWith
+func FilterStartsWithID(i *Item, s string) bool {
+	return strings.HasPrefix(i.ID, s)
+}
+
+func FilterStartsWithType(i *Item, s string) bool {
+	return strings.HasPrefix(i.Type, s)
+}
+
+func FilterStartsWithName(i *Item, s string) bool {
+	return strings.HasPrefix(i.Name, s)
+}
+
+func FilterStartsWithVendor(i *Item, s string) bool {
+	return strings.HasPrefix(i.Vendor, s)
+}
+
+func FilterStartsWithIP(i *Item, s string) bool {
+	return strings.HasPrefix(i.IP, s)
+}
+
+func FilterStartsWithValueType(i *Item, s string) bool {
+	return strings.HasPrefix(i.ValueType, s)
+}
+
+func FilterStartsWithCountry(i *Item, s string) bool {
+	return strings.HasPrefix(i.Country, s)
+}
+
 // Group by functions
+func GroupByID(i *Item) string {
+	return i.ID
+}
+
+func GroupByValue(i *Item) string {
+	return i.ValueType
+}
+
+func GroupByType(i *Item) string {
+	return i.Type
+}
 
 func GroupByName(i *Item) string {
 	return i.Name
 }
 
-func GroupByIP(i *Item) string {
-	return i.IP
+func GroupByVendor(i *Item) string {
+	return i.Vendor
 }
 
-func GroupByID(i *Item) string {
-	return i.ID
+func GroupByDN(i *Item) string {
+	return strings.Join(i.Dn, ".")
+}
+
+func GroupByValueType(i *Item) string {
+	return i.ValueType
+}
+
+func GroupByIP(i *Item) string {
+	return i.IP
 }
 
 func GroupByCountry(i *Item) string {
@@ -119,16 +224,56 @@ func init() {
 	RegisterFuncMap["match"] = FilterValueMatch
 	RegisterFuncMap["starts-with"] = FilterValueStartsWith
 
+	// operations
+	RegisterFuncMap["typeahead"] = FilterValueStartsWith
+	RegisterFuncMap["search"] = FilterValueContainsCase
+
+	// match
+
+	RegisterFuncMap["match-id"] = FilterMatchID
+	RegisterFuncMap["match-type"] = FilterMatchType
+	RegisterFuncMap["match-name"] = FilterMatchName
+	RegisterFuncMap["match-vendor"] = FilterMatchVendor
+	RegisterFuncMap["match-ip"] = FilterMatchIP
+	RegisterFuncMap["match-valuetype"] = FilterMatchValueType
+	RegisterFuncMap["match-country"] = FilterMatchCountry
+	RegisterFuncMap["match-value"] = FilterValueMatch
+
+	// contains
+	RegisterFuncMap["contains-id"] = FilterContainsID
+	RegisterFuncMap["contains-type"] = FilterContainsType
+	RegisterFuncMap["contains-name"] = FilterContainsName
+	RegisterFuncMap["contains-vendor"] = FilterContainsVendor
+	RegisterFuncMap["contains-ip"] = FilterContainsIP
+	RegisterFuncMap["contains-valuetype"] = FilterContainsValueType
+	RegisterFuncMap["contains-country"] = FilterContainsCountry
+	RegisterFuncMap["contains-value"] = FilterValueContainsCase
+
+	// startwith
+	RegisterFuncMap["startswith-id"] = FilterStartsWithID
+	RegisterFuncMap["startswith-type"] = FilterStartsWithType
+	RegisterFuncMap["startswith-name"] = FilterStartsWithName
+	RegisterFuncMap["startswith-vendor"] = FilterStartsWithVendor
+	RegisterFuncMap["startswith-ip"] = FilterStartsWithIP
+	RegisterFuncMap["startswith-valuetype"] = FilterStartsWithValueType
+	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
+	RegisterFuncMap["startwith-value"] = FilterValueStartsWith
+
 	RegisterGroupBy = make(registerGroupByFunc)
+	RegisterGroupBy["id"] = GroupByID
+	RegisterGroupBy["value"] = GroupByValue
+	RegisterGroupBy["type"] = GroupByType
 	RegisterGroupBy["name"] = GroupByName
 	RegisterGroupBy["ip"] = GroupByIP
-	RegisterGroupBy["id"] = GroupByID
+	RegisterGroupBy["dn"] = GroupByDN
+	RegisterGroupBy["valuetype"] = GroupByValueType
 	RegisterGroupBy["country"] = GroupByCountry
 
 	fmt.Println(RegisterFuncMap)
+
 }
 
-func sortBy(items Items, r *http.Request) Items {
+func sortBy(items Items, sortingL []string) (Items, []string) {
 	sortFuncs := map[string]func(int, int) bool{
 		"id":     func(i, j int) bool { return items[i].ID < items[j].ID },
 		"-id":    func(i, j int) bool { return items[i].ID > items[j].ID },
@@ -146,21 +291,22 @@ func sortBy(items Items, r *http.Request) Items {
 		"ip":  func(i, j int) bool { return items[i].IP < items[j].IP },
 		"-ip": func(i, j int) bool { return items[i].IP > items[j].IP },
 
-		//"dn":  func(i, j int) bool { return items[i].Dn < items[j].Dn },
-		//"-dn": func(i, j int) bool { return items[i].Dn > items[j].Dn },
-
 		"valueType":  func(i, j int) bool { return items[i].ValueType < items[j].ValueType },
 		"-valueType": func(i, j int) bool { return items[i].ValueType > items[j].ValueType },
 
 		"country":  func(i, j int) bool { return items[i].Country < items[j].Country },
 		"-country": func(i, j int) bool { return items[i].Country > items[j].Country },
 	}
-	sortingL, sortingGiven := r.URL.Query()["sorting"]
-	if sortingGiven {
-		for _, sortFuncName := range sortingL {
-			sortFunc := sortFuncs[sortFuncName]
-			sort.Slice(items, sortFunc)
-		}
+
+	for _, sortFuncName := range sortingL {
+		sortFunc := sortFuncs[sortFuncName]
+		sort.Slice(items, sortFunc)
 	}
-	return items
+	// TODO must be nicer way
+	keys := []string{}
+	for key := range sortFuncs {
+		keys = append(keys, key)
+	}
+
+	return items, keys
 }
