@@ -10,70 +10,19 @@ import (
 	"time"
 )
 
-type HeaderData map[string]string
-
-func sortLimit(r *http.Request, items Items) (Items, HeaderData) {
-
-	pageStr, pageGiven := r.URL.Query()["page"]
-	pageSizeStr, pageSizeGiven := r.URL.Query()["pagesize"]
-	limitStr, limitGiven := r.URL.Query()["limit"]
-	headerData := make(HeaderData)
-
-	limit := len(items)
-	if limitGiven {
-		limit = intMoreDefault(limitStr[0], 1)
-		headerData["Limit"] = strconv.Itoa(limit)
-	}
-
-	pageSize := 10
-	if pageSizeGiven {
-		pageSize = intMoreDefault(pageSizeStr[0], 1)
-
-	}
-
-	page := 1
-	if pageGiven {
-		page = intMoreDefault(pageStr[0], 1)
-		headerData["Page"] = strconv.Itoa(page)
-		headerData["Page-Size"] = strconv.Itoa(pageSize)
-		headerData["Total-Pages"] = strconv.Itoa((len(items) / pageSize) + 1)
-	}
-
-	headerData["Total-Items"] = strconv.Itoa(len(items))
-
-	if !limitGiven && !pageGiven {
-		return items, headerData
-	}
-	sortingL, sortingGiven := r.URL.Query()["sortby"]
-	if sortingGiven {
-		items, _ = sortBy(items, sortingL)
-	}
-	//TODO fix below
-	start := (page - 1) * pageSize
-	end := start + pageSize
-	if end > len(items) {
-		end = len(items)
-	}
-	if len(items) <= limit {
-		return items[start:end], headerData
-	}
-	items = items[start:end]
-	if len(items) < limit {
-		return items, headerData
-	}
-	return items[:limit], headerData
-}
-
 // API
 
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		filterMap, excludeMap := parseURLParameters(r)
+		query := parseURLParameters(r)
 		fmt.Println("request", r.URL, "items", len(ITEMS))
-		items := filtered(ITEMS, filterMap, excludeMap, operations)
+		items := run_query(ITEMS, query, operations)
 
-		items, headerData := sortLimit(r, items)
+		if !query.EarlyExit() {
+			items = sortLimit(items, query)
+		}
 
+		headerData := getHeaderData(items, query)
 		w.Header().Set("Content-Type", "application/json")
 		for key, val := range headerData {
 			w.Header().Set(key, val)
@@ -150,10 +99,19 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 	response["groupby"] = registeredGroupbys
 	response["sortby"] = registeredSortings
 	totalItems := strconv.Itoa(len(ITEMS))
+
+	host := SETTINGS.Get("http_db_host")
 	response["total-items"] = []string{totalItems}
 	response["settings"] = []string{
-		fmt.Sprintf("host: %s", SETTINGS.Get("http_db_host")),
+		fmt.Sprintf("host: %s", host),
 		fmt.Sprintf("JWT: %s", SETTINGS.Get("JWTENABLED")),
+	}
+	response["examples"] = []string{
+		fmt.Sprintf("typeahead: http://%s/list/?typeahead=ams&limit=10", host),
+		fmt.Sprintf("search: http://%s/list/?search=ams&page=1&pagesize=1", host),
+		fmt.Sprintf("search with limit: http://%s/list/?search=10&page=1&pagesize=10&limit=5", host),
+		fmt.Sprintf("sorting: http://%s/list/?search=100&page=10&pagesize=100&sortby=-country", host),
+		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains-case=144&contains-case=10&page=1&pagesize=1", host),
 	}
 	w.WriteHeader(http.StatusOK)
 
