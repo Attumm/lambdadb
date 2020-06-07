@@ -276,7 +276,8 @@ func getHeaderData(items Items, query Query) HeaderData {
 }
 
 func sortLimit(items Items, query Query) Items {
-	if len(items) == 0 {
+	count := len(items)
+	if count == 0 {
 		return items
 	}
 
@@ -291,10 +292,8 @@ func sortLimit(items Items, query Query) Items {
 	//TODO there should be nicer way
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
-	if end > len(items) {
-		end = len(items)
-	}
-	items = items[start:end]
+
+	items = items[min(start, count):min(end, count)]
 	if !query.LimitGiven {
 		return items
 	}
