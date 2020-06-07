@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -184,9 +183,10 @@ func max(a, b int) int {
 	return b
 }
 
-func filteredEarlyExit(items Items, filters filterType, operations GroupedOperations, query Query) Items {
+func filteredEarlyExit(items Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0, len(items))
+	filters := query.Filters
 
 	limit := query.Limit
 	start := (query.Page - 1) * query.PageSize
@@ -212,23 +212,21 @@ func filteredEarlyExit(items Items, filters filterType, operations GroupedOperat
 			break
 		}
 	}
-	//items = filteredItems[start:end]
-	fmt.Println("start", start, "\nend", end, "\npage", query.Page, "\npagesize", query.PageGiven, "\nlimit", query.Limit)
+	//fmt.Println("start", start, "\nend", end, "\npage", query.Page, "\npagesize", query.PageGiven, "\nlimit", query.Limit)
 	return filteredItems
 }
 
 func runQuery(items Items, query Query, operations GroupedOperations) Items {
-	filters := query.Filters // TODO remove
 	if query.EarlyExit() {
-		return filteredEarlyExit(items, filters, operations, query)
+		return filteredEarlyExit(items, operations, query)
 	}
-	return filtered(items, filters, operations, query)
+	return filtered(items, operations, query)
 }
 
-func filtered(items Items, filters filterType, operations GroupedOperations, query Query) Items {
+func filtered(items Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	excludes := query.Excludes
-	//filters := query.Filters
+	filters := query.Filters
 	anys := query.Anys
 
 	filteredItems := make(Items, 0, len(items))
