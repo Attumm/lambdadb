@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -16,13 +20,14 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := parseURLParameters(r)
 		fmt.Println("request", r.URL, "items", len(ITEMS))
-		items := run_query(ITEMS, query, operations)
+		items := runQuery(ITEMS, query, operations)
+
+		headerData := getHeaderData(items, query)
 
 		if !query.EarlyExit() {
 			items = sortLimit(items, query)
 		}
 
-		headerData := getHeaderData(items, query)
 		w.Header().Set("Content-Type", "application/json")
 		for key, val := range headerData {
 			w.Header().Set(key, val)
@@ -73,6 +78,54 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
 	}()
+	w.WriteHeader(204)
+}
+
+func loadRest(w http.ResponseWriter, r *http.Request) {
+	filename := "ITEMS.txt.gz"
+	fi, err := os.Open(filename)
+	if err != nil {
+		return
+	}
+	defer fi.Close()
+
+	fz, err := gzip.NewReader(fi)
+	if err != nil {
+		return
+	}
+	defer fz.Close()
+
+	s, err := ioutil.ReadAll(fz)
+	if err != nil {
+		return
+	}
+
+	// TODO find out why wihout GC memory keeps growing
+	runtime.GC()
+	ITEMS = make(Items, 0, 100*100)
+	runtime.GC()
+	json.Unmarshal(s, &ITEMS)
+	go func() {
+		time.Sleep(1 * time.Second)
+		runtime.GC()
+	}()
+	return
+}
+
+func saveRest(w http.ResponseWriter, r *http.Request) {
+	filename := "ITEMS.txt.gz"
+	var b bytes.Buffer
+	writer := gzip.NewWriter(&b)
+	itemJSON, _ := json.Marshal(ITEMS)
+	writer.Write(itemJSON)
+	writer.Flush()
+	writer.Close()
+	err := ioutil.WriteFile(filename, b.Bytes(), 0666)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(500)
+		return
+	}
 	w.WriteHeader(204)
 }
 

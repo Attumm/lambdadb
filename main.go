@@ -26,6 +26,21 @@ type jwtConfig struct {
 	SharedSecret string
 }
 
+// Colors are fun, and can be used to note that this is joyfull and fun project.
+const (
+	InfoColor    = "\033[1;34m%s\033[0m"
+	NoticeColor  = "\033[1;36m%s\033[0m"
+	WarningColor = "\033[1;33m%s\033[0m"
+	ErrorColor   = "\033[1;31m%s\033[0m"
+	DebugColor   = "\033[0;36m%s\033[0m"
+
+	InfoColorN    = "\033[1;34m%s\033[0m\n"
+	NoticeColorN  = "\033[1;36m%s\033[0m\n"
+	WarningColorN = "\033[1;33m%s\033[0m\n"
+	ErrorColorN   = "\033[1;31m%s\033[0m\n"
+	DebugColorN   = "\033[0;36m%s\033[0m\n"
+)
+
 func init() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
@@ -33,8 +48,6 @@ func init() {
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
-
-	fmt.Println(Operations)
 }
 
 func main() {
@@ -55,6 +68,9 @@ func main() {
 	http.HandleFunc("/help/", helpRest)
 	http.HandleFunc("/add/", addRest)
 	http.HandleFunc("/rm/", rmRest)
-	fmt.Println("starting server", ipPort, " with:", len(ITEMS), "items", "jwt enabled: ", JWTConfig.Enabled)
+	http.HandleFunc("/save/", saveRest)
+	http.HandleFunc("/load/", loadRest)
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
+	fmt.Printf(InfoColorN, msg)
 	log.Fatal(http.ListenAndServe(ipPort, nil))
 }

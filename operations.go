@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -23,7 +24,7 @@ type Query struct {
 }
 
 func (q Query) EarlyExit() bool {
-	return !q.SortByGiven && q.LimitGiven
+	return q.LimitGiven && !q.PageGiven && !q.SortByGiven
 }
 
 // util for api
@@ -31,6 +32,7 @@ func parseURLParameters(r *http.Request) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+	//TODO speedup gains are present
 	for k := range RegisterFuncMap {
 		parameter, parameterFound := r.URL.Query()[k]
 		if parameterFound {
@@ -114,6 +116,9 @@ func all(item *Item, filters filterType, registerFuncs registerFuncType) bool {
 
 //Runner of filter functions, Item Should pass all
 func any(item *Item, filters filterType, registerFuncs registerFuncType) bool {
+	if len(filters) == 0 {
+		return true
+	}
 	for funcName, args := range filters {
 		filterFunc := registerFuncs[funcName]
 		if filterFunc == nil {
@@ -165,54 +170,78 @@ func exclude_filter(items Items, filters filterType, excludes filterType, regist
 	}
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func filteredEarlyExit(items Items, filters filterType, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0, len(items))
+
 	limit := query.Limit
-	//excludes := query.Excludes
+	start := (query.Page - 1) * query.PageSize
+	end := start + query.PageSize
+	stop := end
+	if query.LimitGiven {
+		stop = limit
+	}
+	//TODO candidate for speedup
 	for _, item := range items {
-		//if !any(item, filters, registerFuncs) {
-		//	continue
-		//}
+		if !any(item, filters, registerFuncs) {
+			continue
+		}
 		if !all(item, filters, registerFuncs) {
 			continue
 		}
-		//if !exclude(item, excludes, registerFuncs) {
-		//	continue
-		//}
+		if exclude(item, filters, registerFuncs) {
+			continue
+		}
 		filteredItems = append(filteredItems, item)
-		if len(filteredItems) == limit {
+
+		if len(filteredItems) == stop {
 			break
 		}
 	}
+	//items = filteredItems[start:end]
+	fmt.Println("start", start, "\nend", end, "\npage", query.Page, "\npagesize", query.PageGiven, "\nlimit", query.Limit)
 	return filteredItems
 }
 
-func run_query(items Items, query Query, operations GroupedOperations) Items {
-
-	filters := query.Filters
+func runQuery(items Items, query Query, operations GroupedOperations) Items {
+	filters := query.Filters // TODO remove
 	if query.EarlyExit() {
 		return filteredEarlyExit(items, filters, operations, query)
 	}
-	new_items := filtered(items, filters, operations, query)
-	return new_items
-
+	return filtered(items, filters, operations, query)
 }
 
 func filtered(items Items, filters filterType, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
+	excludes := query.Excludes
+	//filters := query.Filters
+	anys := query.Anys
+
 	filteredItems := make(Items, 0, len(items))
-	//excludes := query.Excludes
 	for _, item := range items {
-		//if !any(item, filters, registerFuncs) {
-		//	continue
-		//}
+		if !any(item, anys, registerFuncs) {
+			continue
+		}
 		if !all(item, filters, registerFuncs) {
 			continue
 		}
-		//if !exclude(item, excludes, registerFuncs) {
-		//	continue
-		//}
+		if !exclude(item, excludes, registerFuncs) {
+			continue
+		}
 		filteredItems = append(filteredItems, item)
 	}
 	return filteredItems
@@ -242,30 +271,37 @@ func getHeaderData(items Items, query Query) HeaderData {
 	}
 
 	headerData["Total-Items"] = strconv.Itoa(len(items))
-	bQuery, _ := json.Marshal(query)
-	headerData["query"] = string(bQuery)
+	bytesQuery, _ := json.Marshal(query)
+	headerData["query"] = string(bytesQuery)
 
 	return headerData
 }
 
 func sortLimit(items Items, query Query) Items {
+	if len(items) == 0 {
+		return items
+	}
+
+	if query.SortByGiven {
+		items, _ = sortBy(items, query.SortBy)
+	}
 
 	if !query.LimitGiven && !query.PageGiven {
 		return items
 	}
-	if query.SortByGiven {
-		items, _ = sortBy(items, query.SortBy)
-	}
-	//TODO fix below
+
+	//TODO there should be nicer way
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
 	if end > len(items) {
 		end = len(items)
 	}
-	if query.LimitGiven && len(items) <= query.Limit {
-		return items[start:end]
-	}
 	items = items[start:end]
+	if !query.LimitGiven {
+		return items
+	}
+
+	// Note the slice built on array, slicing a slice larger then the the slice adds array items
 	if len(items) < query.Limit {
 		return items
 	}

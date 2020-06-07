@@ -1,12 +1,11 @@
 package main
 
 import (
-	"github.com/dgrijalva/jwt-go"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 )
 
-
-func handleJWT(tokenString, sharedSecret string ) (map[string] interface{}, bool) {
+func handleJWT(tokenString, sharedSecret string) (map[string]interface{}, bool) {
 	claims := jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(sharedSecret), nil
@@ -17,4 +16,3 @@ func handleJWT(tokenString, sharedSecret string ) (map[string] interface{}, bool
 	}
 	return claims, true
 }
-

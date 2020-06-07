@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 )
@@ -31,8 +30,6 @@ func (i Item) Columns() []string {
 		"Country",
 	}
 }
-
-//"type", "vendor", "country"
 
 func (i Item) Row() []string {
 	return []string{
@@ -229,7 +226,6 @@ func init() {
 	RegisterFuncMap["search"] = FilterValueContainsCase
 
 	// match
-
 	RegisterFuncMap["match-id"] = FilterMatchID
 	RegisterFuncMap["match-type"] = FilterMatchType
 	RegisterFuncMap["match-name"] = FilterMatchName
@@ -268,17 +264,16 @@ func init() {
 	RegisterGroupBy["dn"] = GroupByDN
 	RegisterGroupBy["valuetype"] = GroupByValueType
 	RegisterGroupBy["country"] = GroupByCountry
-
-	fmt.Println(RegisterFuncMap)
-
 }
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
 	sortFuncs := map[string]func(int, int) bool{
-		"id":     func(i, j int) bool { return items[i].ID < items[j].ID },
-		"-id":    func(i, j int) bool { return items[i].ID > items[j].ID },
-		"name":   func(i, j int) bool { return items[i].Name < items[j].Name },
-		"-name":  func(i, j int) bool { return items[i].Name > items[j].Name },
+		"id":  func(i, j int) bool { return items[i].ID < items[j].ID },
+		"-id": func(i, j int) bool { return items[i].ID > items[j].ID },
+
+		"name":  func(i, j int) bool { return items[i].Name < items[j].Name },
+		"-name": func(i, j int) bool { return items[i].Name > items[j].Name },
+
 		"value":  func(i, j int) bool { return items[i].Value < items[j].Value },
 		"-value": func(i, j int) bool { return items[i].Value > items[j].Value },
 
