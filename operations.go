@@ -148,27 +148,6 @@ func exclude(item *Item, excludes filterType, registerFuncs registerFuncType) bo
 	return true
 }
 
-func include_filter(items Items, filters filterType, excludes filterType, registerFuncs registerFuncType) {
-	for _, item := range items {
-		if !all(item, filters, registerFuncs) {
-			continue
-		}
-		items = append(items, item)
-	}
-}
-
-func exclude_filter(items Items, filters filterType, excludes filterType, registerFuncs registerFuncType) {
-	for _, item := range items {
-		if !all(item, filters, registerFuncs) {
-			continue
-		}
-		if !exclude(item, excludes, registerFuncs) {
-			continue
-		}
-		items = append(items, item)
-	}
-}
-
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -186,7 +165,9 @@ func max(a, b int) int {
 func filteredEarlyExit(items Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0, len(items))
+	excludes := query.Excludes
 	filters := query.Filters
+	anys := query.Anys
 
 	limit := query.Limit
 	start := (query.Page - 1) * query.PageSize
@@ -197,13 +178,13 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	}
 	//TODO candidate for speedup
 	for _, item := range items {
-		if !any(item, filters, registerFuncs) {
+		if !any(item, anys, registerFuncs) {
 			continue
 		}
 		if !all(item, filters, registerFuncs) {
 			continue
 		}
-		if exclude(item, filters, registerFuncs) {
+		if !exclude(item, excludes, registerFuncs) {
 			continue
 		}
 		filteredItems = append(filteredItems, item)
