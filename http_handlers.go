@@ -21,7 +21,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		query := parseURLParameters(r)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
-		fmt.Println("request", r.URL, "items", len(ITEMS), "query time", queryTime, "ms")
+		fmt.Println("total:", len(ITEMS), "hits:", len(items), "time:", queryTime, "ms", "url:", r.URL)
 
 		headerData := getHeaderData(items, query, queryTime)
 
