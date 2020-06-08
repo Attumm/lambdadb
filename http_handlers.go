@@ -67,7 +67,8 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println("adding", len(items))
+		msg := fmt.Sprint("adding ", len(items))
+		fmt.Printf(WarningColorN, msg)
 		itemChan <- items
 		w.WriteHeader(204)
 	}
