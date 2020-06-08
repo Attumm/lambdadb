@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Query struct {
@@ -164,7 +165,7 @@ func max(a, b int) int {
 
 func filteredEarlyExit(items Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
-	filteredItems := make(Items, 0, len(items))
+	filteredItems := make(Items, 0, len(items)/4)
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
@@ -176,6 +177,7 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	if query.LimitGiven {
 		stop = limit
 	}
+
 	//TODO candidate for speedup
 	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
@@ -193,15 +195,19 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 			break
 		}
 	}
-	//fmt.Println("start", start, "\nend", end, "\npage", query.Page, "\npagesize", query.PageGiven, "\nlimit", query.Limit)
 	return filteredItems
 }
 
-func runQuery(items Items, query Query, operations GroupedOperations) Items {
+func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
+	start := time.Now()
+	var newItems Items
 	if query.EarlyExit() {
-		return filteredEarlyExit(items, operations, query)
+		newItems = filteredEarlyExit(items, operations, query)
+	} else {
+		newItems = filtered(items, operations, query)
 	}
-	return filtered(items, operations, query)
+	diff := time.Now().Sub(start)
+	return newItems, int64(diff) / int64(1000000)
 }
 
 func filtered(items Items, operations GroupedOperations, query Query) Items {
@@ -210,7 +216,7 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 	filters := query.Filters
 	anys := query.Anys
 
-	filteredItems := make(Items, 0, len(items))
+	filteredItems := make(Items, 0)
 	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
 			continue
@@ -236,7 +242,7 @@ func mapIndex(items Items, indexes []int) Items {
 
 type HeaderData map[string]string
 
-func getHeaderData(items Items, query Query) HeaderData {
+func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
 	headerData := make(HeaderData)
 
 	if query.LimitGiven {
@@ -250,6 +256,7 @@ func getHeaderData(items Items, query Query) HeaderData {
 	}
 
 	headerData["Total-Items"] = strconv.Itoa(len(items))
+	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
 	bytesQuery, _ := json.Marshal(query)
 	headerData["query"] = string(bytesQuery)
 

@@ -19,10 +19,11 @@ import (
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := parseURLParameters(r)
-		fmt.Println("request", r.URL, "items", len(ITEMS))
-		items := runQuery(ITEMS, query, operations)
 
-		headerData := getHeaderData(items, query)
+		items, queryTime := runQuery(ITEMS, query, operations)
+		fmt.Println("request", r.URL, "items", len(ITEMS), "query time", queryTime, "ms")
+
+		headerData := getHeaderData(items, query, queryTime)
 
 		if !query.EarlyExit() {
 			items = sortLimit(items, query)
