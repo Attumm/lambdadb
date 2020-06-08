@@ -21,8 +21,8 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		query := parseURLParameters(r)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
-		fmt.Println("total:", len(ITEMS), "hits:", len(items), "time:", queryTime, "ms", "url:", r.URL)
-
+		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
+		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
 
 		if !query.EarlyExit() {
@@ -106,6 +106,8 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*100)
 	runtime.GC()
 	json.Unmarshal(s, &ITEMS)
+	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
+	fmt.Printf(WarningColorN, msg)
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
