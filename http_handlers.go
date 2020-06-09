@@ -134,6 +134,105 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+func validColumn(column string, columns []string) bool {
+	for _, item := range columns {
+		if column == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Other wise also known in mathematics as set but in http name it would be confused with the verb set.
+//func UniqueValuesInColumn(w http.ResponseWriter, r *http.Request) {
+//	column := r.URL.Path[1:]
+//	response := make(map[string]string)
+//	if len(ITEMS) == 0 {
+//		response["message"] = fmt.Sprint("invalid input: ", column)
+//		w.WriteHeader(400)
+//		json.NewEncoder(w).Encode(response)
+//		return
+//
+//	}
+//	validColumns := ITEMS[0].Columns()
+//
+//	if !validColumn(column, validColumns) {
+//		w.WriteHeader(400)
+//
+//		response["message"] = fmt.Sprint("invalid input: ", column)
+//		response["input"] = column
+//		response["valid input"] = strings.Join(validColumns, ", ")
+//		json.NewEncoder(w).Encode(response)
+//		return
+//	}
+//	set := make(map[string]bool)
+//	for item := range ITEMS {
+//		r := reflect.ValueOf(item)
+//		value := reflect.Indirect(r).FieldByName(column)
+//		valu
+//		set[value.Str()] = true
+//	}
+//
+//}
+type ShowItem struct {
+	IsShow bool   `json:"isShow"`
+	Label  string `json:"label"`
+	Name   string `json:"name"`
+}
+
+type Meta struct {
+	Fields []ShowItem `json:"fields"`
+	View   string     `json:"view"`
+}
+
+type searchResponse struct {
+	Count int   `json:"count"`
+	Data  Items `json:"data"`
+	MMeta *Meta `json:"meta"`
+}
+
+func makeResp(items Items) searchResponse {
+	fields := []ShowItem{}
+	for _, column := range items[0].Columns() {
+		fields = append(fields, ShowItem{IsShow: true, Name: column, Label: column})
+	}
+
+	return searchResponse{
+		Count: len(items),
+		Data:  items,
+		MMeta: &Meta{Fields: fields, View: "table"},
+	}
+}
+
+func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := parseURLParameters(r)
+
+		items, queryTime := runQuery(ITEMS, query, operations)
+		if len(items) == 0 {
+			w.WriteHeader(404)
+			return
+		}
+		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
+		fmt.Printf(NoticeColorN, msg)
+		headerData := getHeaderData(items, query, queryTime)
+
+		if !query.EarlyExit() {
+			items = sortLimit(items, query)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		for key, val := range headerData {
+			w.Header().Set(key, val)
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+		response := makeResp(items)
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
 func helpRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

@@ -18,6 +18,7 @@ FROM scratch
 
 # Copy static executable and certificates
 COPY --from=builder /app/main /app/main
+COPY --from=builder /app/www /www
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Run the hello binary.

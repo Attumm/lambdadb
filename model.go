@@ -17,17 +17,19 @@ type Item struct {
 	Country   string   `json:"country"`
 }
 
+// All the function underneath should become generated from the above Item struct
+
 func (i Item) Columns() []string {
 	return []string{
-		"ID",
-		"Value",
-		"Type",
-		"Name",
-		"Vendor",
-		"IP",
-		"Dn",
-		"ValueType",
-		"Country",
+		"id",
+		"value",
+		"type",
+		"name",
+		"vendor",
+		"ip",
+		"dn",
+		"valuetype",
+		"country",
 	}
 }
 
@@ -224,6 +226,7 @@ func init() {
 	// operations
 	RegisterFuncMap["typeahead"] = FilterValueStartsWith
 	RegisterFuncMap["search"] = FilterValueContainsCase
+	RegisterFuncMap["q"] = FilterValueContainsCase
 
 	// match
 	RegisterFuncMap["match-id"] = FilterMatchID
@@ -265,6 +268,7 @@ func init() {
 	RegisterGroupBy["dn"] = GroupByDN
 	RegisterGroupBy["valuetype"] = GroupByValueType
 	RegisterGroupBy["country"] = GroupByCountry
+
 }
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
