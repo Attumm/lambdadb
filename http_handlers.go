@@ -126,6 +126,7 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	writer.Close()
 	err := ioutil.WriteFile(filename, b.Bytes(), 0666)
 	if err != nil {
+		// TODO better error handling
 		fmt.Println(err)
 		w.WriteHeader(500)
 		return

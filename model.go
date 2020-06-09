@@ -260,6 +260,7 @@ func init() {
 	RegisterGroupBy["value"] = GroupByValue
 	RegisterGroupBy["type"] = GroupByType
 	RegisterGroupBy["name"] = GroupByName
+	RegisterGroupBy["vendor"] = GroupByVendor
 	RegisterGroupBy["ip"] = GroupByIP
 	RegisterGroupBy["dn"] = GroupByDN
 	RegisterGroupBy["valuetype"] = GroupByValueType
