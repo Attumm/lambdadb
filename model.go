@@ -22,13 +22,13 @@ type Item struct {
 func (i Item) Columns() []string {
 	return []string{
 		"id",
-		"value",
-		"type",
 		"name",
+		"value",
 		"vendor",
+		"type",
 		"ip",
 		"dn",
-		"valuetype",
+		"value_type",
 		"country",
 	}
 }
