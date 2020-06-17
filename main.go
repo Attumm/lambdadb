@@ -9,6 +9,7 @@ import (
 type filterFuncc func(*Item, string) bool
 type registerFuncType map[string]filterFuncc
 type registerGroupByFunc map[string]func(*Item) string
+type registerGettersMap map[string]func(*Item) string
 type filterType map[string][]string
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
@@ -51,7 +52,7 @@ func init() {
 }
 
 func main() {
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy}
+	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
@@ -64,8 +65,10 @@ func main() {
 	addRest := contextAddRest(JWTConfig, itemChan, Operations)
 
 	searchRest := contextSearchRest(JWTConfig, itemChan, Operations)
+	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
 	ipPort := SETTINGS.Get("http_db_host")
 	http.HandleFunc("/search/", searchRest)
+	http.HandleFunc("/typeahead/", typeAheadRest)
 	http.HandleFunc("/list/", listRest)
 	http.HandleFunc("/help/", helpRest)
 	http.HandleFunc("/add/", addRest)

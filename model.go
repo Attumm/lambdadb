@@ -167,53 +167,54 @@ func FilterStartsWithCountry(i *Item, s string) bool {
 	return strings.HasPrefix(i.Country, s)
 }
 
-// Group by functions
-func GroupByID(i *Item) string {
+// Getter functions
+func GettersID(i *Item) string {
 	return i.ID
 }
 
-func GroupByValue(i *Item) string {
+func GettersValue(i *Item) string {
 	return i.ValueType
 }
 
-func GroupByType(i *Item) string {
+func GettersType(i *Item) string {
 	return i.Type
 }
 
-func GroupByName(i *Item) string {
+func GettersName(i *Item) string {
 	return i.Name
 }
 
-func GroupByVendor(i *Item) string {
+func GettersVendor(i *Item) string {
 	return i.Vendor
 }
 
-func GroupByDN(i *Item) string {
+func GettersDN(i *Item) string {
 	return strings.Join(i.Dn, ".")
 }
 
-func GroupByValueType(i *Item) string {
+func GettersValueType(i *Item) string {
 	return i.ValueType
 }
 
-func GroupByIP(i *Item) string {
+func GettersIP(i *Item) string {
 	return i.IP
 }
 
-func GroupByCountry(i *Item) string {
+func GettersCountry(i *Item) string {
 	return i.Country
 }
 
 type GroupedOperations struct {
 	Funcs   registerFuncType
 	GroupBy registerGroupByFunc
+	Getters registerGettersMap
 }
 
 var Operations GroupedOperations
 
 var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
-var registerFormat registerFormatMap
+var RegisterGetters registerGettersMap
 
 func init() {
 
@@ -259,15 +260,26 @@ func init() {
 	RegisterFuncMap["startwith-value"] = FilterValueStartsWith
 
 	RegisterGroupBy = make(registerGroupByFunc)
-	RegisterGroupBy["id"] = GroupByID
-	RegisterGroupBy["value"] = GroupByValue
-	RegisterGroupBy["type"] = GroupByType
-	RegisterGroupBy["name"] = GroupByName
-	RegisterGroupBy["vendor"] = GroupByVendor
-	RegisterGroupBy["ip"] = GroupByIP
-	RegisterGroupBy["dn"] = GroupByDN
-	RegisterGroupBy["valuetype"] = GroupByValueType
-	RegisterGroupBy["country"] = GroupByCountry
+	RegisterGroupBy["id"] = GettersID
+	RegisterGroupBy["value"] = GettersValue
+	RegisterGroupBy["type"] = GettersType
+	RegisterGroupBy["name"] = GettersName
+	RegisterGroupBy["vendor"] = GettersVendor
+	RegisterGroupBy["ip"] = GettersIP
+	RegisterGroupBy["dn"] = GettersDN
+	RegisterGroupBy["valuetype"] = GettersValueType
+	RegisterGroupBy["country"] = GettersCountry
+
+	RegisterGetters = make(registerGettersMap)
+	RegisterGetters["id"] = GettersID
+	RegisterGetters["value"] = GettersValue
+	RegisterGetters["type"] = GettersType
+	RegisterGetters["name"] = GettersName
+	RegisterGetters["vendor"] = GettersVendor
+	RegisterGetters["ip"] = GettersIP
+	RegisterGetters["dn"] = GettersDN
+	RegisterGetters["valuetype"] = GettersValueType
+	RegisterGetters["country"] = GettersCountry
 
 }
 

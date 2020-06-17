@@ -233,6 +233,39 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 	}
 }
 
+func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := parseURLParameters(r)
+		column := r.URL.Path[len("/typeahead/"):]
+		if column[len(column)-1] == '/' {
+			column = column[:len(column)-1]
+		}
+		fmt.Println(column)
+		if _, ok := operations.Getters[column]; !ok {
+			w.WriteHeader(404)
+			return
+		}
+
+		results, queryTime := runTypeAheadQuery(ITEMS, column, query, operations)
+		if len(results) == 0 {
+			w.WriteHeader(404)
+			return
+		}
+		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(results), " time: ", queryTime, "ms ", "url: ", r.URL)
+		fmt.Printf(NoticeColorN, msg)
+		headerData := getHeaderDataSlice(results, query, queryTime)
+
+		w.Header().Set("Content-Type", "application/json")
+		for key, val := range headerData {
+			w.Header().Set(key, val)
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+		json.NewEncoder(w).Encode(results)
+	}
+}
+
 func helpRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
