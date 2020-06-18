@@ -99,6 +99,10 @@ func FilterMatchIP(i *Item, s string) bool {
 	return i.IP == s
 }
 
+func FilterMatchDN(i *Item, s string) bool {
+ 	return strings.Join(i.Dn, ".") ==  s
+}
+
 func FilterMatchValueType(i *Item, s string) bool {
 	return i.ValueType == s
 }
@@ -128,6 +132,11 @@ func FilterContainsIP(i *Item, s string) bool {
 	return strings.Contains(i.IP, s)
 }
 
+func FilterContainsDN(i *Item, s string) bool {
+ 	return strings.Contains(strings.Join(i.Dn, "."), s)
+}
+
+
 func FilterContainsValueType(i *Item, s string) bool {
 	return strings.Contains(i.ValueType, s)
 }
@@ -151,6 +160,10 @@ func FilterStartsWithName(i *Item, s string) bool {
 
 func FilterStartsWithVendor(i *Item, s string) bool {
 	return strings.HasPrefix(i.Vendor, s)
+}
+
+func FilterStartsWithDN(i *Item, s string) bool {
+ 	return strings.HasPrefix(strings.Join(i.Dn, "."), s)
 }
 
 func FilterStartsWithIP(i *Item, s string) bool {
@@ -231,6 +244,7 @@ func init() {
 	RegisterFuncMap["match-name"] = FilterMatchName
 	RegisterFuncMap["match-vendor"] = FilterMatchVendor
 	RegisterFuncMap["match-ip"] = FilterMatchIP
+	RegisterFuncMap["match-dn"] = FilterMatchDN
 	RegisterFuncMap["match-valuetype"] = FilterMatchValueType
 	RegisterFuncMap["match-country"] = FilterMatchCountry
 	RegisterFuncMap["match-value"] = FilterValueMatch
@@ -241,6 +255,7 @@ func init() {
 	RegisterFuncMap["contains-name"] = FilterContainsName
 	RegisterFuncMap["contains-vendor"] = FilterContainsVendor
 	RegisterFuncMap["contains-ip"] = FilterContainsIP
+	RegisterFuncMap["contains-dn"] = FilterContainsDN
 	RegisterFuncMap["contains-valuetype"] = FilterContainsValueType
 	RegisterFuncMap["contains-country"] = FilterContainsCountry
 	RegisterFuncMap["contains-value"] = FilterValueContainsCase
@@ -251,7 +266,8 @@ func init() {
 	RegisterFuncMap["startswith-name"] = FilterStartsWithName
 	RegisterFuncMap["startswith-vendor"] = FilterStartsWithVendor
 	RegisterFuncMap["startswith-ip"] = FilterStartsWithIP
-	RegisterFuncMap["startswith-valuetype"] = FilterStartsWithValueType
+	RegisterFuncMap["startswith-dn"] = FilterStartsWithDN
+	RegisterFuncMap["startswith-value_type"] = FilterStartsWithValueType
 	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
 	RegisterFuncMap["startwith-value"] = FilterValueStartsWith
 
