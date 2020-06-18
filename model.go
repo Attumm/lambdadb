@@ -247,6 +247,7 @@ func init() {
 	RegisterFuncMap["match-name"] = FilterMatchName
 	RegisterFuncMap["match-vendor"] = FilterMatchVendor
 	RegisterFuncMap["match-ip"] = FilterMatchIP
+	RegisterFuncMap["match-dn"] = FilterMatchDN
 	RegisterFuncMap["match-valuetype"] = FilterMatchValueType
 	RegisterFuncMap["match-country"] = FilterMatchCountry
 	RegisterFuncMap["match-value"] = FilterValueMatch
@@ -257,6 +258,7 @@ func init() {
 	RegisterFuncMap["contains-name"] = FilterContainsName
 	RegisterFuncMap["contains-vendor"] = FilterContainsVendor
 	RegisterFuncMap["contains-ip"] = FilterContainsIP
+	RegisterFuncMap["contains-dn"] = FilterContainsDN
 	RegisterFuncMap["contains-valuetype"] = FilterContainsValueType
 	RegisterFuncMap["contains-country"] = FilterContainsCountry
 	RegisterFuncMap["contains-value"] = FilterValueContainsCase
@@ -267,6 +269,7 @@ func init() {
 	RegisterFuncMap["startswith-name"] = FilterStartsWithName
 	RegisterFuncMap["startswith-vendor"] = FilterStartsWithVendor
 	RegisterFuncMap["startswith-ip"] = FilterStartsWithIP
+	RegisterFuncMap["startswith-dn"] = FilterStartsWithDN
 	RegisterFuncMap["startswith-valuetype"] = FilterStartsWithValueType
 	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
 	RegisterFuncMap["startswith-value"] = FilterValueStartsWith
