@@ -248,7 +248,7 @@ func init() {
 	RegisterFuncMap["match-vendor"] = FilterMatchVendor
 	RegisterFuncMap["match-ip"] = FilterMatchIP
 	RegisterFuncMap["match-dn"] = FilterMatchDN
-	RegisterFuncMap["match-valuetype"] = FilterMatchValueType
+	RegisterFuncMap["match-value_type"] = FilterMatchValueType
 	RegisterFuncMap["match-country"] = FilterMatchCountry
 	RegisterFuncMap["match-value"] = FilterValueMatch
 
@@ -259,7 +259,7 @@ func init() {
 	RegisterFuncMap["contains-vendor"] = FilterContainsVendor
 	RegisterFuncMap["contains-ip"] = FilterContainsIP
 	RegisterFuncMap["contains-dn"] = FilterContainsDN
-	RegisterFuncMap["contains-valuetype"] = FilterContainsValueType
+	RegisterFuncMap["contains-value_type"] = FilterContainsValueType
 	RegisterFuncMap["contains-country"] = FilterContainsCountry
 	RegisterFuncMap["contains-value"] = FilterValueContainsCase
 
@@ -270,7 +270,7 @@ func init() {
 	RegisterFuncMap["startswith-vendor"] = FilterStartsWithVendor
 	RegisterFuncMap["startswith-ip"] = FilterStartsWithIP
 	RegisterFuncMap["startswith-dn"] = FilterStartsWithDN
-	RegisterFuncMap["startswith-valuetype"] = FilterStartsWithValueType
+	RegisterFuncMap["startswith-value_type"] = FilterStartsWithValueType
 	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
 	RegisterFuncMap["startswith-value"] = FilterValueStartsWith
 
@@ -282,7 +282,7 @@ func init() {
 	RegisterGroupBy["vendor"] = GettersVendor
 	RegisterGroupBy["ip"] = GettersIP
 	RegisterGroupBy["dn"] = GettersDN
-	RegisterGroupBy["valuetype"] = GettersValueType
+	RegisterGroupBy["value_type"] = GettersValueType
 	RegisterGroupBy["country"] = GettersCountry
 
 	RegisterGetters = make(registerGettersMap)
@@ -293,7 +293,7 @@ func init() {
 	RegisterGetters["vendor"] = GettersVendor
 	RegisterGetters["ip"] = GettersIP
 	RegisterGetters["dn"] = GettersDN
-	RegisterGetters["valuetype"] = GettersValueType
+	RegisterGetters["value_type"] = GettersValueType
 	RegisterGetters["country"] = GettersCountry
 
 }
