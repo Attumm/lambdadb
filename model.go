@@ -173,7 +173,7 @@ func GettersID(i *Item) string {
 }
 
 func GettersValue(i *Item) string {
-	return i.ValueType
+	return i.Value
 }
 
 func GettersType(i *Item) string {
@@ -257,7 +257,7 @@ func init() {
 	RegisterFuncMap["startswith-ip"] = FilterStartsWithIP
 	RegisterFuncMap["startswith-valuetype"] = FilterStartsWithValueType
 	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
-	RegisterFuncMap["startwith-value"] = FilterValueStartsWith
+	RegisterFuncMap["startswith-value"] = FilterValueStartsWith
 
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGroupBy["id"] = GettersID
