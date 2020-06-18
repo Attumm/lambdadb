@@ -101,6 +101,10 @@ func FilterMatchIP(i *Item, s string) bool {
 	return i.IP == s
 }
 
+func FilterMatchDN(i *Item, s string) bool {
+	return strings.Join(i.Dn, ".") == s
+}
+
 func FilterMatchValueType(i *Item, s string) bool {
 	return i.ValueType == s
 }
@@ -130,6 +134,10 @@ func FilterContainsIP(i *Item, s string) bool {
 	return strings.Contains(i.IP, s)
 }
 
+func FilterContainsDN(i *Item, s string) bool {
+	return strings.Contains(strings.Join(i.Dn, "."), s)
+}
+
 func FilterContainsValueType(i *Item, s string) bool {
 	return strings.Contains(i.ValueType, s)
 }
@@ -153,6 +161,10 @@ func FilterStartsWithName(i *Item, s string) bool {
 
 func FilterStartsWithVendor(i *Item, s string) bool {
 	return strings.HasPrefix(i.Vendor, s)
+}
+
+func FilterStartsWithDN(i *Item, s string) bool {
+	return strings.HasPrefix(strings.Join(i.Dn, "."), s)
 }
 
 func FilterStartsWithIP(i *Item, s string) bool {
