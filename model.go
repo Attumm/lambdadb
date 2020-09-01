@@ -3,6 +3,7 @@ package main
 import (
 	"sort"
 	"strings"
+	"regexp"
 )
 
 type Item struct {
@@ -46,6 +47,16 @@ func (i Item) Row() []string {
 		i.Country,
 	}
 }
+
+// pre compliing is better
+func FilterValueRegex(i *Item, s string) bool {
+	re, err  := regexp.Compile(s)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(i.Value)
+}
+
 
 // Filter Functions
 func FilterValueContains(i *Item, s string) bool {
@@ -239,6 +250,7 @@ func init() {
 	// operations
 	RegisterFuncMap["typeahead"] = FilterValueStartsWith
 	RegisterFuncMap["search"] = FilterValueContainsCase
+	RegisterFuncMap["regex"] = FilterValueRegex
 	RegisterFuncMap["q"] = FilterValueContainsCase
 
 	// match
@@ -318,8 +330,8 @@ func sortBy(items Items, sortingL []string) (Items, []string) {
 		"ip":  func(i, j int) bool { return items[i].IP < items[j].IP },
 		"-ip": func(i, j int) bool { return items[i].IP > items[j].IP },
 
-		"valueType":  func(i, j int) bool { return items[i].ValueType < items[j].ValueType },
-		"-valueType": func(i, j int) bool { return items[i].ValueType > items[j].ValueType },
+		"value_type":  func(i, j int) bool { return items[i].ValueType < items[j].ValueType },
+		"-value_type": func(i, j int) bool { return items[i].ValueType > items[j].ValueType },
 
 		"country":  func(i, j int) bool { return items[i].Country < items[j].Country },
 		"-country": func(i, j int) bool { return items[i].Country > items[j].Country },

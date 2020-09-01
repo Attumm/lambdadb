@@ -76,6 +76,7 @@ func main() {
 	http.HandleFunc("/save/", saveRest)
 	http.HandleFunc("/load/", loadRest)
 	http.Handle("/", http.FileServer(http.Dir("./www")))
+	http.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
 	log.Fatal(http.ListenAndServe(ipPort, nil))

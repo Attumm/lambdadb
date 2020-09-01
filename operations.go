@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"net/url"
+	"fmt"
 )
 
 type Query struct {
@@ -27,23 +29,39 @@ func (q Query) EarlyExit() bool {
 	return q.LimitGiven && !q.PageGiven && !q.SortByGiven
 }
 
+func decodeUrl(s string) string {
+	newS, err := url.QueryUnescape(s)
+	if err != nil {
+		fmt.Println("oh no error", err)
+		return s
+	}
+	fmt.Println("decoded", s, newS)
+	return newS
+}
+
 // util for api
 func parseURLParameters(r *http.Request) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
 	//TODO speedup gains are present
+	urlItems := r.URL.Query()
 	for k := range RegisterFuncMap {
-		parameter, parameterFound := r.URL.Query()[k]
-		if parameterFound {
-			filterMap[k] = parameter
+		parameter, parameterFound := urlItems[k]
+		if parameterFound && parameter[0] != "" {
+		        newSl := make([]string, len(parameter))
+			for i, v := range parameter {
+				newSl[i] = decodeUrl(v)
+			}
+			//filterMap[k] = parameter
+			filterMap[k] = newSl
 		}
-		parameter, parameterFound = r.URL.Query()["!"+k]
-		if parameterFound {
+		parameter, parameterFound = urlItems["!"+k]
+		if parameterFound && parameter[0] != "" {
 			excludeMap[k] = parameter
 		}
-		parameter, parameterFound = r.URL.Query()["any_"+k]
-		if parameterFound {
+		parameter, parameterFound = urlItems["any_"+k]
+		if parameterFound && parameter[0] != "" {
 			anyMap[k] = parameter
 		}
 	}

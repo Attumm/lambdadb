@@ -240,7 +240,6 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]
 		}
-		fmt.Println(column)
 		if _, ok := operations.Getters[column]; !ok {
 			w.WriteHeader(404)
 			return
