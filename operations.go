@@ -28,7 +28,7 @@ func (q Query) EarlyExit() bool {
 }
 
 // util for api
-func parseURLParameters(r *http.Request) Query {
+func parseURLParameters(r *http.Request, JWTConfig jwtConfig) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)

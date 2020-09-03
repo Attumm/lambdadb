@@ -22,8 +22,9 @@ type ItemsChannel chan Items
 var ITEMS Items
 
 type jwtConfig struct {
-	Enabled      bool
-	SharedSecret string
+	Enabled bool
+	Secret  string
+	Issuer  string
 }
 
 // Colors are fun, and can be used to note that this is joyfull and fun project.
@@ -42,22 +43,25 @@ const (
 )
 
 func init() {
-	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
-	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
-	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
-	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
 }
 
 func main() {
+	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
+	SETTINGS.Set("JWT_SECRET", "", "jwt shared secret")
+	SETTINGS.Set("JWT_ISSUER", "", "jwt issuer")
+	SETTINGS.Set("JWT_ENABLED", "yes", "JWT enabled")
+	SETTINGS.Parse()
+
 	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
 	JWTConfig := jwtConfig{
-		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
-		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
+		Enabled: SETTINGS.Get("JWT_ENABLED") == "yes",
+		Secret:  SETTINGS.Get("JWT_SECRET"),
+		Issuer:  SETTINGS.Get("JWT_ISSUER"),
 	}
 
 	listRest := contextListRest(JWTConfig, itemChan, Operations)

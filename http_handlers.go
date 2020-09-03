@@ -16,9 +16,9 @@ import (
 
 // API
 
-func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextListRest(JWTConfig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query := parseURLParameters(r, JWTConfig)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
@@ -59,7 +59,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	}
 }
 
-func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+func contextAddRest(JWTConfig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jsonDecoder := json.NewDecoder(r.Body)
 		var items Items
