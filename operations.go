@@ -275,7 +275,7 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	start := time.Now()
 	var newItems Items
 
-	if query.IndexGiven {
+	if query.IndexGiven && len(STR_INDEX) > 0 {
 		items = make(Items, 0)
 		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
 		seen := make(map[string]bool)
