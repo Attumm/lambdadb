@@ -23,6 +23,9 @@ type Query struct {
 
 	SortBy      []string
 	SortByGiven bool
+
+	IndexQuery string
+	IndexGiven bool
 }
 
 func (q Query) EarlyExit() bool {
@@ -44,8 +47,10 @@ func parseURLParameters(r *http.Request) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
-	//TODO speedup gains are present
+	//TODO change query to be based on input.
+
 	urlItems := r.URL.Query()
+
 	for k := range RegisterFuncMap {
 		parameter, parameterFound := urlItems[k]
 		if parameterFound && parameter[0] != "" {
@@ -68,31 +73,38 @@ func parseURLParameters(r *http.Request) Query {
 
 	// TODO there must be better way
 	page := 1
-	pageStr, pageGiven := r.URL.Query()["page"]
+	pageStr, pageGiven := urlItems["page"]
 	if pageGiven {
 		page = intMoreDefault(pageStr[0], 1)
 	}
 
 	pageSize := 10
-	pageSizeStr, pageSizeGiven := r.URL.Query()["pagesize"]
+	pageSizeStr, pageSizeGiven := urlItems["pagesize"]
 	if pageSizeGiven {
 		pageSize = intMoreDefault(pageSizeStr[0], 1)
 	}
 
 	limit := 0
-	limitStr, limitGiven := r.URL.Query()["limit"]
+	limitStr, limitGiven := urlItems["limit"]
 	if limitGiven {
 		limit = intMoreDefault(limitStr[0], 1)
 	}
 
-	sortingL, sortingGiven := r.URL.Query()["sortby"]
+	sortingL, sortingGiven := urlItems["sortby"]
+
+	index := ""
+	indexL, indexGiven := urlItems["search"]
+	if indexGiven {
+		index = indexL[0]
+	}
 	return Query{
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
 
-		Limit:         limit,
-		LimitGiven:    limitGiven,
+		Limit:      limit,
+		LimitGiven: limitGiven,
+
 		Page:          page,
 		PageGiven:     pageGiven,
 		PageSize:      pageSize,
@@ -100,6 +112,9 @@ func parseURLParameters(r *http.Request) Query {
 
 		SortBy:      sortingL,
 		SortByGiven: sortingGiven,
+
+		IndexQuery: index,
+		IndexGiven: indexGiven,
 	}
 }
 
@@ -259,6 +274,23 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
 	var newItems Items
+
+	if query.IndexGiven {
+		items = make(Items, 0)
+		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+		seen := make(map[string]bool)
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			if !seen[key] {
+				seen[key] = true
+				for _, item := range LOOKUP[key] {
+					items = append(items, item)
+				}
+			}
+
+		}
+	}
+
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)
 	} else {

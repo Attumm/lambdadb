@@ -5,12 +5,14 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"index/suffixarray"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		query := parseURLParameters(r)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
+
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
@@ -83,6 +86,27 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+var LOOKUP map[string]Items
+var INDEX *suffixarray.Index
+var STR_INDEX []byte
+
+func getStringFromIndex(data []byte, index int) string {
+	var start, end int
+	for i := index - 1; i >= 0; i-- {
+		if data[i] == 0 {
+			start = i + 1
+			break
+		}
+	}
+	for i := index + 1; i < len(data); i++ {
+		if data[i] == 0 {
+			end = i
+			break
+		}
+	}
+	return string(data[start:end])
+}
+
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	filename := "ITEMS.txt.gz"
 	fi, err := os.Open(filename)
@@ -104,11 +128,36 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	// TODO find out why wihout GC memory keeps growing
 	runtime.GC()
-	ITEMS = make(Items, 0, 100*100)
+	ITEMS = make(Items, 0, 100*1000)
 	runtime.GC()
 	json.Unmarshal(s, &ITEMS)
+
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
+
+	sort.Slice(ITEMS, func(i, j int) bool {
+		return ITEMS[i].Value < ITEMS[j].Value
+	})
+
+	LOOKUP = make(map[string]Items)
+	kSet := make(map[string]bool)
+	for _, item := range ITEMS {
+		key := strings.ToLower(item.Value)
+		kSet[key] = true
+		LOOKUP[key] = append(LOOKUP[key], item)
+	}
+
+	keys := []string{}
+	for key := range kSet {
+		keys = append(keys, key)
+	}
+
+	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
+	INDEX = suffixarray.New(STR_INDEX)
+
+	msg = fmt.Sprint("sorted")
+	fmt.Printf(WarningColorN, msg)
+
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
