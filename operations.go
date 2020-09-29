@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
-	"net/url"
-	"fmt"
 )
 
 type Query struct {
@@ -49,7 +49,7 @@ func parseURLParameters(r *http.Request) Query {
 	for k := range RegisterFuncMap {
 		parameter, parameterFound := urlItems[k]
 		if parameterFound && parameter[0] != "" {
-		        newSl := make([]string, len(parameter))
+			newSl := make([]string, len(parameter))
 			for i, v := range parameter {
 				newSl[i] = decodeUrl(v)
 			}

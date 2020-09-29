@@ -43,15 +43,17 @@ const (
 )
 
 func init() {
+
+}
+
+func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
-}
 
-func main() {
 	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters}
 	itemChan := make(ItemsChannel, 1000)
 
@@ -71,6 +73,7 @@ func main() {
 	http.HandleFunc("/typeahead/", typeAheadRest)
 	http.HandleFunc("/list/", listRest)
 	http.HandleFunc("/help/", helpRest)
+
 	http.HandleFunc("/add/", addRest)
 	http.HandleFunc("/rm/", rmRest)
 	http.HandleFunc("/save/", saveRest)

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"regexp"
 	"sort"
 	"strings"
-	"regexp"
 )
 
 type Item struct {
@@ -50,13 +50,12 @@ func (i Item) Row() []string {
 
 // pre compliing is better
 func FilterValueRegex(i *Item, s string) bool {
-	re, err  := regexp.Compile(s)
+	re, err := regexp.Compile(s)
 	if err != nil {
 		return false
 	}
 	return re.MatchString(i.Value)
 }
-
 
 // Filter Functions
 func FilterValueContains(i *Item, s string) bool {
