@@ -366,7 +366,9 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("search: http://%s/list/?search=ams&page=1&pagesize=1", host),
 		fmt.Sprintf("search with limit: http://%s/list/?search=10&page=1&pagesize=10&limit=5", host),
 		fmt.Sprintf("sorting: http://%s/list/?search=100&page=10&pagesize=100&sortby=-country", host),
-		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains-case=144&contains-case=10&page=1&pagesize=1", host),
+		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains=144&contains-case=10&page=1&pagesize=1", host),
+		fmt.Sprintf("groupby: http://%s/list/?search=10&contains-case=10&groupby=country", host),
+		fmt.Sprintf("aggregation: http://%s/list/?search=10&contains-case=10&groupby=country&reduce=count", host),
 	}
 	w.WriteHeader(http.StatusOK)
 
