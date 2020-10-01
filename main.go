@@ -10,6 +10,7 @@ type filterFuncc func(*Item, string) bool
 type registerFuncType map[string]filterFuncc
 type registerGroupByFunc map[string]func(*Item) string
 type registerGettersMap map[string]func(*Item) string
+type registerReduce map[string]func(Items) map[string]string
 type filterType map[string][]string
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
@@ -54,7 +55,7 @@ func main() {
 
 	ITEMS = make(Items, 0, 100*1000)
 
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters}
+	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)

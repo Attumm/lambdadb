@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -226,17 +227,28 @@ func GettersCountry(i *Item) string {
 	return i.Country
 }
 
+// reduce functions
+
+func reduceCount(items Items) map[string]string {
+	result := make(map[string]string)
+	result["count"] = strconv.Itoa(len(items))
+	return result
+}
+
 type GroupedOperations struct {
 	Funcs   registerFuncType
 	GroupBy registerGroupByFunc
 	Getters registerGettersMap
+	Reduce  registerReduce
 }
 
+// TODO refactor
 var Operations GroupedOperations
 
 var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
 var RegisterGetters registerGettersMap
+var RegisterReduce registerReduce
 
 func init() {
 
@@ -306,6 +318,9 @@ func init() {
 	RegisterGetters["dn"] = GettersDN
 	RegisterGetters["value_type"] = GettersValueType
 	RegisterGetters["country"] = GettersCountry
+
+	RegisterReduce = make(registerReduce)
+	RegisterReduce["count"] = reduceCount
 
 }
 

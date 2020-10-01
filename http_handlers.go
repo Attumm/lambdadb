@@ -46,6 +46,23 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		}
 
 		groupByItems := groupByRunner(items, groupByS[0])
+
+		reduceName, reduceFound := r.URL.Query()["reduce"]
+
+		if reduceFound {
+			result := make(map[string]map[string]string)
+			reduceFunc, reduceFuncFound := operations.Reduce[reduceName[0]]
+			if !reduceFuncFound {
+				json.NewEncoder(w).Encode(result)
+				return
+			}
+			for key, val := range groupByItems {
+				result[key] = reduceFunc(val)
+			}
+			json.NewEncoder(w).Encode(result)
+			return
+		}
+
 		json.NewEncoder(w).Encode(groupByItems)
 		go func() {
 			time.Sleep(2 * time.Second)
