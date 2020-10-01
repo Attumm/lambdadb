@@ -345,14 +345,23 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		registeredGroupbys = append(registeredGroupbys, k)
 	}
 
+	registerReduces := []string{}
+	for k := range RegisterReduce {
+		registerReduces = append(registerReduces, k)
+	}
+
 	_, registeredSortings := sortBy(ITEMS, []string{})
 
 	sort.Strings(registeredFilters)
 	sort.Strings(registeredGroupbys)
 	sort.Strings(registeredSortings)
+	sort.Strings(registerReduces)
+
 	response["filters"] = registeredFilters
 	response["groupby"] = registeredGroupbys
 	response["sortby"] = registeredSortings
+	response["reduce"] = registerReduces
+
 	totalItems := strconv.Itoa(len(ITEMS))
 
 	host := SETTINGS.Get("http_db_host")
