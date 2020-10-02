@@ -93,7 +93,7 @@ func parseURLParameters(r *http.Request) Query {
 	sortingL, sortingGiven := urlItems["sortby"]
 
 	index := ""
-	indexL, indexGiven := urlItems["search"]
+	indexL, indexGiven := urlItems["search-uiot"]
 	if indexGiven {
 		index = indexL[0]
 	}

@@ -152,14 +152,14 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
 
-	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].Value < ITEMS[j].Value
-	})
+	//sort.Slice(ITEMS, func(i, j int) bool {
+	//	return ITEMS[i].Value < ITEMS[j].Value
+	//})
 
 	LOOKUP = make(map[string]Items)
 	kSet := make(map[string]bool)
 	for _, item := range ITEMS {
-		key := strings.ToLower(item.Value)
+		key := strings.ToLower(item.Buurtcode)
 		kSet[key] = true
 		LOOKUP[key] = append(LOOKUP[key], item)
 	}
