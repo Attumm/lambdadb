@@ -38,7 +38,6 @@ func decodeUrl(s string) string {
 		fmt.Println("oh no error", err)
 		return s
 	}
-	fmt.Println("decoded", s, newS)
 	return newS
 }
 
@@ -94,7 +93,8 @@ func parseURLParameters(r *http.Request) Query {
 
 	index := ""
 	indexL, indexGiven := urlItems["search"]
-	if indexGiven {
+	indexUsed := indexGiven && indexL[0] != ""
+	if indexUsed {
 		index = indexL[0]
 	}
 	return Query{
@@ -114,7 +114,7 @@ func parseURLParameters(r *http.Request) Query {
 		SortByGiven: sortingGiven,
 
 		IndexQuery: index,
-		IndexGiven: indexGiven,
+		IndexGiven: indexUsed,
 	}
 }
 
