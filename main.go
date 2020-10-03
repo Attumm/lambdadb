@@ -9,6 +9,8 @@ import (
 type filterFuncc func(*Item, string) bool
 type registerFuncType map[string]filterFuncc
 type registerGroupByFunc map[string]func(*Item) string
+type registerGettersMap map[string]func(*Item) string
+type registerReduce map[string]func(Items) map[string]string
 type filterType map[string][]string
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
@@ -42,16 +44,18 @@ const (
 )
 
 func init() {
+
+}
+
+func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
-}
 
-func main() {
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy}
+	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
@@ -63,13 +67,20 @@ func main() {
 	listRest := contextListRest(JWTConfig, itemChan, Operations)
 	addRest := contextAddRest(JWTConfig, itemChan, Operations)
 
+	searchRest := contextSearchRest(JWTConfig, itemChan, Operations)
+	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
 	ipPort := SETTINGS.Get("http_db_host")
-	http.HandleFunc("/", listRest)
+	http.HandleFunc("/search/", searchRest)
+	http.HandleFunc("/typeahead/", typeAheadRest)
+	http.HandleFunc("/list/", listRest)
 	http.HandleFunc("/help/", helpRest)
+
 	http.HandleFunc("/add/", addRest)
 	http.HandleFunc("/rm/", rmRest)
 	http.HandleFunc("/save/", saveRest)
 	http.HandleFunc("/load/", loadRest)
+	http.Handle("/", http.FileServer(http.Dir("./www")))
+	http.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
 	log.Fatal(http.ListenAndServe(ipPort, nil))

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -17,17 +19,19 @@ type Item struct {
 	Country   string   `json:"country"`
 }
 
+// All the function underneath should become generated from the above Item struct
+
 func (i Item) Columns() []string {
 	return []string{
-		"ID",
-		"Value",
-		"Type",
-		"Name",
-		"Vendor",
-		"IP",
-		"Dn",
-		"ValueType",
-		"Country",
+		"id",
+		"name",
+		"value",
+		"vendor",
+		"type",
+		"ip",
+		"dn",
+		"value_type",
+		"country",
 	}
 }
 
@@ -43,6 +47,15 @@ func (i Item) Row() []string {
 		i.ValueType,
 		i.Country,
 	}
+}
+
+// pre compliing is better
+func FilterValueRegex(i *Item, s string) bool {
+	re, err := regexp.Compile(s)
+	if err != nil {
+		return false
+	}
+	return re.MatchString(i.Value)
 }
 
 // Filter Functions
@@ -100,7 +113,7 @@ func FilterMatchIP(i *Item, s string) bool {
 }
 
 func FilterMatchDN(i *Item, s string) bool {
- 	return strings.Join(i.Dn, ".") ==  s
+	return strings.Join(i.Dn, ".") == s
 }
 
 func FilterMatchValueType(i *Item, s string) bool {
@@ -133,9 +146,8 @@ func FilterContainsIP(i *Item, s string) bool {
 }
 
 func FilterContainsDN(i *Item, s string) bool {
- 	return strings.Contains(strings.Join(i.Dn, "."), s)
+	return strings.Contains(strings.Join(i.Dn, "."), s)
 }
-
 
 func FilterContainsValueType(i *Item, s string) bool {
 	return strings.Contains(i.ValueType, s)
@@ -163,7 +175,7 @@ func FilterStartsWithVendor(i *Item, s string) bool {
 }
 
 func FilterStartsWithDN(i *Item, s string) bool {
- 	return strings.HasPrefix(strings.Join(i.Dn, "."), s)
+	return strings.HasPrefix(strings.Join(i.Dn, "."), s)
 }
 
 func FilterStartsWithIP(i *Item, s string) bool {
@@ -178,53 +190,65 @@ func FilterStartsWithCountry(i *Item, s string) bool {
 	return strings.HasPrefix(i.Country, s)
 }
 
-// Group by functions
-func GroupByID(i *Item) string {
+// Getter functions
+func GettersID(i *Item) string {
 	return i.ID
 }
 
-func GroupByValue(i *Item) string {
-	return i.ValueType
+func GettersValue(i *Item) string {
+	return i.Value
 }
 
-func GroupByType(i *Item) string {
+func GettersType(i *Item) string {
 	return i.Type
 }
 
-func GroupByName(i *Item) string {
+func GettersName(i *Item) string {
 	return i.Name
 }
 
-func GroupByVendor(i *Item) string {
+func GettersVendor(i *Item) string {
 	return i.Vendor
 }
 
-func GroupByDN(i *Item) string {
+func GettersDN(i *Item) string {
 	return strings.Join(i.Dn, ".")
 }
 
-func GroupByValueType(i *Item) string {
+func GettersValueType(i *Item) string {
 	return i.ValueType
 }
 
-func GroupByIP(i *Item) string {
+func GettersIP(i *Item) string {
 	return i.IP
 }
 
-func GroupByCountry(i *Item) string {
+func GettersCountry(i *Item) string {
 	return i.Country
+}
+
+// reduce functions
+
+func reduceCount(items Items) map[string]string {
+	result := make(map[string]string)
+	result["count"] = strconv.Itoa(len(items))
+	return result
 }
 
 type GroupedOperations struct {
 	Funcs   registerFuncType
 	GroupBy registerGroupByFunc
+	Getters registerGettersMap
+	Reduce  registerReduce
 }
 
+// TODO refactor
 var Operations GroupedOperations
 
 var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
-var registerFormat registerFormatMap
+var RegisterGetters registerGettersMap
+var RegisterReduce registerReduce
 
 func init() {
 
@@ -237,6 +261,8 @@ func init() {
 	// operations
 	RegisterFuncMap["typeahead"] = FilterValueStartsWith
 	RegisterFuncMap["search"] = FilterValueContainsCase
+	RegisterFuncMap["regex"] = FilterValueRegex
+	RegisterFuncMap["q"] = FilterValueContainsCase
 
 	// match
 	RegisterFuncMap["match-id"] = FilterMatchID
@@ -245,7 +271,7 @@ func init() {
 	RegisterFuncMap["match-vendor"] = FilterMatchVendor
 	RegisterFuncMap["match-ip"] = FilterMatchIP
 	RegisterFuncMap["match-dn"] = FilterMatchDN
-	RegisterFuncMap["match-valuetype"] = FilterMatchValueType
+	RegisterFuncMap["match-value_type"] = FilterMatchValueType
 	RegisterFuncMap["match-country"] = FilterMatchCountry
 	RegisterFuncMap["match-value"] = FilterValueMatch
 
@@ -256,7 +282,7 @@ func init() {
 	RegisterFuncMap["contains-vendor"] = FilterContainsVendor
 	RegisterFuncMap["contains-ip"] = FilterContainsIP
 	RegisterFuncMap["contains-dn"] = FilterContainsDN
-	RegisterFuncMap["contains-valuetype"] = FilterContainsValueType
+	RegisterFuncMap["contains-value_type"] = FilterContainsValueType
 	RegisterFuncMap["contains-country"] = FilterContainsCountry
 	RegisterFuncMap["contains-value"] = FilterValueContainsCase
 
@@ -269,18 +295,33 @@ func init() {
 	RegisterFuncMap["startswith-dn"] = FilterStartsWithDN
 	RegisterFuncMap["startswith-value_type"] = FilterStartsWithValueType
 	RegisterFuncMap["startswith-country"] = FilterStartsWithCountry
-	RegisterFuncMap["startwith-value"] = FilterValueStartsWith
+	RegisterFuncMap["startswith-value"] = FilterValueStartsWith
 
 	RegisterGroupBy = make(registerGroupByFunc)
-	RegisterGroupBy["id"] = GroupByID
-	RegisterGroupBy["value"] = GroupByValue
-	RegisterGroupBy["type"] = GroupByType
-	RegisterGroupBy["name"] = GroupByName
-	RegisterGroupBy["vendor"] = GroupByVendor
-	RegisterGroupBy["ip"] = GroupByIP
-	RegisterGroupBy["dn"] = GroupByDN
-	RegisterGroupBy["valuetype"] = GroupByValueType
-	RegisterGroupBy["country"] = GroupByCountry
+	RegisterGroupBy["id"] = GettersID
+	RegisterGroupBy["value"] = GettersValue
+	RegisterGroupBy["type"] = GettersType
+	RegisterGroupBy["name"] = GettersName
+	RegisterGroupBy["vendor"] = GettersVendor
+	RegisterGroupBy["ip"] = GettersIP
+	RegisterGroupBy["dn"] = GettersDN
+	RegisterGroupBy["value_type"] = GettersValueType
+	RegisterGroupBy["country"] = GettersCountry
+
+	RegisterGetters = make(registerGettersMap)
+	RegisterGetters["id"] = GettersID
+	RegisterGetters["value"] = GettersValue
+	RegisterGetters["type"] = GettersType
+	RegisterGetters["name"] = GettersName
+	RegisterGetters["vendor"] = GettersVendor
+	RegisterGetters["ip"] = GettersIP
+	RegisterGetters["dn"] = GettersDN
+	RegisterGetters["value_type"] = GettersValueType
+	RegisterGetters["country"] = GettersCountry
+
+	RegisterReduce = make(registerReduce)
+	RegisterReduce["count"] = reduceCount
+
 }
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
@@ -303,8 +344,8 @@ func sortBy(items Items, sortingL []string) (Items, []string) {
 		"ip":  func(i, j int) bool { return items[i].IP < items[j].IP },
 		"-ip": func(i, j int) bool { return items[i].IP > items[j].IP },
 
-		"valueType":  func(i, j int) bool { return items[i].ValueType < items[j].ValueType },
-		"-valueType": func(i, j int) bool { return items[i].ValueType > items[j].ValueType },
+		"value_type":  func(i, j int) bool { return items[i].ValueType < items[j].ValueType },
+		"-value_type": func(i, j int) bool { return items[i].ValueType > items[j].ValueType },
 
 		"country":  func(i, j int) bool { return items[i].Country < items[j].Country },
 		"-country": func(i, j int) bool { return items[i].Country > items[j].Country },

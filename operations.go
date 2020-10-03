@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -21,10 +23,23 @@ type Query struct {
 
 	SortBy      []string
 	SortByGiven bool
+
+	IndexQuery string
+	IndexGiven bool
 }
 
 func (q Query) EarlyExit() bool {
 	return q.LimitGiven && !q.PageGiven && !q.SortByGiven
+}
+
+func decodeUrl(s string) string {
+	newS, err := url.QueryUnescape(s)
+	if err != nil {
+		fmt.Println("oh no error", err)
+		return s
+	}
+	fmt.Println("decoded", s, newS)
+	return newS
 }
 
 // util for api
@@ -32,49 +47,64 @@ func parseURLParameters(r *http.Request) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
-	//TODO speedup gains are present
+	//TODO change query to be based on input.
+
+	urlItems := r.URL.Query()
+
 	for k := range RegisterFuncMap {
-		parameter, parameterFound := r.URL.Query()[k]
-		if parameterFound {
-			filterMap[k] = parameter
+		parameter, parameterFound := urlItems[k]
+		if parameterFound && parameter[0] != "" {
+			newSl := make([]string, len(parameter))
+			for i, v := range parameter {
+				newSl[i] = decodeUrl(v)
+			}
+			//filterMap[k] = parameter
+			filterMap[k] = newSl
 		}
-		parameter, parameterFound = r.URL.Query()["!"+k]
-		if parameterFound {
+		parameter, parameterFound = urlItems["!"+k]
+		if parameterFound && parameter[0] != "" {
 			excludeMap[k] = parameter
 		}
-		parameter, parameterFound = r.URL.Query()["any_"+k]
-		if parameterFound {
+		parameter, parameterFound = urlItems["any_"+k]
+		if parameterFound && parameter[0] != "" {
 			anyMap[k] = parameter
 		}
 	}
 
 	// TODO there must be better way
 	page := 1
-	pageStr, pageGiven := r.URL.Query()["page"]
+	pageStr, pageGiven := urlItems["page"]
 	if pageGiven {
 		page = intMoreDefault(pageStr[0], 1)
 	}
 
 	pageSize := 10
-	pageSizeStr, pageSizeGiven := r.URL.Query()["pagesize"]
+	pageSizeStr, pageSizeGiven := urlItems["pagesize"]
 	if pageSizeGiven {
 		pageSize = intMoreDefault(pageSizeStr[0], 1)
 	}
 
 	limit := 0
-	limitStr, limitGiven := r.URL.Query()["limit"]
+	limitStr, limitGiven := urlItems["limit"]
 	if limitGiven {
 		limit = intMoreDefault(limitStr[0], 1)
 	}
 
-	sortingL, sortingGiven := r.URL.Query()["sortby"]
+	sortingL, sortingGiven := urlItems["sortby"]
+
+	index := ""
+	indexL, indexGiven := urlItems["search"]
+	if indexGiven {
+		index = indexL[0]
+	}
 	return Query{
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
 
-		Limit:         limit,
-		LimitGiven:    limitGiven,
+		Limit:      limit,
+		LimitGiven: limitGiven,
+
 		Page:          page,
 		PageGiven:     pageGiven,
 		PageSize:      pageSize,
@@ -82,6 +112,9 @@ func parseURLParameters(r *http.Request) Query {
 
 		SortBy:      sortingL,
 		SortByGiven: sortingGiven,
+
+		IndexQuery: index,
+		IndexGiven: indexGiven,
 	}
 }
 
@@ -198,9 +231,66 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	return filteredItems
 }
 
+func filteredEarlyExitSingle(items Items, column string, operations GroupedOperations, query Query) []string {
+	registerFuncs := operations.Funcs
+	filteredItemsSet := make(map[string]bool)
+	excludes := query.Excludes
+	filters := query.Filters
+	anys := query.Anys
+
+	limit := query.Limit
+	start := (query.Page - 1) * query.PageSize
+	end := start + query.PageSize
+	stop := end
+	if query.LimitGiven {
+		stop = limit
+	}
+
+	//TODO candidate for speedup
+	for _, item := range items {
+		if !any(item, anys, registerFuncs) {
+			continue
+		}
+		if !all(item, filters, registerFuncs) {
+			continue
+		}
+		if !exclude(item, excludes, registerFuncs) {
+			continue
+		}
+		single := operations.Getters[column](item)
+		filteredItemsSet[single] = true
+
+		if len(filteredItemsSet) == stop {
+			break
+		}
+	}
+	results := []string{}
+	for k := range filteredItemsSet {
+		results = append(results, k)
+	}
+	return results
+}
+
 func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
 	var newItems Items
+
+	if query.IndexGiven && len(STR_INDEX) > 0 {
+		items = make(Items, 0)
+		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+		seen := make(map[string]bool)
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			if !seen[key] {
+				seen[key] = true
+				for _, item := range LOOKUP[key] {
+					items = append(items, item)
+				}
+			}
+
+		}
+	}
+
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)
 	} else {
@@ -208,6 +298,13 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	}
 	diff := time.Now().Sub(start)
 	return newItems, int64(diff) / int64(1000000)
+}
+
+func runTypeAheadQuery(items Items, column string, query Query, operations GroupedOperations) ([]string, int64) {
+	start := time.Now()
+	results := filteredEarlyExitSingle(items, column, operations, query)
+	diff := time.Now().Sub(start)
+	return results, int64(diff) / int64(1000000)
 }
 
 func filtered(items Items, operations GroupedOperations, query Query) Items {
@@ -243,6 +340,27 @@ func mapIndex(items Items, indexes []int) Items {
 type HeaderData map[string]string
 
 func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
+	headerData := make(HeaderData)
+
+	if query.LimitGiven {
+		headerData["Limit"] = strconv.Itoa(query.Limit)
+	}
+
+	if query.PageGiven {
+		headerData["Page"] = strconv.Itoa(query.Page)
+		headerData["Page-Size"] = strconv.Itoa(query.PageSize)
+		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
+	}
+
+	headerData["Total-Items"] = strconv.Itoa(len(items))
+	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
+	bytesQuery, _ := json.Marshal(query)
+	headerData["query"] = string(bytesQuery)
+
+	return headerData
+}
+
+func getHeaderDataSlice(items []string, query Query, queryDuration int64) HeaderData {
 	headerData := make(HeaderData)
 
 	if query.LimitGiven {

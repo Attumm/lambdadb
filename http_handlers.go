@@ -5,12 +5,14 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"index/suffixarray"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		query := parseURLParameters(r)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
+
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
@@ -43,6 +46,23 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		}
 
 		groupByItems := groupByRunner(items, groupByS[0])
+
+		reduceName, reduceFound := r.URL.Query()["reduce"]
+
+		if reduceFound {
+			result := make(map[string]map[string]string)
+			reduceFunc, reduceFuncFound := operations.Reduce[reduceName[0]]
+			if !reduceFuncFound {
+				json.NewEncoder(w).Encode(result)
+				return
+			}
+			for key, val := range groupByItems {
+				result[key] = reduceFunc(val)
+			}
+			json.NewEncoder(w).Encode(result)
+			return
+		}
+
 		json.NewEncoder(w).Encode(groupByItems)
 		go func() {
 			time.Sleep(2 * time.Second)
@@ -83,6 +103,27 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+var LOOKUP map[string]Items
+var INDEX *suffixarray.Index
+var STR_INDEX []byte
+
+func getStringFromIndex(data []byte, index int) string {
+	var start, end int
+	for i := index - 1; i >= 0; i-- {
+		if data[i] == 0 {
+			start = i + 1
+			break
+		}
+	}
+	for i := index + 1; i < len(data); i++ {
+		if data[i] == 0 {
+			end = i
+			break
+		}
+	}
+	return string(data[start:end])
+}
+
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	filename := "ITEMS.txt.gz"
 	fi, err := os.Open(filename)
@@ -104,11 +145,36 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	// TODO find out why wihout GC memory keeps growing
 	runtime.GC()
-	ITEMS = make(Items, 0, 100*100)
+	ITEMS = make(Items, 0, 100*1000)
 	runtime.GC()
 	json.Unmarshal(s, &ITEMS)
+
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
+
+	sort.Slice(ITEMS, func(i, j int) bool {
+		return ITEMS[i].Value < ITEMS[j].Value
+	})
+
+	LOOKUP = make(map[string]Items)
+	kSet := make(map[string]bool)
+	for _, item := range ITEMS {
+		key := strings.ToLower(item.Value)
+		kSet[key] = true
+		LOOKUP[key] = append(LOOKUP[key], item)
+	}
+
+	keys := []string{}
+	for key := range kSet {
+		keys = append(keys, key)
+	}
+
+	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
+	INDEX = suffixarray.New(STR_INDEX)
+
+	msg = fmt.Sprint("sorted")
+	fmt.Printf(WarningColorN, msg)
+
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
@@ -134,6 +200,137 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
+func validColumn(column string, columns []string) bool {
+	for _, item := range columns {
+		if column == item {
+			return true
+		}
+	}
+	return false
+}
+
+// Other wise also known in mathematics as set but in http name it would be confused with the verb set.
+//func UniqueValuesInColumn(w http.ResponseWriter, r *http.Request) {
+//	column := r.URL.Path[1:]
+//	response := make(map[string]string)
+//	if len(ITEMS) == 0 {
+//		response["message"] = fmt.Sprint("invalid input: ", column)
+//		w.WriteHeader(400)
+//		json.NewEncoder(w).Encode(response)
+//		return
+//
+//	}
+//	validColumns := ITEMS[0].Columns()
+//
+//	if !validColumn(column, validColumns) {
+//		w.WriteHeader(400)
+//
+//		response["message"] = fmt.Sprint("invalid input: ", column)
+//		response["input"] = column
+//		response["valid input"] = strings.Join(validColumns, ", ")
+//		json.NewEncoder(w).Encode(response)
+//		return
+//	}
+//	set := make(map[string]bool)
+//	for item := range ITEMS {
+//		r := reflect.ValueOf(item)
+//		value := reflect.Indirect(r).FieldByName(column)
+//		valu
+//		set[value.Str()] = true
+//	}
+//
+//}
+type ShowItem struct {
+	IsShow bool   `json:"isShow"`
+	Label  string `json:"label"`
+	Name   string `json:"name"`
+}
+
+type Meta struct {
+	Fields []ShowItem `json:"fields"`
+	View   string     `json:"view"`
+}
+
+type searchResponse struct {
+	Count int   `json:"count"`
+	Data  Items `json:"data"`
+	MMeta *Meta `json:"meta"`
+}
+
+func makeResp(items Items) searchResponse {
+	fields := []ShowItem{}
+	for _, column := range items[0].Columns() {
+		fields = append(fields, ShowItem{IsShow: true, Name: column, Label: column})
+	}
+
+	return searchResponse{
+		Count: len(items),
+		Data:  items,
+		MMeta: &Meta{Fields: fields, View: "table"},
+	}
+}
+
+func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := parseURLParameters(r)
+
+		items, queryTime := runQuery(ITEMS, query, operations)
+		if len(items) == 0 {
+			w.WriteHeader(404)
+			return
+		}
+		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
+		fmt.Printf(NoticeColorN, msg)
+		headerData := getHeaderData(items, query, queryTime)
+
+		if !query.EarlyExit() {
+			items = sortLimit(items, query)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		for key, val := range headerData {
+			w.Header().Set(key, val)
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+		response := makeResp(items)
+		json.NewEncoder(w).Encode(response)
+	}
+}
+
+func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := parseURLParameters(r)
+		column := r.URL.Path[len("/typeahead/"):]
+		if column[len(column)-1] == '/' {
+			column = column[:len(column)-1]
+		}
+		if _, ok := operations.Getters[column]; !ok {
+			w.WriteHeader(404)
+			return
+		}
+
+		results, queryTime := runTypeAheadQuery(ITEMS, column, query, operations)
+		if len(results) == 0 {
+			w.WriteHeader(404)
+			return
+		}
+		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(results), " time: ", queryTime, "ms ", "url: ", r.URL)
+		fmt.Printf(NoticeColorN, msg)
+		headerData := getHeaderDataSlice(results, query, queryTime)
+
+		w.Header().Set("Content-Type", "application/json")
+		for key, val := range headerData {
+			w.Header().Set(key, val)
+		}
+
+		w.WriteHeader(http.StatusOK)
+
+		json.NewEncoder(w).Encode(results)
+	}
+}
+
 func helpRest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -148,14 +345,23 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		registeredGroupbys = append(registeredGroupbys, k)
 	}
 
+	registerReduces := []string{}
+	for k := range RegisterReduce {
+		registerReduces = append(registerReduces, k)
+	}
+
 	_, registeredSortings := sortBy(ITEMS, []string{})
 
 	sort.Strings(registeredFilters)
 	sort.Strings(registeredGroupbys)
 	sort.Strings(registeredSortings)
+	sort.Strings(registerReduces)
+
 	response["filters"] = registeredFilters
 	response["groupby"] = registeredGroupbys
 	response["sortby"] = registeredSortings
+	response["reduce"] = registerReduces
+
 	totalItems := strconv.Itoa(len(ITEMS))
 
 	host := SETTINGS.Get("http_db_host")
@@ -169,7 +375,9 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("search: http://%s/list/?search=ams&page=1&pagesize=1", host),
 		fmt.Sprintf("search with limit: http://%s/list/?search=10&page=1&pagesize=10&limit=5", host),
 		fmt.Sprintf("sorting: http://%s/list/?search=100&page=10&pagesize=100&sortby=-country", host),
-		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains-case=144&contains-case=10&page=1&pagesize=1", host),
+		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains=144&contains-case=10&page=1&pagesize=1", host),
+		fmt.Sprintf("groupby: http://%s/list/?search=10&contains-case=10&groupby=country", host),
+		fmt.Sprintf("aggregation: http://%s/list/?search=10&contains-case=10&groupby=country&reduce=count", host),
 	}
 	w.WriteHeader(http.StatusOK)
 
