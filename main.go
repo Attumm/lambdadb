@@ -51,6 +51,11 @@ func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
+
+	SETTINGS.Set("csv", "", "load a csv file on starup")
+	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
+	SETTINGS.Set("delimiter", ",", "delimiter")
+
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
@@ -59,6 +64,18 @@ func main() {
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
+
+	if SETTINGS.Get("csv") != "" {
+		log.Print("loading given csv")
+		err := importCSV(SETTINGS.Get("csv"), itemChan,
+			true, true,
+			SETTINGS.Get("delimiter"),
+			SETTINGS.Get("null-delimiter"))
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
 	JWTConfig := jwtConfig{
 		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
