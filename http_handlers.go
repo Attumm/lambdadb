@@ -340,6 +340,17 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		registeredFilters = append(registeredFilters, k)
 	}
 
+	registeredExcludes := []string{}
+	for k := range RegisterFuncMap {
+		registeredExcludes = append(registeredExcludes, "!"+k)
+	}
+
+	registeredAnys := []string{}
+	// TODO create const for the "any_" or exclude prefix
+	for k := range RegisterFuncMap {
+		registeredAnys = append(registeredAnys, "any_"+k)
+	}
+
 	registeredGroupbys := []string{}
 	for k := range RegisterGroupBy {
 		registeredGroupbys = append(registeredGroupbys, k)
@@ -353,11 +364,15 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 	_, registeredSortings := sortBy(ITEMS, []string{})
 
 	sort.Strings(registeredFilters)
+	sort.Strings(registeredExcludes)
+	sort.Strings(registeredAnys)
 	sort.Strings(registeredGroupbys)
 	sort.Strings(registeredSortings)
 	sort.Strings(registerReduces)
 
 	response["filters"] = registeredFilters
+	response["exclude_filters"] = registeredExcludes
+	response["anys_filters"] = registeredAnys
 	response["groupby"] = registeredGroupbys
 	response["sortby"] = registeredSortings
 	response["reduce"] = registerReduces
@@ -378,6 +393,7 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains=144&contains-case=10&page=1&pagesize=1", host),
 		fmt.Sprintf("groupby: http://%s/list/?search=10&contains-case=10&groupby=country", host),
 		fmt.Sprintf("aggregation: http://%s/list/?search=10&contains-case=10&groupby=country&reduce=count", host),
+		fmt.Sprintf("chain the same filters: http://%s/list/?search=10&contains-case=127&contains-case=0&contains-case=1&groupby=country&reduce=count", host),
 	}
 	w.WriteHeader(http.StatusOK)
 
