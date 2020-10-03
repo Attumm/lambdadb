@@ -393,7 +393,8 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("filtering: http://%s/list/?search=10&ontains=144&contains-case=10&page=1&pagesize=1", host),
 		fmt.Sprintf("groupby: http://%s/list/?search=10&contains-case=10&groupby=country", host),
 		fmt.Sprintf("aggregation: http://%s/list/?search=10&contains-case=10&groupby=country&reduce=count", host),
-		fmt.Sprintf("chain the same filters: http://%s/list/?search=10&contains-case=127&contains-case=0&contains-case=1&groupby=country&reduce=count", host),
+		fmt.Sprintf("chain the same filters: http://%s/list/?search=10&contains-case=127&contains-case=0&contains-case=1", host),
+		fmt.Sprintf("typeahead use the name of the column in this case IP: http://%s/typeahead/ip/?starts-with=127&limit=15", host),
 	}
 	w.WriteHeader(http.StatusOK)
 
