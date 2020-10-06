@@ -10,7 +10,7 @@ Creating and registering of the functionality that is needed.
 You can start the database with only a csv.
 Go over steps below, And see the result in your browser.
 1. place csv file, in dir extras.
-2. `python3 read.py > ../model.go`
+2. `python3 create_model.py > ../model.go`
 3. cd ../
 4. go fmt
 5. go build
