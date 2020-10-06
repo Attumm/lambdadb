@@ -47,6 +47,17 @@ func init() {
 
 }
 
+func loadcsv(itemChan ItemsChannel) {
+	log.Print("loading given csv")
+	err := importCSV(SETTINGS.Get("csv"), itemChan,
+		true, true,
+		SETTINGS.Get("delimiter"),
+		SETTINGS.Get("null-delimiter"))
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
 func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
@@ -66,14 +77,7 @@ func main() {
 	go ItemChanWorker(itemChan)
 
 	if SETTINGS.Get("csv") != "" {
-		log.Print("loading given csv")
-		err := importCSV(SETTINGS.Get("csv"), itemChan,
-			true, true,
-			SETTINGS.Get("delimiter"),
-			SETTINGS.Get("null-delimiter"))
-		if err != nil {
-			log.Fatalln(err)
-		}
+		go loadcsv(itemChan)
 	}
 
 	JWTConfig := jwtConfig{
