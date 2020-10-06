@@ -73,9 +73,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 func ItemChanWorker(itemChan ItemsChannel) {
 	for items := range itemChan {
-		for _, item := range items {
-			ITEMS = append(ITEMS, item)
-		}
+		ITEMS = append(ITEMS, items...)
 	}
 }
 

@@ -86,6 +86,7 @@ func main() {
 
 	searchRest := contextSearchRest(JWTConfig, itemChan, Operations)
 	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
+
 	ipPort := SETTINGS.Get("http_db_host")
 	http.HandleFunc("/search/", searchRest)
 	http.HandleFunc("/typeahead/", typeAheadRest)
