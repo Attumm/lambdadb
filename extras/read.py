@@ -2,8 +2,9 @@
 ### also known as string theory:p
 
 import csv
+import sys
 
-filename = "items.csv"
+filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
 
 with open(filename) as f:
     reader = csv.DictReader(f)
@@ -101,6 +102,10 @@ def create_register_startswith_func(column):
 
 def create_register_getter(column):
     return f'RegisterGetters["{column.lower()}"] = Getters{column.capitalize()}'
+
+
+def create_register_groupby(column):
+    return f'RegisterGroupBy["{column.lower()}"] = Getters{column.capitalize()}'
 
 
 def create_register_reduce(column):
@@ -220,6 +225,13 @@ print("// register getters ")
 for k in row.keys():
     print(create_register_getter(k))
 print()
+
+print()
+print("// register groupby ")
+for k in row.keys():
+    print(create_register_groupby(k))
+print()
+
 
 
 print()
