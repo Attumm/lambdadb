@@ -92,18 +92,23 @@ func main() {
 	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
 
 	ipPort := SETTINGS.Get("http_db_host")
-	http.HandleFunc("/search/", searchRest)
-	http.HandleFunc("/typeahead/", typeAheadRest)
-	http.HandleFunc("/list/", listRest)
-	http.HandleFunc("/help/", helpRest)
 
-	http.HandleFunc("/add/", addRest)
-	http.HandleFunc("/rm/", rmRest)
-	http.HandleFunc("/save/", saveRest)
-	http.HandleFunc("/load/", loadRest)
-	http.Handle("/", http.FileServer(http.Dir("./www")))
-	http.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/search/", searchRest)
+	mux.HandleFunc("/typeahead/", typeAheadRest)
+	mux.HandleFunc("/list/", listRest)
+	mux.HandleFunc("/help/", helpRest)
+
+	mux.HandleFunc("/add/", addRest)
+	mux.HandleFunc("/rm/", rmRest)
+	mux.HandleFunc("/save/", saveRest)
+	mux.HandleFunc("/load/", loadRest)
+	mux.Handle("/", http.FileServer(http.Dir("./www")))
+	mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
+
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
-	log.Fatal(http.ListenAndServe(ipPort, nil))
+
+	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))
 }

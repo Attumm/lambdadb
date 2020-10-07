@@ -94,10 +94,6 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			itemMap[columns[i]] = record[i]
 		}
 
-		//create a map for the item
-		//for counter := range columns {
-		//}
-
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
 		// fill the new Item instance with values
@@ -114,7 +110,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			}
 		}
 
-		if len(items) > 1000000 {
+		if len(items) > 100000 {
 			itemChan <- items
 			items = Items{}
 		}
