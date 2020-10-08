@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"index/suffixarray"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"runtime"

@@ -5,7 +5,7 @@ RUN apk update && apk add --no-cache git
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
-COPY . /app
+COPY . /app/
 
 # Fetch dependencies.
 RUN go get -d -v
@@ -21,5 +21,5 @@ COPY --from=builder /app/main /app/main
 COPY --from=builder /app/www /www
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Run the hello binary.
+# Run the binary.
 ENTRYPOINT ["/app/main"]

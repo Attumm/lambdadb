@@ -1,10 +1,12 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	//"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -141,7 +143,14 @@ func importCSV(filename string, itemChan ItemsChannel,
 		defer file.Close()
 
 		bar = NewProgressBar(file)
-		reader = csv.NewDialectReader(io.TeeReader(file, bar), dialect)
+		fz, err := gzip.NewReader(io.TeeReader(file, bar))
+
+		if err != nil {
+			return err
+		}
+		defer fz.Close()
+
+		reader = csv.NewDialectReader(fz, dialect)
 	} else {
 		reader = csv.NewDialectReader(os.Stdin, dialect)
 	}
