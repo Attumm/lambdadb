@@ -123,10 +123,48 @@ func getStringFromIndex(data []byte, index int) string {
 	return string(data[start:end])
 }
 
+//make an index on column values in dataset
+func makeIndex() {
+
+	sort.Slice(ITEMS, func(i, j int) bool {
+		return ITEMS[i].Buurtcode < ITEMS[j].Buurtcode
+	})
+
+	LOOKUP = make(map[string]Items)
+	kSet := make(map[string]bool)
+
+	for _, item := range ITEMS {
+
+		key := strings.ToLower(item.Buurtcode)
+		kSet[key] = true
+		LOOKUP[key] = append(LOOKUP[key], item)
+	}
+
+	//make a list of all used keys
+	keys := []string{}
+	for key := range kSet {
+		keys = append(keys, key)
+	}
+
+	//join all keys together
+	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
+	INDEX = suffixarray.New(STR_INDEX)
+
+	msg := fmt.Sprint("sorted")
+	fmt.Printf(WarningColorN, msg)
+
+}
+
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	filename := "ITEMS.txt.gz"
 	fi, err := os.Open(filename)
 	if err != nil {
+		path, err2 := os.Getwd()
+		if err2 != nil {
+			log.Println(err2)
+		}
+		log.Printf("could not open %s in %s", filename, path)
+		w.Write([]byte("500 - could not load data"))
 		return
 	}
 	defer fi.Close()
@@ -151,28 +189,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
 
-	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].Value < ITEMS[j].Value
-	})
-
-	LOOKUP = make(map[string]Items)
-	kSet := make(map[string]bool)
-	for _, item := range ITEMS {
-		key := strings.ToLower(item.Value)
-		kSet[key] = true
-		LOOKUP[key] = append(LOOKUP[key], item)
-	}
-
-	keys := []string{}
-	for key := range kSet {
-		keys = append(keys, key)
-	}
-
-	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
-	INDEX = suffixarray.New(STR_INDEX)
-
-	msg = fmt.Sprint("sorted")
-	fmt.Printf(WarningColorN, msg)
+	makeIndex()
 
 	go func() {
 		time.Sleep(1 * time.Second)
