@@ -56,6 +56,7 @@ func loadcsv(itemChan ItemsChannel) {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	makeIndex()
 }
 
 func main() {
@@ -67,6 +68,7 @@ func main() {
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
+	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
@@ -100,12 +102,15 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
-	mux.HandleFunc("/add/", addRest)
-	mux.HandleFunc("/rm/", rmRest)
-	mux.HandleFunc("/save/", saveRest)
-	mux.HandleFunc("/load/", loadRest)
-	mux.Handle("/", http.FileServer(http.Dir("./www")))
-	mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
+	if SETTINGS.Get("readonly") != "yes" {
+		mux.HandleFunc("/add/", addRest)
+		mux.HandleFunc("/rm/", rmRest)
+		mux.HandleFunc("/save/", saveRest)
+		mux.HandleFunc("/load/", loadRest)
+
+		mux.Handle("/", http.FileServer(http.Dir("./www2")))
+		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www2")))
+	}
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
