@@ -23,6 +23,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 # COPY extras/items.csv.gz /app/
 
 WORKDIR /app
+
 # Run the binary.
 ENTRYPOINT ["/app/main"]
 # ENTRYPOINT ["/app/main", "--csv", "items.csv.gz"]
