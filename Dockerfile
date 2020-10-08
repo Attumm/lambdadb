@@ -23,6 +23,7 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 #COPY --from=builder /app/files/ITEMS.txt.gz /app/files/ITEMS.txt.gz
 
 WORKDIR /app
+
 # Run the binary.
 
 ENV http_db_host "0.0.0.0:8000"
