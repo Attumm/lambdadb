@@ -63,7 +63,7 @@ func main() {
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
 
-	SETTINGS.Set("csv", "", "load a csv file on starup")
+	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
