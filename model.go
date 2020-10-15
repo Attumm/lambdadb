@@ -67,6 +67,14 @@ func (i Item) Row() []string {
 	}
 }
 
+func FilterSearch(i *Item, s string) bool {
+
+	return (strings.Contains(i.Postcode, s) ||
+		strings.Contains(i.Buurtcode, s) ||
+		strings.Contains(i.Provincienaam, s) ||
+		strings.Contains(i.Gemeentenaam, s))
+}
+
 // contain filters
 func FilterPidContains(i *Item, s string) bool {
 	return strings.Contains(i.Pid, s)
@@ -195,6 +203,7 @@ func FilterLabelscore_voorlopigMatch(i *Item, s string) bool {
 func FilterLabelscore_definitiefMatch(i *Item, s string) bool {
 	return i.Labelscore_definitief == s
 }
+
 func FilterIdentificatieMatch(i *Item, s string) bool {
 	return i.Identificatie == s
 }
@@ -295,6 +304,8 @@ func init() {
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
+
+	RegisterFuncMap["search"] = FilterSearch
 
 	// register match filters
 	RegisterFuncMap["match-pid"] = FilterPidMatch

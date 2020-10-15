@@ -43,10 +43,12 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		groupByS, groupByFound := r.URL.Query()["groupby"]
 		if !groupByFound {
 			json.NewEncoder(w).Encode(items)
+			items = nil
 			return
 		}
 
 		groupByItems := groupByRunner(items, groupByS[0])
+		items = nil
 
 		reduceName, reduceFound := r.URL.Query()["reduce"]
 
@@ -65,10 +67,6 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		}
 
 		json.NewEncoder(w).Encode(groupByItems)
-		go func() {
-			time.Sleep(2 * time.Second)
-			runtime.GC()
-		}()
 	}
 }
 
@@ -134,7 +132,6 @@ func makeIndex() {
 	kSet := make(map[string]bool)
 
 	for _, item := range ITEMS {
-
 		key := strings.ToLower(item.Buurtcode)
 		kSet[key] = true
 		LOOKUP[key] = append(LOOKUP[key], item)
@@ -152,7 +149,6 @@ func makeIndex() {
 
 	msg := fmt.Sprint("sorted")
 	fmt.Printf(WarningColorN, msg)
-
 }
 
 func loadRest(w http.ResponseWriter, r *http.Request) {
@@ -176,26 +172,21 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	defer fz.Close()
 
 	s, err := ioutil.ReadAll(fz)
+
 	if err != nil {
 		return
 	}
 
-	// TODO find out why wihout GC memory keeps growing
-	runtime.GC()
 	ITEMS = make(Items, 0, 100*1000)
-	runtime.GC()
 	json.Unmarshal(s, &ITEMS)
+
+	// empty input save the memory
+	// TODO do not use ReadAll..but do it line by line
+	s = nil
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
-
 	makeIndex()
-
-	go func() {
-		time.Sleep(1 * time.Second)
-		runtime.GC()
-	}()
-	return
 }
 
 func saveRest(w http.ResponseWriter, r *http.Request) {
