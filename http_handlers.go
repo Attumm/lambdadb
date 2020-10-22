@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
@@ -17,7 +18,29 @@ import (
 	"time"
 )
 
-// API
+// API list headers
+func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64) {
+
+	headerData := getHeaderData(items, query, queryTime)
+
+	for key, val := range headerData {
+		w.Header().Set(key, val)
+	}
+
+	if query.ReturnFormat == "csv" {
+		w.Header().Set("Content-Disposition", "attachment; filename=\"items.csv\"")
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	} else {
+
+		w.Header().Set("Content-Type", "application/json")
+	}
+
+	if len(items) > 0 {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
 
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -27,22 +50,22 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
-		headerData := getHeaderData(items, query, queryTime)
 
 		if !query.EarlyExit() {
 			items = sortLimit(items, query)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		for key, val := range headerData {
-			w.Header().Set(key, val)
-		}
-
-		w.WriteHeader(http.StatusOK)
+		setHeader(items, w, query, queryTime)
 
 		groupByS, groupByFound := r.URL.Query()["groupby"]
+
 		if !groupByFound {
-			json.NewEncoder(w).Encode(items)
+			if query.ReturnFormat == "csv" {
+				writeCSV(items, w)
+			} else {
+				json.NewEncoder(w).Encode(items)
+			}
+			// force empty helps garbadge collection
 			items = nil
 			return
 		}
@@ -62,6 +85,12 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			for key, val := range groupByItems {
 				result[key] = reduceFunc(val)
 			}
+
+			if len(result) == 0 {
+				w.WriteHeader(404)
+				return
+			}
+
 			json.NewEncoder(w).Encode(result)
 			return
 		}
@@ -149,6 +178,14 @@ func makeIndex() {
 
 	msg := fmt.Sprint("sorted")
 	fmt.Printf(WarningColorN, msg)
+}
+
+func writeCSV(items Items, w http.ResponseWriter) {
+	writer := csv.NewWriter(w)
+	for i := range items {
+		writer.Write(items[i].Row())
+		writer.Flush()
+	}
 }
 
 func loadRest(w http.ResponseWriter, r *http.Request) {
