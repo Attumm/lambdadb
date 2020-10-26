@@ -266,6 +266,7 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	}
 	results := []string{}
 	for k := range filteredItemsSet {
+		//TODO empty keys crashes frontend.
 		results = append(results, k)
 	}
 	return results
@@ -360,6 +361,7 @@ func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
 	return headerData
 }
 
+//getHeaderDataSlice extract from header information with data slice we want
 func getHeaderDataSlice(items []string, query Query, queryDuration int64) HeaderData {
 	headerData := make(HeaderData)
 

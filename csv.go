@@ -1,10 +1,12 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"unicode/utf8"
@@ -57,6 +59,8 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	success := 0
 	failed := 0
 
+	items := Items{}
+
 	for {
 		item := Item{}
 		columns := item.Columns()
@@ -80,19 +84,17 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			}
 		}
 
+		var itemMap = make(map[string]interface{})
+
 		//Loop ensures we don't insert too many values and that
 		//values are properly converted into empty interfaces
 		for i, col := range record {
 			cols[i] = strings.Replace(col, "\x00", "", -1)
 			// bytes.Trim(b, "\x00")
 			// cols[i] = col
+			itemMap[columns[i]] = record[i]
 		}
 
-		var itemMap = make(map[string]interface{})
-		//create a map for the item
-		for counter := range columns {
-			itemMap[columns[counter]] = record[counter]
-		}
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
 		// fill the new Item instance with values
@@ -109,10 +111,16 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			}
 		}
 
-		items := Items{&item}
-		itemChan <- items
+		if len(items) > 100000 {
+			itemChan <- items
+			items = Items{}
+		}
+		items = append(items, &item)
 		success++
 	}
+
+	// add leftover items
+	itemChan <- items
 
 	return nil, success, failed
 }
@@ -134,12 +142,25 @@ func importCSV(filename string, itemChan ItemsChannel,
 		defer file.Close()
 
 		bar = NewProgressBar(file)
-		reader = csv.NewDialectReader(io.TeeReader(file, bar), dialect)
+		fz, err := gzip.NewReader(io.TeeReader(file, bar))
+
+		if err != nil {
+			return err
+		}
+		defer fz.Close()
+
+		reader = csv.NewDialectReader(fz, dialect)
 	} else {
 		reader = csv.NewDialectReader(os.Stdin, dialect)
 	}
 
 	var err error
+
+	_, err = parseColumns(reader, skipHeader, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var success, failed int
 
 	if filename != "" {

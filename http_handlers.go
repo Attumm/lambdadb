@@ -73,9 +73,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 func ItemChanWorker(itemChan ItemsChannel) {
 	for items := range itemChan {
-		for _, item := range items {
-			ITEMS = append(ITEMS, item)
-		}
+		ITEMS = append(ITEMS, items...)
 	}
 }
 
@@ -268,6 +266,22 @@ func makeResp(items Items) searchResponse {
 		Data:  items,
 		MMeta: &Meta{Fields: fields, View: "table"},
 	}
+}
+
+// CORS allow origin.
+func CORS(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		if r.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Methods", "GET,POST")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, Authorization")
+			return
+		} else {
+			h.ServeHTTP(w, r)
+		}
+	})
 }
 
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
