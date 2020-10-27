@@ -227,6 +227,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fz.Close()
 
+	// TODO do not use ReadAll..but do it line by line
 	s, err := ioutil.ReadAll(fz)
 	if err != nil {
 		return

@@ -552,7 +552,7 @@ func (i Item) Row() []string {
 }
 
 func (i Item) GetIndex() string {
-	return GettersVid(&i)
+	return i.Ekey
 }
 
 func (i Item) GetGeometry() string {
