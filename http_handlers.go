@@ -3,10 +3,12 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -16,7 +18,29 @@ import (
 	"time"
 )
 
-// API
+// API list headers
+func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64) {
+
+	headerData := getHeaderData(items, query, queryTime)
+
+	for key, val := range headerData {
+		w.Header().Set(key, val)
+	}
+
+	if query.ReturnFormat == "csv" {
+		w.Header().Set("Content-Disposition", "attachment; filename=\"items.csv\"")
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	} else {
+
+		w.Header().Set("Content-Type", "application/json")
+	}
+
+	if len(items) > 0 {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
 
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -26,26 +50,28 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
-		headerData := getHeaderData(items, query, queryTime)
 
 		if !query.EarlyExit() {
 			items = sortLimit(items, query)
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		for key, val := range headerData {
-			w.Header().Set(key, val)
-		}
-
-		w.WriteHeader(http.StatusOK)
+		setHeader(items, w, query, queryTime)
 
 		groupByS, groupByFound := r.URL.Query()["groupby"]
+
 		if !groupByFound {
-			json.NewEncoder(w).Encode(items)
+			if query.ReturnFormat == "csv" {
+				writeCSV(items, w)
+			} else {
+				json.NewEncoder(w).Encode(items)
+			}
+			// force empty helps garbage collection
+			items = nil
 			return
 		}
 
 		groupByItems := groupByRunner(items, groupByS[0])
+		items = nil
 
 		reduceName, reduceFound := r.URL.Query()["reduce"]
 
@@ -59,15 +85,17 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			for key, val := range groupByItems {
 				result[key] = reduceFunc(val)
 			}
+
+			if len(result) == 0 {
+				w.WriteHeader(404)
+				return
+			}
+
 			json.NewEncoder(w).Encode(result)
 			return
 		}
 
 		json.NewEncoder(w).Encode(groupByItems)
-		go func() {
-			time.Sleep(2 * time.Second)
-			runtime.GC()
-		}()
 	}
 }
 
@@ -122,10 +150,53 @@ func getStringFromIndex(data []byte, index int) string {
 	return string(data[start:end])
 }
 
+//make an index on column values in dataset
+func makeIndex() {
+
+	sort.Slice(ITEMS, func(i, j int) bool {
+		return ITEMS[i].GetIndex() < ITEMS[j].GetIndex()
+	})
+
+	LOOKUP = make(map[string]Items)
+	kSet := make(map[string]bool)
+
+	for _, item := range ITEMS {
+		key := strings.ToLower(item.GetIndex())
+		kSet[key] = true
+		LOOKUP[key] = append(LOOKUP[key], item)
+	}
+
+	//make a list of all used keys
+	keys := []string{}
+	for key := range kSet {
+		keys = append(keys, key)
+	}
+
+	//join all keys together
+	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
+	INDEX = suffixarray.New(STR_INDEX)
+
+	fmt.Printf(WarningColorN, "sorted")
+}
+
+func writeCSV(items Items, w http.ResponseWriter) {
+	writer := csv.NewWriter(w)
+	for i := range items {
+		writer.Write(items[i].Row())
+		writer.Flush()
+	}
+}
+
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	filename := "ITEMS.txt.gz"
 	fi, err := os.Open(filename)
 	if err != nil {
+		path, err2 := os.Getwd()
+		if err2 != nil {
+			log.Println(err2)
+		}
+		log.Printf("could not open %s in %s", filename, path)
+		w.Write([]byte("500 - could not load data"))
 		return
 	}
 	defer fi.Close()
@@ -136,48 +207,22 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fz.Close()
 
+	// TODO do not use ReadAll..but do it line by line
 	s, err := ioutil.ReadAll(fz)
+
 	if err != nil {
 		return
 	}
 
-	// TODO find out why wihout GC memory keeps growing
-	runtime.GC()
 	ITEMS = make(Items, 0, 100*1000)
-	runtime.GC()
 	json.Unmarshal(s, &ITEMS)
+
+	// empty input save the memory
+	s = nil
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
-
-	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].Value < ITEMS[j].Value
-	})
-
-	LOOKUP = make(map[string]Items)
-	kSet := make(map[string]bool)
-	for _, item := range ITEMS {
-		key := strings.ToLower(item.Value)
-		kSet[key] = true
-		LOOKUP[key] = append(LOOKUP[key], item)
-	}
-
-	keys := []string{}
-	for key := range kSet {
-		keys = append(keys, key)
-	}
-
-	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
-	INDEX = suffixarray.New(STR_INDEX)
-
-	msg = fmt.Sprint("sorted")
-	fmt.Printf(WarningColorN, msg)
-
-	go func() {
-		time.Sleep(1 * time.Second)
-		runtime.GC()
-	}()
-	return
+	makeIndex()
 }
 
 func saveRest(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +318,8 @@ func CORS(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Expose-Headers", "*")
+
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST")

@@ -179,10 +179,10 @@ func importCSV(filename string, itemChan ItemsChannel,
 		return fmt.Errorf("line %d: %s", lineNumber, err)
 	}
 
-	fmt.Println(fmt.Sprintf("%d rows imported", success))
+	fmt.Printf("%d rows imported", success)
 
 	if ignoreErrors && failed > 0 {
-		fmt.Println(fmt.Sprintf("%d rows could not be imported and have been written to stderr.", failed))
+		fmt.Printf("%d rows could not be imported and have been written to stderr.", failed)
 	}
 
 	return err

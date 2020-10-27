@@ -26,6 +26,8 @@ type Query struct {
 
 	IndexQuery string
 	IndexGiven bool
+
+	ReturnFormat string
 }
 
 func (q Query) EarlyExit() bool {
@@ -89,6 +91,15 @@ func parseURLParameters(r *http.Request) Query {
 		limit = intMoreDefault(limitStr[0], 1)
 	}
 
+	format := "json"
+	formatStr, formatGiven := urlItems["format"]
+
+	if formatGiven {
+		if formatStr[0] == "csv" {
+			format = "csv"
+		}
+	}
+
 	sortingL, sortingGiven := urlItems["sortby"]
 
 	index := ""
@@ -115,6 +126,8 @@ func parseURLParameters(r *http.Request) Query {
 
 		IndexQuery: index,
 		IndexGiven: indexUsed,
+
+		ReturnFormat: format,
 	}
 }
 
@@ -266,8 +279,12 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	}
 	results := []string{}
 	for k := range filteredItemsSet {
-		//TODO empty keys crashes frontend.
-		results = append(results, k)
+		// empty keys crashes frontend.
+		// should be fixed in frontend then below can go.
+		// NOTE: add a special field so we can filter on 'nil' / empty values.
+		if len(k) > 0 {
+			results = append(results, k)
+		}
 	}
 	return results
 }

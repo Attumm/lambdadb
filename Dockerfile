@@ -5,7 +5,7 @@ RUN apk update && apk add --no-cache git
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
-COPY . /app
+COPY . /app/
 
 # Fetch dependencies.
 RUN go get -d -v
@@ -20,6 +20,9 @@ FROM scratch
 COPY --from=builder /app/main /app/main
 COPY --from=builder /app/www /www
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# COPY extras/items.csv.gz /app/
 
-# Run the hello binary.
+WORKDIR /app
+# Run the binary.
 ENTRYPOINT ["/app/main"]
+# ENTRYPOINT ["/app/main", "--csv", "items.csv.gz"]
