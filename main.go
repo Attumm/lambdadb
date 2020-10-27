@@ -67,7 +67,7 @@ func loadcsv(itemChan ItemsChannel) {
 		SETTINGS.Get("null-delimiter"))
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Print(err)
 	}
 
 	// make sure channels are empty

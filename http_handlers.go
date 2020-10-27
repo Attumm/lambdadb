@@ -269,6 +269,7 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 		storagefunc = STORAGEFUNCS[storagename]
 	}
 
+	// TODO do not use ReadAll..but do it line by line
 	s, err := ioutil.ReadAll(fz)
 	if err != nil {
 		return
