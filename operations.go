@@ -279,7 +279,9 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	}
 	results := []string{}
 	for k := range filteredItemsSet {
-		//empty keys crashes frontend.
+		// empty keys crashes frontend.
+		// should be fixed in frontend then below can go.
+		// NOTE: add a special field so we can filter on 'nil' / empty values.
 		if len(k) > 0 {
 			results = append(results, k)
 		}

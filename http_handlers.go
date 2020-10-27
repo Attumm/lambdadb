@@ -65,7 +65,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			} else {
 				json.NewEncoder(w).Encode(items)
 			}
-			// force empty helps garbadge collection
+			// force empty helps garbage collection
 			items = nil
 			return
 		}
@@ -154,14 +154,14 @@ func getStringFromIndex(data []byte, index int) string {
 func makeIndex() {
 
 	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].Buurtcode < ITEMS[j].Buurtcode
+		return ITEMS[i].GetIndex() < ITEMS[j].GetIndex()
 	})
 
 	LOOKUP = make(map[string]Items)
 	kSet := make(map[string]bool)
 
 	for _, item := range ITEMS {
-		key := strings.ToLower(item.Buurtcode)
+		key := strings.ToLower(item.GetIndex())
 		kSet[key] = true
 		LOOKUP[key] = append(LOOKUP[key], item)
 	}
@@ -176,8 +176,7 @@ func makeIndex() {
 	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
 	INDEX = suffixarray.New(STR_INDEX)
 
-	msg := fmt.Sprint("sorted")
-	fmt.Printf(WarningColorN, msg)
+	fmt.Printf(WarningColorN, "sorted")
 }
 
 func writeCSV(items Items, w http.ResponseWriter) {
@@ -208,6 +207,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fz.Close()
 
+	// TODO do not use ReadAll..but do it line by line
 	s, err := ioutil.ReadAll(fz)
 
 	if err != nil {
@@ -218,7 +218,6 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(s, &ITEMS)
 
 	// empty input save the memory
-	// TODO do not use ReadAll..but do it line by line
 	s = nil
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
@@ -319,6 +318,8 @@ func CORS(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Expose-Headers", "*")
+
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST")

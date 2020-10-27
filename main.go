@@ -54,7 +54,7 @@ func loadcsv(itemChan ItemsChannel) {
 		SETTINGS.Get("delimiter"),
 		SETTINGS.Get("null-delimiter"))
 	if err != nil {
-		log.Fatalln(err)
+		log.Print(err)
 	}
 	makeIndex()
 }
@@ -108,8 +108,8 @@ func main() {
 		mux.HandleFunc("/save/", saveRest)
 		mux.HandleFunc("/load/", loadRest)
 
-		mux.Handle("/", http.FileServer(http.Dir("./www2")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www2")))
+		mux.Handle("/", http.FileServer(http.Dir("./www")))
+		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	}
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)

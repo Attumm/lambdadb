@@ -67,6 +67,10 @@ func (i Item) Row() []string {
 	}
 }
 
+func (i Item) GetIndex() string {
+	return i.Buurtcode
+}
+
 func FilterSearch(i *Item, s string) bool {
 
 	return (strings.Contains(i.Postcode, s) ||
