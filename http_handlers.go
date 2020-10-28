@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -42,10 +41,12 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		groupByS, groupByFound := r.URL.Query()["groupby"]
 		if !groupByFound {
 			json.NewEncoder(w).Encode(items)
+			items = Items{}
 			return
 		}
 
 		groupByItems := groupByRunner(items, groupByS[0])
+		items = Items{}
 
 		reduceName, reduceFound := r.URL.Query()["reduce"]
 
@@ -60,14 +61,11 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 				result[key] = reduceFunc(val)
 			}
 			json.NewEncoder(w).Encode(result)
+			items = Items{}
 			return
 		}
 
 		json.NewEncoder(w).Encode(groupByItems)
-		go func() {
-			time.Sleep(2 * time.Second)
-			runtime.GC()
-		}()
 	}
 }
 
@@ -151,26 +149,6 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
-
-	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].Value < ITEMS[j].Value
-	})
-
-	LOOKUP = make(map[string]Items)
-	kSet := make(map[string]bool)
-	for _, item := range ITEMS {
-		key := strings.ToLower(item.Value)
-		kSet[key] = true
-		LOOKUP[key] = append(LOOKUP[key], item)
-	}
-
-	keys := []string{}
-	for key := range kSet {
-		keys = append(keys, key)
-	}
-
-	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
-	INDEX = suffixarray.New(STR_INDEX)
 
 	msg = fmt.Sprint("sorted")
 	fmt.Printf(WarningColorN, msg)

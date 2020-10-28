@@ -271,24 +271,25 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	return results
 }
 
+
+columnsGemeenteCode := make(map[string]string)
+
 func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
 	var newItems Items
 
-	if query.IndexGiven && len(STR_INDEX) > 0 {
-		items = make(Items, 0)
-		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-		seen := make(map[string]bool)
-		for _, idx := range indices {
-			key := getStringFromIndex(STR_INDEX, idx)
-			if !seen[key] {
-				seen[key] = true
-				for _, item := range LOOKUP[key] {
-					items = append(items, item)
-				}
+	if query.IndexGiven {
+		set := make(map[int] bool)
+		for indexName, IndexSearch := range query.Indexes {
+			numbers := operations.Indexes[indexName]
+			for _, num := range numbers {
+				set[num] = true
 			}
-
 		}
+		for k := range set {
+			new_items = append(new_items, items[k])
+		}
+		new_items = items
 	}
 
 	if query.EarlyExit() {
