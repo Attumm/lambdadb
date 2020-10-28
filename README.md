@@ -1,7 +1,7 @@
 # LambdaDB
 In memory database that uses filters to get the data you need.
 
-Can be used for your needs by changing the models.go file to your needs.
+Can be used for your needs by changing the `models.go` file to your needs.
 Creating and registering of the functionality that is needed.
 
 
@@ -9,9 +9,9 @@ Creating and registering of the functionality that is needed.
 You can start the database with only a csv.
 Go over steps below, And see the result in your browser.
 1. place csv file, in dir extras.
-2. `python3 create_model.py > ../model.go`
-3. cd ../
-4. go fmt
+2. `python3 create_model_v2.py`  answer the questions..
+3. go fmt model.go
+4. mv model.go ../
 5. go build
 6. ./lambda --help
 7. ./lambda  --csv assets/items.csv or `python3 ingestion.py -b 1000`
