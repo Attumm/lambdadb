@@ -295,20 +295,29 @@ type Meta struct {
 }
 
 type searchResponse struct {
-	Count int   `json:"count"`
-	Data  Items `json:"data"`
-	MMeta *Meta `json:"meta"`
+	Count int       `json:"count"`
+	Data  ItemsFull `json:"data"`
+	MMeta *Meta     `json:"meta"`
 }
 
 func makeResp(items Items) searchResponse {
+
+	itemsfull := make(ItemsFull, 0, len(items))
+
+	for _, oneitem := range items {
+		orgItem := oneitem.Serialize()
+		itemsfull = append(itemsfull, &orgItem)
+	}
+
 	fields := []ShowItem{}
-	for _, column := range items[0].Columns() {
+	columns := ItemFull{}.Columns()
+	for _, column := range columns {
 		fields = append(fields, ShowItem{IsShow: true, Name: column, Label: column})
 	}
 
 	return searchResponse{
 		Count: len(items),
-		Data:  items,
+		Data:  itemsfull,
 		MMeta: &Meta{Fields: fields, View: "table"},
 	}
 }
@@ -357,6 +366,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 
 		response := makeResp(items)
 		json.NewEncoder(w).Encode(response)
+		items = nil
 	}
 }
 
@@ -368,6 +378,7 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 			column = column[:len(column)-1]
 		}
 		if _, ok := operations.Getters[column]; !ok {
+			w.Write([]byte("500 wrong column name"))
 			w.WriteHeader(404)
 			return
 		}
@@ -387,8 +398,8 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		}
 
 		w.WriteHeader(http.StatusOK)
-
 		json.NewEncoder(w).Encode(results)
+		results = nil
 	}
 }
 
@@ -458,6 +469,5 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("typeahead use the name of the column in this case IP: http://%s/typeahead/ip/?starts-with=127&limit=15", host),
 	}
 	w.WriteHeader(http.StatusOK)
-
 	json.NewEncoder(w).Encode(response)
 }

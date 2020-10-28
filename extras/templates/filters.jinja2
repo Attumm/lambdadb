@@ -1,0 +1,21 @@
+
+// contain filter {{column}}
+func Filter{{column}}Contains(i *Item, s string) bool {
+	return strings.Contains({{lookup}}, s)
+}
+
+
+// startswith filter {{column}}
+func Filter{{column}}StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix({{lookup}}, s)
+}
+
+// match filters {{column}}
+func Filter{{column}}Match(i *Item, s string) bool {
+	return {{lookup}} == s
+}
+
+// getter {{column}}
+func Getters{{column}}(i *Item) string {
+	return {{lookup}}
+}

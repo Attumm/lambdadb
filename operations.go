@@ -259,6 +259,9 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 		stop = limit
 	}
 
+	lock.RLock()
+	defer lock.RUnlock()
+
 	//TODO candidate for speedup
 	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
@@ -293,35 +296,38 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	start := time.Now()
 	var newItems Items
 
-	if query.IndexGiven && len(STR_INDEX) > 0 {
-		items = make(Items, 0)
-		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-		seen := make(map[string]bool)
-		for _, idx := range indices {
-			key := getStringFromIndex(STR_INDEX, idx)
-			if !seen[key] {
-				seen[key] = true
-				for _, item := range LOOKUP[key] {
-					items = append(items, item)
+	/*
+		if query.IndexGiven && len(STR_INDEX) > 0 {
+			items = make(Items, 0)
+			indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+			seen := make(map[string]bool)
+			for _, idx := range indices {
+				key := getStringFromIndex(STR_INDEX, idx)
+				if !seen[key] {
+					seen[key] = true
+					items = append(items, LOOKUP[key]...)
 				}
-			}
 
+			}
 		}
-	}
+	*/
 
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)
 	} else {
 		newItems = filtered(items, operations, query)
 	}
-	diff := time.Now().Sub(start)
+	diff := time.Since(start)
 	return newItems, int64(diff) / int64(1000000)
 }
 
-func runTypeAheadQuery(items Items, column string, query Query, operations GroupedOperations) ([]string, int64) {
+func runTypeAheadQuery(
+	items Items, column string, query Query,
+	operations GroupedOperations) ([]string, int64) {
+
 	start := time.Now()
 	results := filteredEarlyExitSingle(items, column, operations, query)
-	diff := time.Now().Sub(start)
+	diff := time.Since(start)
 	return results, int64(diff) / int64(1000000)
 }
 
@@ -330,6 +336,9 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
+
+	lock.RLock()
+	defer lock.RUnlock()
 
 	filteredItems := make(Items, 0)
 	for _, item := range items {

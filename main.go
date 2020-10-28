@@ -17,6 +17,7 @@ type registerFormatMap map[string]formatRespFunc
 
 //Items as Example
 type Items []*Item
+type ItemsFull []*ItemFull
 
 type ItemsGroupedBy map[string]Items
 type ItemsChannel chan Items
@@ -50,7 +51,7 @@ func init() {
 func loadcsv(itemChan ItemsChannel) {
 	log.Print("loading given csv")
 	err := importCSV(SETTINGS.Get("csv"), itemChan,
-		true, true,
+		false, true,
 		SETTINGS.Get("delimiter"),
 		SETTINGS.Get("null-delimiter"))
 	if err != nil {
