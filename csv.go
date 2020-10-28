@@ -62,8 +62,8 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	items := Items{}
 
 	for {
-		item := Item{}
-		columns := item.Columns()
+		itemFull := ItemFull{}
+		columns := itemFull.Columns()
 		cols := make([]interface{}, len(columns))
 		record, err := reader.Read()
 
@@ -98,7 +98,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
 		// fill the new Item instance with values
-		if err := json.Unmarshal([]byte(b), &item); err != nil {
+		if err := json.Unmarshal([]byte(b), &itemFull); err != nil {
 			line := strings.Join(record, delimiter)
 			failed++
 
@@ -115,12 +115,14 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			itemChan <- items
 			items = Items{}
 		}
-		items = append(items, &item)
+		smallItem := itemFull.Shrink()
+		items = append(items, &smallItem)
 		success++
 	}
 
 	// add leftover items
 	itemChan <- items
+	items = nil
 
 	return nil, success, failed
 }
@@ -179,7 +181,7 @@ func importCSV(filename string, itemChan ItemsChannel,
 		return fmt.Errorf("line %d: %s", lineNumber, err)
 	}
 
-	fmt.Printf("%d rows imported", success)
+	fmt.Printf("%d rows imported\n", success)
 
 	if ignoreErrors && failed > 0 {
 		fmt.Printf("%d rows could not be imported and have been written to stderr.", failed)

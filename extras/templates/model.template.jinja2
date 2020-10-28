@@ -1,0 +1,227 @@
+package main
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+)
+
+type fieldIdxMap map[string]uint16
+type fieldMapIdx map[uint16]string
+type fieldItemmap map[uint16][]*Item
+
+// Column maps.
+// Store for each non distinct/repeated column
+// unit16 -> string map and
+// string -> unit16 map
+// track count of distinct values
+
+{{shrinkVars}}
+
+/*
+var {columnname}Tracker uint16
+var {columnname}IdxMap fieldIdxMap
+var {columnname} fieldMapIdx
+var {columnname}Items fieldItemmap
+*/
+
+var lock = sync.RWMutex{}
+
+func init() {
+
+	{{initRepeatColumns}}
+
+	/*
+	labelscoredefinitiefTracker = 0
+	labelscoredefinitiefIdxMap = make(fieldIdxMap)
+	labelscoredefinitief = make(fieldMapIdx)
+	*/
+}
+
+{{itemStructs}}
+
+
+type ItemFull struct {
+
+{{columnsItemFull}}
+
+}
+
+type Item struct {
+
+{{columnsItem}}
+
+}
+
+func (i Item) Columns() []string {
+
+	return []string{
+		{{csv_columns}}
+	}
+}
+
+// Shrink create smaller Item using uint16
+func (i ItemFull) Shrink() Item {
+
+	lock.Lock()
+	defer lock.Unlock()
+
+{{shrinkItems}}
+
+	return Item{
+
+{{shrinkItemFields}}
+
+	}
+}
+
+func (i Item) Serialize() ItemFull {
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	return ItemFull{
+
+{{expandItemFields}}
+
+	}
+}
+
+func (i ItemFull) Columns() []string {
+	return []string{
+
+{{originalColumns}}
+
+	}
+}
+
+func (i Item) Row() []string {
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	return []string{
+
+{{expandItemFields}}
+
+	}
+}
+
+func (i Item) GetIndex()string{
+	return Getters{{indexcolumn}}(&i)
+}
+
+{{columnFilters}}
+
+/*
+// contain filters
+func FilterEkeyContains(i *Item, s string) bool {
+	return strings.Contains(i.Ekey, s)
+}
+
+
+// startswith filters
+func FilterEkeyStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Ekey, s)
+}
+
+
+// match filters
+func FilterEkeyMatch(i *Item, s string) bool {
+	return i.Ekey == s
+}
+
+// getters
+func GettersEkey(i *Item) string {
+	return i.Ekey
+}
+*/
+
+// reduce functions
+func reduceCount(items Items) map[string]string {
+	result := make(map[string]string)
+	result["count"] = strconv.Itoa(len(items))
+	return result
+}
+
+type GroupedOperations struct {
+	Funcs   registerFuncType
+	GroupBy registerGroupByFunc
+	Getters registerGettersMap
+	Reduce  registerReduce
+}
+
+var Operations GroupedOperations
+
+var RegisterFuncMap registerFuncType
+var RegisterGroupBy registerGroupByFunc
+var RegisterGetters registerGettersMap
+var RegisterReduce registerReduce
+
+func init() {
+
+	RegisterFuncMap = make(registerFuncType)
+	RegisterGroupBy = make(registerGroupByFunc)
+	RegisterGetters = make(registerGettersMap)
+	RegisterReduce = make(registerReduce)
+
+	// register search filter.
+	//RegisterFuncMap["search"] = 'EDITYOURSELF'
+
+	// register filters
+
+{{registerFilters}}
+
+	/*
+	RegisterFuncMap["match-ekey"] = FilterEkeyMatch
+	RegisterFuncMap["contains-ekey"] = FilterEkeyContains
+	// register startswith filters
+	RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
+	// register getters
+	RegisterGetters["ekey"] = GettersEkey
+	// register groupby
+	RegisterGroupBy["ekey"] = GettersEkey
+
+	// register reduce functions
+	RegisterReduce["count"] = reduceCount
+	*/
+}
+
+type sortLookup map[string]func(int, int) bool
+
+func createSort(items Items) sortLookup {
+
+	sortFuncs := sortLookup{
+
+		{{sortColumns}}
+
+		/*
+		"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },
+		"-ekey": func(i, j int) bool { return items[i].Ekey > items[j].Ekey },
+		*/
+	}
+	return sortFuncs
+}
+
+
+func sortBy(items Items, sortingL []string) (Items, []string) {
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	sortFuncs := createSort(items)
+
+	for _, sortFuncName := range sortingL {
+		sortFunc := sortFuncs[sortFuncName]
+		sort.Slice(items, sortFunc)
+	}
+
+	// TODO must be nicer way
+	keys := []string{}
+	for key := range sortFuncs {
+		keys = append(keys, key)
+	}
+
+	return items, keys
+}

@@ -1,0 +1,8 @@
+
+	//register filters for {{column}}
+	RegisterFuncMap["match-{{co}}"] = Filter{{column}}Match
+	RegisterFuncMap["contains-{{co}}"] = Filter{{column}}Contains
+	RegisterFuncMap["startswith-{{co}}"] = Filter{{column}}StartsWith
+	RegisterGetters["{{co}}"] = Getters{{column}}
+	RegisterGroupBy["{{co}}"] = Getters{{column}}
+

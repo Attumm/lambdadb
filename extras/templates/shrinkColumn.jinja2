@@ -1,0 +1,12 @@
+
+	//check if column value is already present
+	//else store new key
+	if _, ok := {{column}}IdxMap[i.{{column}}]; !ok {
+		// store {{column}} in map at current index of tracker
+		{{column}}[{{column}}Tracker] = i.{{column}}
+		// store key - idx
+		{{column}}IdxMap[i.{{column}}] = {{column}}Tracker
+		// increase tracker
+		{{column}}Tracker += 1
+	}
+
