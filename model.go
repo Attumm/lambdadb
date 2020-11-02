@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -774,6 +775,20 @@ var RegisterGroupBy registerGroupByFunc
 var RegisterGetters registerGettersMap
 var RegisterReduce registerReduce
 
+// ValidateRegsiters validate exposed columns do match filter names
+func validateRegisters() {
+
+	var i = Item{}
+	var filters = []string{"match", "contains", "startswith"}
+	for _, c := range i.Columns() {
+		for _, f := range filters {
+			if _, ok := RegisterFuncMap[c+"-"+f]; !ok {
+				log.Fatal(c + " is missing in RegisterMap")
+			}
+		}
+	}
+}
+
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
@@ -898,19 +913,7 @@ func init() {
 	RegisterGetters["provincienaam"] = GettersProvincienaam
 	RegisterGroupBy["provincienaam"] = GettersProvincienaam
 
-	/*
-		RegisterFuncMap["match-ekey"] = FilterEkeyMatch
-		RegisterFuncMap["contains-ekey"] = FilterEkeyContains
-		// register startswith filters
-		RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
-		// register getters
-		RegisterGetters["ekey"] = GettersEkey
-		// register groupby
-		RegisterGroupBy["ekey"] = GettersEkey
-
-		// register reduce functions
-		RegisterReduce["count"] = reduceCount
-	*/
+	validateRegisters()
 }
 
 type sortLookup map[string]func(int, int) bool

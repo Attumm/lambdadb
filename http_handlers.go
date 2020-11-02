@@ -207,9 +207,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fz.Close()
 
-	// TODO do not use ReadAll..but do it line by line
 	s, err := ioutil.ReadAll(fz)
-
 	if err != nil {
 		return
 	}
@@ -332,7 +330,7 @@ func CORS(h http.Handler) http.Handler {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Page, Page-Size, Total-Pages, query, Total-Items, Query-Duration, Content-Type, X-CSRF-Token, Authorization")
 			return
 		} else {
 			h.ServeHTTP(w, r)
@@ -378,8 +376,8 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 			column = column[:len(column)-1]
 		}
 		if _, ok := operations.Getters[column]; !ok {
-			w.Write([]byte("500 wrong column name"))
 			w.WriteHeader(404)
+			w.Write([]byte("wrong column name"))
 			return
 		}
 

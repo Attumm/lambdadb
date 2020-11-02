@@ -159,6 +159,19 @@ var RegisterGroupBy registerGroupByFunc
 var RegisterGetters registerGettersMap
 var RegisterReduce registerReduce
 
+// ValidateRegsiters validate exposed columns do match filter names
+func validateRegisters() {
+	var i = Item{}
+	var filters = []string{"match", "contains", "startswith"}
+	for _, c := range i.Columns() {
+		for _, f := range filters {
+			if _, ok := RegisterFuncMap[c+"-"+f]; !ok {
+				log.Fatal(c + " is missing in RegisterMap")
+			}
+		}
+	}
+}
+
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
@@ -172,6 +185,8 @@ func init() {
 	// register filters
 
 {{registerFilters}}
+
+	validateRegisters()
 
 	/*
 	RegisterFuncMap["match-ekey"] = FilterEkeyMatch

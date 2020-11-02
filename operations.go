@@ -224,6 +224,9 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 		stop = limit
 	}
 
+	lock.RLock()
+	defer lock.RUnlock()
+
 	//TODO candidate for speedup
 	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
