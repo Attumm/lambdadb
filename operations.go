@@ -345,8 +345,7 @@ func filteredEarlyExit(items *labeledItems, operations GroupedOperations, query 
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for i := range *items {
-		item := (*items)[i]
+	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"index/suffixarray"
 	"log"
@@ -27,7 +26,6 @@ func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64)
 		w.Header().Set("Content-Disposition", "attachment; filename=\"items.csv\"")
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	} else {
-
 		w.Header().Set("Content-Type", "application/json")
 	}
 
@@ -247,6 +245,10 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	if !found {
 		storagename := SETTINGS.Get("STORAGEMETHOD")
 		storagefunc = STORAGEFUNCS[storagename]
+
+	s, err := ioutil.ReadAll(fz)
+	if err != nil {
+		return
 	}
 
 	retrievefunc, found := RETRIEVEFUNCS[storagename]
@@ -431,7 +433,6 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 			column = column[:len(column)-1]
 		}
 		if _, ok := operations.Getters[column]; !ok {
-			w.Write([]byte("500 wrong column name"))
 			w.WriteHeader(404)
 			w.Write([]byte("column is not found"))
 			return
