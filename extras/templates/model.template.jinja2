@@ -198,9 +198,10 @@ func init() {
 	// register groupby
 	RegisterGroupBy["ekey"] = GettersEkey
 
+	*/
+
 	// register reduce functions
 	RegisterReduce["count"] = reduceCount
-	*/
 }
 
 type sortLookup map[string]func(int, int) bool

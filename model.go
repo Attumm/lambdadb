@@ -796,6 +796,7 @@ func init() {
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
 
+	RegisterReduce["count"] = reduceCount
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
 

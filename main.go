@@ -70,6 +70,8 @@ func main() {
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
 	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
+	SETTINGS.Set("debug", "no", "print memory usage")
+
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)
@@ -115,6 +117,10 @@ func main() {
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
+
+	if SETTINGS.Get("debug") == "yes" {
+		go runPrintMem()
+	}
 
 	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))
 }
