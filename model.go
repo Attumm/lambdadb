@@ -1642,6 +1642,7 @@ func init() {
 	RegisterReduce = make(registerReduce)
 	RegisterBitArray = make(registerBitArray)
 
+	RegisterReduce["count"] = reduceCount
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
 	// example RegisterFuncMap["search"] = FilterEkeyStartsWith

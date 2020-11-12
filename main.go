@@ -79,6 +79,7 @@ func main() {
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
+<<<<<<< HEAD
 	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb")
 	SETTINGS.Set("debug", "n", "Add memory debug information during run")
 
@@ -88,6 +89,10 @@ func main() {
 	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
 	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
+
+	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
+	SETTINGS.Set("debug", "no", "print memory usage")
+
 	SETTINGS.Parse()
 
 	//Construct yes or no to booleans in SETTINGS
