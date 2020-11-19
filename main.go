@@ -63,7 +63,7 @@ func loadcsv(itemChan ItemsChannel) {
 		SETTINGS.Get("delimiter"),
 		SETTINGS.Get("null-delimiter"))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	makeIndex()
 }
