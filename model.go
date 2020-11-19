@@ -160,6 +160,7 @@ type Item struct {
 	Wijkcode             uint16
 	Provinciecode        uint16
 	Provincienaam        uint16
+	geom                 string
 }
 
 func (i Item) Columns() []string {
