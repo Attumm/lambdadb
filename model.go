@@ -777,12 +777,11 @@ var RegisterReduce registerReduce
 
 // ValidateRegsiters validate exposed columns do match filter names
 func validateRegisters() {
-
 	var i = Item{}
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
 		for _, f := range filters {
-			if _, ok := RegisterFuncMap[c+"-"+f]; !ok {
+			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
 				log.Fatal(c + " is missing in RegisterMap")
 			}
 		}
