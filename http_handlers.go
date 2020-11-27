@@ -245,6 +245,7 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	if !found {
 		storagename := SETTINGS.Get("STORAGEMETHOD")
 		storagefunc = STORAGEFUNCS[storagename]
+	}
 
 	s, err := ioutil.ReadAll(fz)
 	if err != nil {
@@ -258,6 +259,11 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	}
 
 	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
+
+	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
+	fmt.Printf(WarningColorN, msg)
+	//makeIndex()
+	BuildGeoIndex()
 	return storagename, storagefunc, retrievefunc, filename
 }
 

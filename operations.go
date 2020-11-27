@@ -521,7 +521,6 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 				seen[key] = true
 				items = append(items, LOOKUP[key]...)
 			}
-
 		}
 	}
 

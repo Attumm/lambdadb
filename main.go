@@ -79,7 +79,6 @@ func main() {
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
-<<<<<<< HEAD
 	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb")
 	SETTINGS.Set("debug", "n", "Add memory debug information during run")
 
