@@ -18,10 +18,6 @@ type fieldItemmap map[uint16][]*Item
 // string -> unit16 map
 // track count of distinct values
 
-var PostcodeTracker uint16
-var PostcodeIdxMap fieldIdxMap
-var Postcode fieldMapIdx
-
 var HuisnummerTracker uint16
 var HuisnummerIdxMap fieldIdxMap
 var Huisnummer fieldMapIdx
@@ -62,6 +58,18 @@ var ProvincienaamTracker uint16
 var ProvincienaamIdxMap fieldIdxMap
 var Provincienaam fieldMapIdx
 
+var PandGasAansluitingenTracker uint16
+var PandGasAansluitingenIdxMap fieldIdxMap
+var PandGasAansluitingen fieldMapIdx
+
+var Gasm32020Tracker uint16
+var Gasm32020IdxMap fieldIdxMap
+var Gasm32020 fieldMapIdx
+
+var Kwh2020Tracker uint16
+var Kwh2020IdxMap fieldIdxMap
+var Kwh2020 fieldMapIdx
+
 /*
 var {columnname}Tracker uint16
 var {columnname}IdxMap fieldIdxMap
@@ -72,10 +80,6 @@ var {columnname}Items fieldItemmap
 var lock = sync.RWMutex{}
 
 func init() {
-
-	PostcodeTracker = 0
-	PostcodeIdxMap = make(fieldIdxMap)
-	Postcode = make(fieldMapIdx)
 
 	HuisnummerTracker = 0
 	HuisnummerIdxMap = make(fieldIdxMap)
@@ -117,6 +121,18 @@ func init() {
 	ProvincienaamIdxMap = make(fieldIdxMap)
 	Provincienaam = make(fieldMapIdx)
 
+	PandGasAansluitingenTracker = 0
+	PandGasAansluitingenIdxMap = make(fieldIdxMap)
+	PandGasAansluitingen = make(fieldMapIdx)
+
+	Gasm32020Tracker = 0
+	Gasm32020IdxMap = make(fieldIdxMap)
+	Gasm32020 = make(fieldMapIdx)
+
+	Kwh2020Tracker = 0
+	Kwh2020IdxMap = make(fieldIdxMap)
+	Kwh2020 = make(fieldMapIdx)
+
 	/*
 		labelscoredefinitiefTracker = 0
 		labelscoredefinitiefIdxMap = make(fieldIdxMap)
@@ -141,13 +157,19 @@ type ItemFull struct {
 	Wijkcode             string `json:"wijkcode"`
 	Provinciecode        string `json:"provinciecode"`
 	Provincienaam        string `json:"provincienaam"`
+	Point                string `json:"point"`
+	PandGasAansluitingen string `json:"pand_gas_aansluitingen"`
+	GroupId2020          string `json:"group_id_2020"`
+	GasAansluitingen2020 string `json:"gas_aansluitingen_2020"`
+	Gasm32020            string `json:"gasm3_2020"`
+	Kwh2020              string `json:"kwh_2020"`
 }
 
 type Item struct {
 	Pid                  string
 	Vid                  string
 	Numid                string
-	Postcode             uint16
+	Postcode             string
 	Huisnummer           uint16
 	Ekey                 string
 	WoningType           uint16
@@ -160,7 +182,12 @@ type Item struct {
 	Wijkcode             uint16
 	Provinciecode        uint16
 	Provincienaam        uint16
-	geom                 string
+	Point                string
+	PandGasAansluitingen uint16
+	GroupId2020          string
+	GasAansluitingen2020 string
+	Gasm32020            uint16
+	Kwh2020              uint16
 }
 
 func (i Item) Columns() []string {
@@ -182,6 +209,12 @@ func (i Item) Columns() []string {
 		"wijkcode",
 		"provinciecode",
 		"provincienaam",
+		"point",
+		"pand_gas_aansluitingen",
+		"group_id_2020",
+		"gas_aansluitingen_2020",
+		"gasm3_2020",
+		"kwh_2020",
 	}
 }
 
@@ -190,17 +223,6 @@ func (i ItemFull) Shrink() Item {
 
 	lock.Lock()
 	defer lock.Unlock()
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := PostcodeIdxMap[i.Postcode]; !ok {
-		// store Postcode in map at current index of tracker
-		Postcode[PostcodeTracker] = i.Postcode
-		// store key - idx
-		PostcodeIdxMap[i.Postcode] = PostcodeTracker
-		// increase tracker
-		PostcodeTracker += 1
-	}
 
 	//check if column value is already present
 	//else store new key
@@ -312,12 +334,45 @@ func (i ItemFull) Shrink() Item {
 		ProvincienaamTracker += 1
 	}
 
+	//check if column value is already present
+	//else store new key
+	if _, ok := PandGasAansluitingenIdxMap[i.PandGasAansluitingen]; !ok {
+		// store PandGasAansluitingen in map at current index of tracker
+		PandGasAansluitingen[PandGasAansluitingenTracker] = i.PandGasAansluitingen
+		// store key - idx
+		PandGasAansluitingenIdxMap[i.PandGasAansluitingen] = PandGasAansluitingenTracker
+		// increase tracker
+		PandGasAansluitingenTracker += 1
+	}
+
+	//check if column value is already present
+	//else store new key
+	if _, ok := Gasm32020IdxMap[i.Gasm32020]; !ok {
+		// store Gasm32020 in map at current index of tracker
+		Gasm32020[Gasm32020Tracker] = i.Gasm32020
+		// store key - idx
+		Gasm32020IdxMap[i.Gasm32020] = Gasm32020Tracker
+		// increase tracker
+		Gasm32020Tracker += 1
+	}
+
+	//check if column value is already present
+	//else store new key
+	if _, ok := Kwh2020IdxMap[i.Kwh2020]; !ok {
+		// store Kwh2020 in map at current index of tracker
+		Kwh2020[Kwh2020Tracker] = i.Kwh2020
+		// store key - idx
+		Kwh2020IdxMap[i.Kwh2020] = Kwh2020Tracker
+		// increase tracker
+		Kwh2020Tracker += 1
+	}
+
 	return Item{
 
 		i.Pid,
 		i.Vid,
 		i.Numid,
-		PostcodeIdxMap[i.Postcode],
+		i.Postcode,
 		HuisnummerIdxMap[i.Huisnummer],
 		i.Ekey,
 		WoningTypeIdxMap[i.WoningType],
@@ -330,6 +385,12 @@ func (i ItemFull) Shrink() Item {
 		WijkcodeIdxMap[i.Wijkcode],
 		ProvinciecodeIdxMap[i.Provinciecode],
 		ProvincienaamIdxMap[i.Provincienaam],
+		i.Point,
+		PandGasAansluitingenIdxMap[i.PandGasAansluitingen],
+		i.GroupId2020,
+		i.GasAansluitingen2020,
+		Gasm32020IdxMap[i.Gasm32020],
+		Kwh2020IdxMap[i.Kwh2020],
 	}
 }
 
@@ -343,7 +404,7 @@ func (i Item) Serialize() ItemFull {
 		i.Pid,
 		i.Vid,
 		i.Numid,
-		Postcode[i.Postcode],
+		i.Postcode,
 		Huisnummer[i.Huisnummer],
 		i.Ekey,
 		WoningType[i.WoningType],
@@ -356,6 +417,12 @@ func (i Item) Serialize() ItemFull {
 		Wijkcode[i.Wijkcode],
 		Provinciecode[i.Provinciecode],
 		Provincienaam[i.Provincienaam],
+		i.Point,
+		PandGasAansluitingen[i.PandGasAansluitingen],
+		i.GroupId2020,
+		i.GasAansluitingen2020,
+		Gasm32020[i.Gasm32020],
+		Kwh2020[i.Kwh2020],
 	}
 }
 
@@ -378,6 +445,12 @@ func (i ItemFull) Columns() []string {
 		"wijkcode",
 		"provinciecode",
 		"provincienaam",
+		"point",
+		"pand_gas_aansluitingen",
+		"group_id_2020",
+		"gas_aansluitingen_2020",
+		"gasm3_2020",
+		"kwh_2020",
 	}
 }
 
@@ -391,7 +464,7 @@ func (i Item) Row() []string {
 		i.Pid,
 		i.Vid,
 		i.Numid,
-		Postcode[i.Postcode],
+		i.Postcode,
 		Huisnummer[i.Huisnummer],
 		i.Ekey,
 		WoningType[i.WoningType],
@@ -404,6 +477,12 @@ func (i Item) Row() []string {
 		Wijkcode[i.Wijkcode],
 		Provinciecode[i.Provinciecode],
 		Provincienaam[i.Provincienaam],
+		i.Point,
+		PandGasAansluitingen[i.PandGasAansluitingen],
+		i.GroupId2020,
+		i.GasAansluitingen2020,
+		Gasm32020[i.Gasm32020],
+		Kwh2020[i.Kwh2020],
 	}
 }
 
@@ -473,22 +552,22 @@ func GettersNumid(i *Item) string {
 
 // contain filter Postcode
 func FilterPostcodeContains(i *Item, s string) bool {
-	return strings.Contains(Postcode[i.Postcode], s)
+	return strings.Contains(i.Postcode, s)
 }
 
 // startswith filter Postcode
 func FilterPostcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Postcode[i.Postcode], s)
+	return strings.HasPrefix(i.Postcode, s)
 }
 
 // match filters Postcode
 func FilterPostcodeMatch(i *Item, s string) bool {
-	return Postcode[i.Postcode] == s
+	return i.Postcode == s
 }
 
 // getter Postcode
 func GettersPostcode(i *Item) string {
-	return Postcode[i.Postcode]
+	return i.Postcode
 }
 
 // contain filter Huisnummer
@@ -731,6 +810,126 @@ func GettersProvincienaam(i *Item) string {
 	return Provincienaam[i.Provincienaam]
 }
 
+// contain filter Point
+func FilterPointContains(i *Item, s string) bool {
+	return strings.Contains(i.Point, s)
+}
+
+// startswith filter Point
+func FilterPointStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Point, s)
+}
+
+// match filters Point
+func FilterPointMatch(i *Item, s string) bool {
+	return i.Point == s
+}
+
+// getter Point
+func GettersPoint(i *Item) string {
+	return i.Point
+}
+
+// contain filter PandGasAansluitingen
+func FilterPandGasAansluitingenContains(i *Item, s string) bool {
+	return strings.Contains(PandGasAansluitingen[i.PandGasAansluitingen], s)
+}
+
+// startswith filter PandGasAansluitingen
+func FilterPandGasAansluitingenStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(PandGasAansluitingen[i.PandGasAansluitingen], s)
+}
+
+// match filters PandGasAansluitingen
+func FilterPandGasAansluitingenMatch(i *Item, s string) bool {
+	return PandGasAansluitingen[i.PandGasAansluitingen] == s
+}
+
+// getter PandGasAansluitingen
+func GettersPandGasAansluitingen(i *Item) string {
+	return PandGasAansluitingen[i.PandGasAansluitingen]
+}
+
+// contain filter GroupId2020
+func FilterGroupId2020Contains(i *Item, s string) bool {
+	return strings.Contains(i.GroupId2020, s)
+}
+
+// startswith filter GroupId2020
+func FilterGroupId2020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.GroupId2020, s)
+}
+
+// match filters GroupId2020
+func FilterGroupId2020Match(i *Item, s string) bool {
+	return i.GroupId2020 == s
+}
+
+// getter GroupId2020
+func GettersGroupId2020(i *Item) string {
+	return i.GroupId2020
+}
+
+// contain filter GasAansluitingen2020
+func FilterGasAansluitingen2020Contains(i *Item, s string) bool {
+	return strings.Contains(i.GasAansluitingen2020, s)
+}
+
+// startswith filter GasAansluitingen2020
+func FilterGasAansluitingen2020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.GasAansluitingen2020, s)
+}
+
+// match filters GasAansluitingen2020
+func FilterGasAansluitingen2020Match(i *Item, s string) bool {
+	return i.GasAansluitingen2020 == s
+}
+
+// getter GasAansluitingen2020
+func GettersGasAansluitingen2020(i *Item) string {
+	return i.GasAansluitingen2020
+}
+
+// contain filter Gasm32020
+func FilterGasm32020Contains(i *Item, s string) bool {
+	return strings.Contains(Gasm32020[i.Gasm32020], s)
+}
+
+// startswith filter Gasm32020
+func FilterGasm32020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Gasm32020[i.Gasm32020], s)
+}
+
+// match filters Gasm32020
+func FilterGasm32020Match(i *Item, s string) bool {
+	return Gasm32020[i.Gasm32020] == s
+}
+
+// getter Gasm32020
+func GettersGasm32020(i *Item) string {
+	return Gasm32020[i.Gasm32020]
+}
+
+// contain filter Kwh2020
+func FilterKwh2020Contains(i *Item, s string) bool {
+	return strings.Contains(Kwh2020[i.Kwh2020], s)
+}
+
+// startswith filter Kwh2020
+func FilterKwh2020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Kwh2020[i.Kwh2020], s)
+}
+
+// match filters Kwh2020
+func FilterKwh2020Match(i *Item, s string) bool {
+	return Kwh2020[i.Kwh2020] == s
+}
+
+// getter Kwh2020
+func GettersKwh2020(i *Item) string {
+	return Kwh2020[i.Kwh2020]
+}
+
 /*
 // contain filters
 func FilterEkeyContains(i *Item, s string) bool {
@@ -796,9 +995,8 @@ func init() {
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
 
-	RegisterReduce["count"] = reduceCount
 	// register search filter.
-	//RegisterFuncMap["search"] = 'EDITYOURSELF'
+	RegisterFuncMap["search"] = FilterEkeyStartsWith
 
 	// register filters
 
@@ -914,7 +1112,64 @@ func init() {
 	RegisterGetters["provincienaam"] = GettersProvincienaam
 	RegisterGroupBy["provincienaam"] = GettersProvincienaam
 
+	//register filters for Point
+	RegisterFuncMap["match-point"] = FilterPointMatch
+	RegisterFuncMap["contains-point"] = FilterPointContains
+	RegisterFuncMap["startswith-point"] = FilterPointStartsWith
+	RegisterGetters["point"] = GettersPoint
+	RegisterGroupBy["point"] = GettersPoint
+
+	//register filters for PandGasAansluitingen
+	RegisterFuncMap["match-pand_gas_aansluitingen"] = FilterPandGasAansluitingenMatch
+	RegisterFuncMap["contains-pand_gas_aansluitingen"] = FilterPandGasAansluitingenContains
+	RegisterFuncMap["startswith-pand_gas_aansluitingen"] = FilterPandGasAansluitingenStartsWith
+	RegisterGetters["pand_gas_aansluitingen"] = GettersPandGasAansluitingen
+	RegisterGroupBy["pand_gas_aansluitingen"] = GettersPandGasAansluitingen
+
+	//register filters for GroupId2020
+	RegisterFuncMap["match-group_id_2020"] = FilterGroupId2020Match
+	RegisterFuncMap["contains-group_id_2020"] = FilterGroupId2020Contains
+	RegisterFuncMap["startswith-group_id_2020"] = FilterGroupId2020StartsWith
+	RegisterGetters["group_id_2020"] = GettersGroupId2020
+	RegisterGroupBy["group_id_2020"] = GettersGroupId2020
+
+	//register filters for GasAansluitingen2020
+	RegisterFuncMap["match-gas_aansluitingen_2020"] = FilterGasAansluitingen2020Match
+	RegisterFuncMap["contains-gas_aansluitingen_2020"] = FilterGasAansluitingen2020Contains
+	RegisterFuncMap["startswith-gas_aansluitingen_2020"] = FilterGasAansluitingen2020StartsWith
+	RegisterGetters["gas_aansluitingen_2020"] = GettersGasAansluitingen2020
+	RegisterGroupBy["gas_aansluitingen_2020"] = GettersGasAansluitingen2020
+
+	//register filters for Gasm32020
+	RegisterFuncMap["match-gasm3_2020"] = FilterGasm32020Match
+	RegisterFuncMap["contains-gasm3_2020"] = FilterGasm32020Contains
+	RegisterFuncMap["startswith-gasm3_2020"] = FilterGasm32020StartsWith
+	RegisterGetters["gasm3_2020"] = GettersGasm32020
+	RegisterGroupBy["gasm3_2020"] = GettersGasm32020
+
+	//register filters for Kwh2020
+	RegisterFuncMap["match-kwh_2020"] = FilterKwh2020Match
+	RegisterFuncMap["contains-kwh_2020"] = FilterKwh2020Contains
+	RegisterFuncMap["startswith-kwh_2020"] = FilterKwh2020StartsWith
+	RegisterGetters["kwh_2020"] = GettersKwh2020
+	RegisterGroupBy["kwh_2020"] = GettersKwh2020
+
 	validateRegisters()
+
+	/*
+		RegisterFuncMap["match-ekey"] = FilterEkeyMatch
+		RegisterFuncMap["contains-ekey"] = FilterEkeyContains
+		// register startswith filters
+		RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
+		// register getters
+		RegisterGetters["ekey"] = GettersEkey
+		// register groupby
+		RegisterGroupBy["ekey"] = GettersEkey
+
+	*/
+
+	// register reduce functions
+	RegisterReduce["count"] = reduceCount
 }
 
 type sortLookup map[string]func(int, int) bool
@@ -932,8 +1187,8 @@ func createSort(items Items) sortLookup {
 		"numid":  func(i, j int) bool { return items[i].Numid < items[j].Numid },
 		"-numid": func(i, j int) bool { return items[i].Numid > items[j].Numid },
 
-		"postcode":  func(i, j int) bool { return Postcode[items[i].Postcode] < Postcode[items[j].Postcode] },
-		"-postcode": func(i, j int) bool { return Postcode[items[i].Postcode] > Postcode[items[j].Postcode] },
+		"postcode":  func(i, j int) bool { return items[i].Postcode < items[j].Postcode },
+		"-postcode": func(i, j int) bool { return items[i].Postcode > items[j].Postcode },
 
 		"huisnummer":  func(i, j int) bool { return Huisnummer[items[i].Huisnummer] < Huisnummer[items[j].Huisnummer] },
 		"-huisnummer": func(i, j int) bool { return Huisnummer[items[i].Huisnummer] > Huisnummer[items[j].Huisnummer] },
@@ -986,6 +1241,28 @@ func createSort(items Items) sortLookup {
 		"-provincienaam": func(i, j int) bool {
 			return Provincienaam[items[i].Provincienaam] > Provincienaam[items[j].Provincienaam]
 		},
+
+		"point":  func(i, j int) bool { return items[i].Point < items[j].Point },
+		"-point": func(i, j int) bool { return items[i].Point > items[j].Point },
+
+		"pand_gas_aansluitingen": func(i, j int) bool {
+			return PandGasAansluitingen[items[i].PandGasAansluitingen] < PandGasAansluitingen[items[j].PandGasAansluitingen]
+		},
+		"-pand_gas_aansluitingen": func(i, j int) bool {
+			return PandGasAansluitingen[items[i].PandGasAansluitingen] > PandGasAansluitingen[items[j].PandGasAansluitingen]
+		},
+
+		"group_id_2020":  func(i, j int) bool { return items[i].GroupId2020 < items[j].GroupId2020 },
+		"-group_id_2020": func(i, j int) bool { return items[i].GroupId2020 > items[j].GroupId2020 },
+
+		"gas_aansluitingen_2020":  func(i, j int) bool { return items[i].GasAansluitingen2020 < items[j].GasAansluitingen2020 },
+		"-gas_aansluitingen_2020": func(i, j int) bool { return items[i].GasAansluitingen2020 > items[j].GasAansluitingen2020 },
+
+		"gasm3_2020":  func(i, j int) bool { return Gasm32020[items[i].Gasm32020] < Gasm32020[items[j].Gasm32020] },
+		"-gasm3_2020": func(i, j int) bool { return Gasm32020[items[i].Gasm32020] > Gasm32020[items[j].Gasm32020] },
+
+		"kwh_2020":  func(i, j int) bool { return Kwh2020[items[i].Kwh2020] < Kwh2020[items[j].Kwh2020] },
+		"-kwh_2020": func(i, j int) bool { return Kwh2020[items[i].Kwh2020] > Kwh2020[items[j].Kwh2020] },
 
 		/*
 			"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },

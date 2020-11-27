@@ -299,19 +299,21 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	start := time.Now()
 	var newItems Items
 
-	if query.IndexGiven && len(STR_INDEX) > 0 {
-		items = make(Items, 0)
-		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-		seen := make(map[string]bool)
-		for _, idx := range indices {
-			key := getStringFromIndex(STR_INDEX, idx)
-			if !seen[key] {
-				seen[key] = true
-				items = append(items, LOOKUP[key]...)
-			}
+	/*
+		if query.IndexGiven && len(STR_INDEX) > 0 {
+			items = make(Items, 0)
+			indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+			seen := make(map[string]bool)
+			for _, idx := range indices {
+				key := getStringFromIndex(STR_INDEX, idx)
+				if !seen[key] {
+					seen[key] = true
+					items = append(items, LOOKUP[key]...)
+				}
 
+			}
 		}
-	}
+	*/
 
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)

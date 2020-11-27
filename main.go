@@ -111,8 +111,8 @@ func main() {
 		mux.HandleFunc("/save/", saveRest)
 		mux.HandleFunc("/load/", loadRest)
 
-		mux.Handle("/", http.FileServer(http.Dir("./www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
+		mux.Handle("/", http.FileServer(http.Dir("./www2")))
+		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www2")))
 	}
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
