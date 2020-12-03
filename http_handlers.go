@@ -95,8 +95,13 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 }
 
 func ItemChanWorker(itemChan ItemsChannel) {
+	idx := 0
 	for items := range itemChan {
-		ITEMS = append(ITEMS, items...)
+		for _, itm := range items {
+			ITEMS = append(ITEMS, itm)
+			itm.GeoIndex(int32(idx))
+			idx += 1
+		}
 	}
 }
 

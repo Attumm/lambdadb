@@ -6,7 +6,11 @@
         "github.com/akhenakh/oureadb/index/geodata"
 	"github.com/akhenakh/oureadb/store"
 
+  With S2 CillID's we can find which items are contained in given
+  filter geometry.
+
 */
+
 package main
 
 import (
@@ -21,24 +25,33 @@ var minLevel int
 var maxLevel int
 var maxCells int
 
-func init() {
-	minLevel = 19
-	maxLevel = 19
-	maxCells = 1
-}
+var geoIndex s2.CellIndex
 
-var sidx = s2.NewShapeIndex()
+type s2Cells []s2.Cell
+
+var S2CELLS s2Cells
+
+func init() {
+	minLevel = 7
+	maxLevel = 20
+	maxCells = 50
+
+	//not used for now.
+	geoIndex = s2.CellIndex{}
+}
 
 func BuildGeoIndex() {
 
 	for i, v := range ITEMS {
-		v.GeoIndex(i)
+		v.GeoIndex(int32(i))
 	}
 
+	//geoIndex.Build()
 }
 
-func (i Item) GeoIndex(idx int) error {
-	sreader := strings.NewReader(i.Point)
+//GeoIndex for each items determine S2Cell and store it.
+func (i Item) GeoIndex(idx int32) error {
+	sreader := strings.NewReader(i.GetGeometry())
 	g, err := wkt.Decode(sreader)
 	if err != nil {
 		fmt.Printf("error encountered with %s", i.Point)
@@ -49,20 +62,13 @@ func (i Item) GeoIndex(idx int) error {
 		fmt.Printf("error encountered with %s", i.Point)
 	}
 
-	fmt.Println(p)
-
-	x := p[0][0]
-	y := p[0][1]
+	y := p[0][0]
+	x := p[0][1]
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(x, y))
-	cap := s2.CapFromCenterArea(center, s2RadialAreaMeters(2))
+	cell := s2.CellFromPoint(center)
 
-	coverer := &s2.RegionCoverer{MinLevel: minLevel, MaxLevel: maxLevel, MaxCells: maxCells}
-	cu := coverer.Covering(cap)
+	S2CELLS = append(S2CELLS, cell)
 
-	// no cover for this geo object this is probably an error
-	if len(cu) == 0 {
-		fmt.Printf("geo object can't be indexed, empty cover")
-	}
 	return nil
 
 }
@@ -72,8 +78,42 @@ func CalculateCover(geom string) {
 
 }
 
+// Simple search algo
+func SearchOverlapItems(items Items, cu s2.CellUnion) Items {
+
+	cellUnion := make([]s2.Cell, 0)
+
+	//Create S2cells from cell id.
+	for _, c := range cu {
+		cell := s2.CellFromCellID(c)
+		cellUnion = append(cellUnion, cell)
+	}
+
+	newItems := make(Items, 0)
+
+	for idx, i := range items {
+		if SearchOverlap(idx, cellUnion) {
+			newItems = append(newItems, i)
+		}
+	}
+
+	return newItems
+}
+
+// SearchOverlap check if any cell of celluntion contains item points
+func SearchOverlap(i int, cu []s2.Cell) bool {
+
+	for _, c := range cu {
+		if c.ContainsCell(S2CELLS[i]) {
+			return true
+		}
+	}
+	return false
+}
+
 // GeoIdsAtCells returns all GeoData keys contained in the cells, without duplicates
-func (idx *S2FlatIdx) GeoIdsAtCells(cells []s2.CellID) ([]GeoID, error) {
+/*
+func (idx *s2.S2FlatIdx) GeoIdsAtCells(cells []s2.CellID) ([]GeoID, error) {
 	m := make(map[string]struct{})
 
 	for _, c := range cells {
@@ -95,3 +135,4 @@ func (idx *S2FlatIdx) GeoIdsAtCells(cells []s2.CellID) ([]GeoID, error) {
 
 	return res, nil
 }
+*/

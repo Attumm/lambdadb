@@ -3,12 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-spatial/geom"
+	"github.com/go-spatial/geom/encoding/geojson"
 	"net/http"
 
 	// "reflect"
 	"errors"
 	"log"
+	"net/url"
 	"sort"
+	//"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -117,6 +121,20 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	if SETTINGS.Get("debug") == "yes" {
 		for key, value := range r.Form {
 			fmt.Printf("F %s = %s\n", key, value)
+		}
+	}
+
+	// we can post gejson data
+	r.ParseForm()
+
+	if SETTINGS.Get("debug") == "yes" {
+
+		for key, value := range r.Form {
+			fmt.Printf("%s = %s\n", key, value)
+		}
+		for key, value := range urlItems {
+
+			fmt.Printf("%s = %s\n", key, value)
 		}
 	}
 
@@ -530,6 +548,17 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		newItems = filtered(nextItems, operations, query)
 	}
 
+	if query.GeometryGiven {
+		fmt.Println("woowoowoo")
+		cu := CoverDefault(query.Geometry)
+		fmt.Println(cu)
+		if len(cu) == 0 {
+			fmt.Println("covering cell union not created")
+		} else {
+			newItems = SearchOverlapItems(newItems, cu)
+		}
+	}
+
 	diff := time.Since(start)
 	return newItems, int64(diff) / int64(1000000)
 }
@@ -553,7 +582,7 @@ func filtered(items *labeledItems, operations GroupedOperations, query Query) It
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for _, item := range *items {
+	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}

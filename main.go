@@ -62,10 +62,14 @@ func loadcsv(itemChan ItemsChannel) {
 		false, true,
 		SETTINGS.Get("delimiter"),
 		SETTINGS.Get("null-delimiter"))
+
 	if err != nil {
 		log.Fatalln(err)
 	}
-	makeIndex()
+
+	// add timeout there is no garantee ItemsChannel
+	// is empty and you miss a few records
+	// makeIndex()
 }
 
 func main() {
