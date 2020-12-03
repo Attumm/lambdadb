@@ -100,8 +100,13 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 }
 
 func ItemChanWorker(itemChan ItemsChannel) {
+	idx := 0
 	for items := range itemChan {
-		ITEMS = append(ITEMS, items...)
+		for _, itm := range items {
+			ITEMS = append(ITEMS, itm)
+			itm.GeoIndex(int32(idx))
+			idx += 1
+		}
 	}
 }
 
@@ -220,8 +225,6 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
-	//makeIndex()
-	BuildGeoIndex()
 }
 
 func saveRest(w http.ResponseWriter, r *http.Request) {

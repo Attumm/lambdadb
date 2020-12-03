@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	//"github.com/golang/geo/s2"
 )
 
 type fieldIdxMap map[string]uint16
@@ -488,6 +489,10 @@ func (i Item) Row() []string {
 
 func (i Item) GetIndex() string {
 	return GettersPid(&i)
+}
+
+func (i Item) GetGeometry() string {
+	return GettersPoint(&i)
 }
 
 // contain filter Pid

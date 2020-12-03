@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-spatial/geom"
+	"github.com/go-spatial/geom/encoding/geojson"
 	"net/http"
 	"net/url"
+	//"reflect"
 	"strconv"
 	"time"
 )
@@ -26,6 +29,9 @@ type Query struct {
 
 	IndexQuery string
 	IndexGiven bool
+
+	Geometry      geom.Geometry
+	GeometryGiven bool
 
 	ReturnFormat string
 }
@@ -51,6 +57,20 @@ func parseURLParameters(r *http.Request) Query {
 	//TODO change query to be based on input.
 
 	urlItems := r.URL.Query()
+
+	// we can post gejson data
+	r.ParseForm()
+
+	if SETTINGS.Get("debug") == "yes" {
+
+		for key, value := range r.Form {
+			fmt.Printf("%s = %s\n", key, value)
+		}
+		for key, value := range urlItems {
+
+			fmt.Printf("%s = %s\n", key, value)
+		}
+	}
 
 	for k := range RegisterFuncMap {
 		parameter, parameterFound := urlItems[k]
@@ -105,9 +125,23 @@ func parseURLParameters(r *http.Request) Query {
 	index := ""
 	indexL, indexGiven := urlItems["search"]
 	indexUsed := indexGiven && indexL[0] != ""
+
 	if indexUsed {
 		index = indexL[0]
 	}
+
+	// check for geojson geometry stuff.
+	geometryS, geometryGiven := r.Form["geojson"]
+	var geoinput geojson.Geometry
+	if geometryGiven && geometryS[0] != "" {
+		err := json.Unmarshal([]byte(geometryS[0]), &geoinput)
+		if err != nil {
+			fmt.Println("parsing geojson error")
+			fmt.Println(err)
+			geometryGiven = false
+		}
+	}
+
 	return Query{
 		Filters:  filterMap,
 		Excludes: excludeMap,
@@ -126,6 +160,10 @@ func parseURLParameters(r *http.Request) Query {
 
 		IndexQuery: index,
 		IndexGiven: indexUsed,
+
+		Geometry: geoinput.Geometry,
+
+		GeometryGiven: geometryGiven,
 
 		ReturnFormat: format,
 	}
@@ -320,6 +358,18 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	} else {
 		newItems = filtered(items, operations, query)
 	}
+
+	if query.GeometryGiven {
+		fmt.Println("woowoowoo")
+		cu := CoverDefault(query.Geometry)
+		fmt.Println(cu)
+		if len(cu) == 0 {
+			fmt.Println("covering cell union not created")
+		} else {
+			newItems = SearchOverlapItems(newItems, cu)
+		}
+	}
+
 	diff := time.Since(start)
 	return newItems, int64(diff) / int64(1000000)
 }
@@ -336,6 +386,7 @@ func runTypeAheadQuery(
 
 func filtered(items Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
+	filteredItems := make(Items, 0)
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
@@ -343,7 +394,6 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 	lock.RLock()
 	defer lock.RUnlock()
 
-	filteredItems := make(Items, 0)
 	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
 			continue
