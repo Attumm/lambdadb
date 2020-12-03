@@ -112,8 +112,11 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+
 	groupBy := ""
 	reduce := ""
+
+	//TODO change query to be based on input.
 
 	// parse params and body posts // (geo)json data
 	r.ParseForm()
@@ -549,9 +552,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 	}
 
 	if query.GeometryGiven {
-		fmt.Println("woowoowoo")
 		cu := CoverDefault(query.Geometry)
-		fmt.Println(cu)
 		if len(cu) == 0 {
 			fmt.Println("covering cell union not created")
 		} else {

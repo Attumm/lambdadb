@@ -19,15 +19,17 @@ import (
 	"github.com/go-spatial/geom/encoding/wkt"
 	"github.com/golang/geo/s2"
 	"strings"
+	"sync"
 )
 
 var minLevel int
 var maxLevel int
 var maxCells int
 
+var s2Lock = sync.RWMutex{}
 var geoIndex s2.CellIndex
 
-type s2Cells []s2.Cell
+type s2Cells map[int]s2.Cell
 
 var S2CELLS s2Cells
 
@@ -38,36 +40,44 @@ func init() {
 
 	//not used for now.
 	geoIndex = s2.CellIndex{}
+	S2CELLS = make(s2Cells)
 }
 
 func BuildGeoIndex() {
-
 	for i, v := range ITEMS {
-		v.GeoIndex(int32(i))
+		v.GeoIndex(i)
 	}
-
 	//geoIndex.Build()
 }
 
 //GeoIndex for each items determine S2Cell and store it.
-func (i Item) GeoIndex(idx int32) error {
+func (i Item) GeoIndex(idx int) error {
 	sreader := strings.NewReader(i.GetGeometry())
 	g, err := wkt.Decode(sreader)
 	if err != nil {
-		fmt.Printf("error encountered with %s", i.Point)
+		fmt.Println(err.Error())
+		fmt.Println(i.GetGeometry())
+		fmt.Println(i.Ekey)
+		return fmt.Errorf("wkt error encountered with %s", i.Point)
 	}
-	p, err := geom.GetCoordinates(g)
 
+	p, err := geom.GetCoordinates(g)
 	if err != nil {
-		fmt.Printf("error encountered with %s", i.Point)
+		fmt.Println(err.Error())
+		fmt.Println(i.Ekey)
+		fmt.Println(i.GetGeometry())
+		fmt.Printf("geom error encountered with %s", i.Point)
+		return fmt.Errorf("geom error")
 	}
+	s2Lock.Lock()
+	defer s2Lock.Unlock()
 
 	y := p[0][0]
 	x := p[0][1]
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(x, y))
 	cell := s2.CellFromPoint(center)
 
-	S2CELLS = append(S2CELLS, cell)
+	S2CELLS[idx] = cell
 
 	return nil
 
@@ -102,6 +112,9 @@ func SearchOverlapItems(items Items, cu s2.CellUnion) Items {
 
 // SearchOverlap check if any cell of celluntion contains item points
 func SearchOverlap(i int, cu []s2.Cell) bool {
+
+	s2Lock.RLock()
+	defer s2Lock.RUnlock()
 
 	for _, c := range cu {
 		if c.ContainsCell(S2CELLS[i]) {
