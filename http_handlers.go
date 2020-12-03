@@ -87,7 +87,6 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			}
 
 			if len(result) == 0 {
-				w.WriteHeader(404)
 				return
 			}
 
@@ -104,7 +103,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	for items := range itemChan {
 		for _, itm := range items {
 			ITEMS = append(ITEMS, itm)
-			itm.GeoIndex(int32(idx))
+			itm.GeoIndex(idx)
 			idx += 1
 		}
 	}

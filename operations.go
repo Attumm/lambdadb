@@ -54,6 +54,7 @@ func parseURLParameters(r *http.Request) Query {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+
 	//TODO change query to be based on input.
 
 	urlItems := r.URL.Query()
@@ -360,9 +361,7 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	}
 
 	if query.GeometryGiven {
-		fmt.Println("woowoowoo")
 		cu := CoverDefault(query.Geometry)
-		fmt.Println(cu)
 		if len(cu) == 0 {
 			fmt.Println("covering cell union not created")
 		} else {
