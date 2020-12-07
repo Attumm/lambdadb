@@ -248,9 +248,9 @@ func max(a, b int) int {
 	return b
 }
 
-func filteredEarlyExit(items Items, operations GroupedOperations, query Query) Items {
+func filteredEarlyExit(items *labeledItems, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
-	filteredItems := make(Items, 0, len(items)/4)
+	filteredItems := make(Items, 0, len(*items)/4)
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
@@ -266,8 +266,7 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	lock.RLock()
 	defer lock.RUnlock()
 
-	//TODO candidate for speedup
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -286,7 +285,7 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	return filteredItems
 }
 
-func filteredEarlyExitSingle(items Items, column string, operations GroupedOperations, query Query) []string {
+func filteredEarlyExitSingle(items *labeledItems, column string, operations GroupedOperations, query Query) []string {
 	registerFuncs := operations.Funcs
 	filteredItemsSet := make(map[string]bool)
 	excludes := query.Excludes
@@ -305,7 +304,7 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	defer lock.RUnlock()
 
 	//TODO candidate for speedup
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -334,25 +333,20 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	return results
 }
 
-func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
+func runQuery(items *labeledItems, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
 	var newItems Items
 
-	/*
-		if query.IndexGiven && len(STR_INDEX) > 0 {
-			items = make(Items, 0)
-			indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-			seen := make(map[string]bool)
-			for _, idx := range indices {
-				key := getStringFromIndex(STR_INDEX, idx)
-				if !seen[key] {
-					seen[key] = true
-					items = append(items, LOOKUP[key]...)
-				}
-
-			}
+	if query.GeometryGiven {
+		cu := CoverDefault(query.Geometry)
+		if len(cu) == 0 {
+			fmt.Println("covering cell union not created")
+		} else {
+			geoitems := SearchOverlapItems(items, cu)
+			items = &geoitems
+			fmt.Println(len(geoitems))
 		}
-	*/
+	}
 
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)
@@ -360,21 +354,12 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 		newItems = filtered(items, operations, query)
 	}
 
-	if query.GeometryGiven {
-		cu := CoverDefault(query.Geometry)
-		if len(cu) == 0 {
-			fmt.Println("covering cell union not created")
-		} else {
-			newItems = SearchOverlapItems(newItems, cu)
-		}
-	}
-
 	diff := time.Since(start)
 	return newItems, int64(diff) / int64(1000000)
 }
 
 func runTypeAheadQuery(
-	items Items, column string, query Query,
+	items *labeledItems, column string, query Query,
 	operations GroupedOperations) ([]string, int64) {
 
 	start := time.Now()
@@ -383,7 +368,7 @@ func runTypeAheadQuery(
 	return results, int64(diff) / int64(1000000)
 }
 
-func filtered(items Items, operations GroupedOperations, query Query) Items {
+func filtered(items *labeledItems, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0)
 	excludes := query.Excludes
@@ -393,7 +378,7 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}

@@ -16,13 +16,14 @@ type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
 //Items as Example
+type labeledItems map[int]*Item
 type Items []*Item
 type ItemsFull []*ItemFull
 
 type ItemsGroupedBy map[string]Items
 type ItemsChannel chan Items
 
-var ITEMS Items
+var ITEMS labeledItems
 
 type jwtConfig struct {
 	Enabled      bool
@@ -78,7 +79,7 @@ func main() {
 
 	SETTINGS.Parse()
 
-	ITEMS = make(Items, 0, 100*1000)
+	ITEMS = labeledItems{}
 
 	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
 	itemChan := make(ItemsChannel, 1000)
