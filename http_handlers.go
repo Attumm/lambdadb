@@ -40,7 +40,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := parseURLParameters(r)
 
-		items, queryTime := runQuery(ITEMS, query, operations)
+		items, queryTime := runQuery(&ITEMS, query, operations)
 
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
@@ -94,12 +94,12 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 }
 
 func ItemChanWorker(itemChan ItemsChannel) {
-	idx := 0
+	label := 0
 	for items := range itemChan {
 		for _, itm := range items {
-			ITEMS = append(ITEMS, itm)
-			itm.GeoIndex(idx)
-			idx += 1
+			ITEMS[label] = itm
+			itm.GeoIndex(label)
+			label += 1
 		}
 	}
 }
@@ -138,6 +138,8 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*1000)
 	msg := fmt.Sprint("removed items from database")
 	fmt.Printf(WarningColorN, msg)
+	ITEMS = labeledItems{}
+
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
@@ -261,6 +263,10 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 		storagename := SETTINGS.Get("STORAGEMETHOD")
 		retrievefunc = RETRIEVEFUNCS[storagename]
 	}
+
+	// empty exising ITEMS
+	ITEMS = labeledItems{}
+	json.Unmarshal(s, &ITEMS)
 
 	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
 
@@ -409,7 +415,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := parseURLParameters(r)
 
-		items, queryTime := runQuery(ITEMS, query, operations)
+		items, queryTime := runQuery(&ITEMS, query, operations)
 		if len(items) == 0 {
 			w.WriteHeader(404)
 			return
@@ -448,7 +454,7 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 			return
 		}
 
-		results, queryTime := runTypeAheadQuery(ITEMS, column, query, operations)
+		results, queryTime := runTypeAheadQuery(&ITEMS, column, query, operations)
 		if len(results) == 0 {
 			w.WriteHeader(404)
 			return
@@ -498,7 +504,12 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		registerReduces = append(registerReduces, k)
 	}
 
-	_, registeredSortings := sortBy(ITEMS, []string{})
+	newItems := make(Items, 10)
+	for i := 0; i < 10; i++ {
+		newItems = append(newItems, ITEMS[i])
+	}
+
+	_, registeredSortings := sortBy(newItems, []string{})
 
 	sort.Strings(registeredFilters)
 	sort.Strings(registeredExcludes)

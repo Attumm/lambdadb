@@ -404,9 +404,7 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	lock.RLock()
 	defer lock.RUnlock()
 
-	// TODO candidate for speedup
-
-	for _, item := range *items {
+	for _, item := range items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -442,6 +440,7 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	return results
 }
 
+<<<<<<< HEAD
 // bit Array Filter.
 // for columns with not so unique values it makes sense te create bitarrays.
 // to do fast bitwise operations.
@@ -556,8 +555,16 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		if len(cu) == 0 {
 			fmt.Println("covering cell union not created")
 		} else {
-			newItems = SearchOverlapItems(newItems, cu)
+			geoitems := SearchOverlapItems(items, cu)
+			items = &geoitems
+			fmt.Println(len(geoitems))
 		}
+	}
+
+	if query.EarlyExit() {
+		newItems = filteredEarlyExit(items, operations, query)
+	} else {
+		newItems = filtered(items, operations, query)
 	}
 
 	diff := time.Since(start)
@@ -583,7 +590,7 @@ func filtered(items *labeledItems, operations GroupedOperations, query Query) It
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}

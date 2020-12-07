@@ -1,13 +1,16 @@
 /*
 
-  Determine S2 cells involved in geometries.
+  Determine S2 cells involved in geometries. Provide a fast way to lookup
+  data from based on a geojson query.
 
   inspired by
         "github.com/akhenakh/oureadb/index/geodata"
 	"github.com/akhenakh/oureadb/store"
 
-  With S2 CillID's we can find which items are contained in given
-  filter geometry.
+	s2 cell index code.
+
+  With S2 CillIDs we can find which items are contained in given
+  filter geometry (S2 cell union).
 
 */
 
@@ -18,6 +21,7 @@ import (
 	"github.com/go-spatial/geom"
 	"github.com/go-spatial/geom/encoding/wkt"
 	"github.com/golang/geo/s2"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -27,31 +31,38 @@ var maxLevel int
 var maxCells int
 
 var s2Lock = sync.RWMutex{}
-var geoIndex s2.CellIndex
 
-type s2Cells map[int]s2.Cell
+type cellIndexNode struct {
+	Cell  s2.Cell
+	Label int
+}
 
-var S2CELLS s2Cells
+type s2CellIndex []cellIndexNode
+type s2CellMap map[int]s2.CellID
+
+var S2CELLS s2CellIndex
+var S2CELLMAP s2CellMap
 
 func init() {
 	minLevel = 7
 	maxLevel = 20
 	maxCells = 50
 
-	//not used for now.
-	geoIndex = s2.CellIndex{}
-	S2CELLS = make(s2Cells)
+	S2CELLS = make(s2CellIndex, 100000)
+	S2CELLMAP = s2CellMap{}
 }
 
 func BuildGeoIndex() {
 	for i, v := range ITEMS {
 		v.GeoIndex(i)
 	}
-	//geoIndex.Build()
 }
 
 //GeoIndex for each items determine S2Cell and store it.
-func (i Item) GeoIndex(idx int) error {
+func (i Item) GeoIndex(label int) error {
+	if i.GetGeometry() == "" {
+		return fmt.Errorf("missing wkt geometry")
+	}
 	sreader := strings.NewReader(i.GetGeometry())
 	g, err := wkt.Decode(sreader)
 	if err != nil {
@@ -77,7 +88,9 @@ func (i Item) GeoIndex(idx int) error {
 	center := s2.PointFromLatLng(s2.LatLngFromDegrees(x, y))
 	cell := s2.CellFromPoint(center)
 
-	S2CELLS[idx] = cell
+	cnode := cellIndexNode{Cell: cell, Label: label}
+	S2CELLS = append(S2CELLS, cnode)
+	S2CELLMAP[label] = cell.ID()
 
 	return nil
 
@@ -89,7 +102,30 @@ func CalculateCover(geom string) {
 }
 
 // Simple search algo
-func SearchOverlapItems(items Items, cu s2.CellUnion) Items {
+func SearchOverlapItems(items *labeledItems, cu s2.CellUnion) labeledItems {
+
+	cellUnion := make([]s2.Cell, 0)
+
+	// Create S2cells from cell id.
+	for _, c := range cu {
+		cell := s2.CellFromCellID(c)
+		cellUnion = append(cellUnion, cell)
+	}
+
+	newItems := labeledItems{}
+
+	for k, i := range *items {
+		if cu.ContainsCellID(S2CELLMAP[k]) {
+			newItems[k] = i
+		}
+	}
+
+	return newItems
+}
+
+// Given only a cell Union return items
+/*
+func SearchRelevantItems(cu s2.CellUnion) Items {
 
 	cellUnion := make([]s2.Cell, 0)
 
@@ -101,14 +137,18 @@ func SearchOverlapItems(items Items, cu s2.CellUnion) Items {
 
 	newItems := make(Items, 0)
 
-	for idx, i := range items {
+	min = S2CellS.Seek(cu.RectBound().
+
+	for idx, i := range S2CellS {
 		if SearchOverlap(idx, cellUnion) {
 			newItems = append(newItems, i)
 		}
 	}
 
 	return newItems
+
 }
+*/
 
 // SearchOverlap check if any cell of celluntion contains item points
 func SearchOverlap(i int, cu []s2.Cell) bool {
@@ -117,7 +157,7 @@ func SearchOverlap(i int, cu []s2.Cell) bool {
 	defer s2Lock.RUnlock()
 
 	for _, c := range cu {
-		if c.ContainsCell(S2CELLS[i]) {
+		if c.ContainsCell(S2CELLS[i].Cell) {
 			return true
 		}
 	}
@@ -149,3 +189,18 @@ func (idx *s2.S2FlatIdx) GeoIdsAtCells(cells []s2.CellID) ([]GeoID, error) {
 	return res, nil
 }
 */
+
+//func (ca *s2Cell)
+
+// Seek position in index which is close to target
+func (ci s2CellIndex) Seek(target s2.CellID) int {
+	pos := sort.Search(len(ci), func(i int) bool {
+		return ci[i].Cell.ID() > target
+	}) - 1
+
+	// Ensure we don't go beyond the beginning.
+	if pos < 0 {
+		pos = 0
+	}
+	return pos
+}
