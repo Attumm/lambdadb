@@ -102,9 +102,11 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	label := 0
 	for items := range itemChan {
 		for _, itm := range items {
-			ITEMS[label] = itm
-			itm.GeoIndex(label)
-			label += 1
+			if itm != nil {
+				ITEMS[label] = itm
+				itm.GeoIndex(label)
+				label++
+			}
 		}
 	}
 }

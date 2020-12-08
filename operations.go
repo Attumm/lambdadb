@@ -342,7 +342,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		if len(cu) == 0 {
 			fmt.Println("covering cell union not created")
 		} else {
-			geoitems := SearchOverlapItems(items, cu)
+			geoitems := SearchGeoItems(cu)
 			items = &geoitems
 			fmt.Println(len(geoitems))
 		}
