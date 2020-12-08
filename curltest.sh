@@ -5,7 +5,7 @@ set -e
 set -u
 
 
-curl \
+curl -vvv \
 	--data-urlencode 'geojson={
 				"type": "Polygon",
 				"coordinates": [

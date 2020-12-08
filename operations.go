@@ -517,6 +517,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 			fmt.Println("covering cell union not created")
 		} else {
 			geoitems := SearchGeoItems(cu)
+<<<<<<< HEAD
 			items = &geoitems
 			fmt.Println(len(geoitems))
 		}

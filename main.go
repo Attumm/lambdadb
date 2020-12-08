@@ -7,6 +7,7 @@ import (
 	//"github.com/prometheus/client_golang/prometheus"
 	//"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"time"
 )
 
 type filterFuncc func(*Item, string) bool
@@ -68,6 +69,10 @@ func loadcsv(itemChan ItemsChannel) {
 		log.Fatalln(err)
 	}
 
+	// make sure channels are empty
+	time.Sleep(1 * time.Second)
+	S2CELLS.Sort()
+	fmt.Println("Sorted")
 	// add timeout there is no garantee ItemsChannel
 	// is empty and you miss a few records
 	// makeIndex()
