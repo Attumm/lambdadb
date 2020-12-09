@@ -36,9 +36,20 @@ func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64)
 	}
 }
 
+func hanleQueryError(err error, w http.ResponseWriter) {
+	response := make(map[string]string)
+	w.WriteHeader(500)
+	response["error"] = err.Error()
+	json.NewEncoder(w).Encode(response)
+}
+
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
 
 		items, queryTime := runQuery(&ITEMS, query, operations)
 
@@ -95,7 +106,9 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 func ItemChanWorker(itemChan ItemsChannel) {
 	label := 0
+
 	for items := range itemChan {
+		lock.Lock()
 		for _, itm := range items {
 			if itm != nil {
 				ITEMS[label] = itm
@@ -103,6 +116,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 				label++
 			}
 		}
+		lock.Unlock()
 	}
 }
 
@@ -415,7 +429,11 @@ func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
 
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
 
 		items, queryTime := runQuery(&ITEMS, query, operations)
 		if len(items) == 0 {
@@ -445,7 +463,12 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 
 func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
+
 		column := r.URL.Path[len("/typeahead/"):]
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]

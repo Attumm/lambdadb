@@ -103,7 +103,12 @@ func coverPolygon(p []geom.Point, coverer *s2.RegionCoverer, interior bool) (s2.
 		return nil, errors.New("invalid polygons not enough coordinates for a closed polygon")
 	}
 	if len(p)%2 != 0 {
-		return nil, errors.New("invalid polygons odd coordinates number")
+		if p[0] == p[len(p)-1] {
+			//last element == first element
+			p = p[1:]
+		} else {
+			return nil, errors.New("invalid polygons odd coordinates number")
+		}
 	}
 
 	l := LoopFromCoordinatesAndCCW(p, true)

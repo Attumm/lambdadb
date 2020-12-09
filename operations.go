@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"sort"
 	//"reflect"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -107,7 +108,6 @@ func (q Query) CacheKey() (string, error) {
 	return strings.Join(keys, "-"), nil
 }
 
-// parseURLParameters checks parameters and builds a query to be run.
 func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
@@ -133,11 +133,11 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	if SETTINGS.Get("debug") == "yes" {
 
 		for key, value := range r.Form {
-			fmt.Printf("%s = %s\n", key, value)
+			fmt.Printf("F %s = %s\n", key, value)
 		}
 		for key, value := range urlItems {
 
-			fmt.Printf("%s = %s\n", key, value)
+			fmt.Printf("P %s = %s\n", key, value)
 		}
 	}
 
@@ -440,7 +440,6 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	return results
 }
 
-<<<<<<< HEAD
 // bit Array Filter.
 // for columns with not so unique values it makes sense te create bitarrays.
 // to do fast bitwise operations.
@@ -517,7 +516,6 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 			fmt.Println("covering cell union not created")
 		} else {
 			geoitems := SearchGeoItems(cu)
-<<<<<<< HEAD
 			items = &geoitems
 			fmt.Println(len(geoitems))
 		}
