@@ -40,7 +40,7 @@ type cellIndexNode struct {
 type s2CellIndex []cellIndexNode
 type s2CellMap map[int]s2.CellID
 
-//implement Sort interface for s2CellIndex
+// Implement Sort interface for s2CellIndex
 func (c s2CellIndex) Len() int           { return len(c) }
 func (c s2CellIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c s2CellIndex) Less(i, j int) bool { return c[i].ID < c[j].ID }
@@ -49,9 +49,9 @@ var S2CELLS s2CellIndex
 var S2CELLMAP s2CellMap
 
 func init() {
-	minLevel = 7
-	maxLevel = 20
-	maxCells = 50
+	minLevel = 2
+	maxLevel = 21
+	maxCells = 450
 
 	S2CELLS = make(s2CellIndex, 0)
 	S2CELLMAP = s2CellMap{}
@@ -74,6 +74,7 @@ func (i Item) GeoIndex(label int) error {
 	}
 	sreader := strings.NewReader(i.GetGeometry())
 	g, err := wkt.Decode(sreader)
+
 	if err != nil {
 		fmt.Println(err.Error())
 		fmt.Println(i.GetGeometry())
@@ -111,6 +112,7 @@ func (i Item) GeoIndex(label int) error {
 	S2CELLS = append(S2CELLS, cnode)
 	S2CELLMAP[label] = cell.ID()
 
+	// Update index while loading data so queries already work
 	if label%100000 == 0 {
 		S2CELLS.Sort()
 	}
@@ -148,6 +150,10 @@ func SearchGeoItems(cu s2.CellUnion) labeledItems {
 
 	min := S2CELLS.Seek(cu[0].ChildBegin())
 	max := S2CELLS.Seek(cu[len(cu)-1].ChildEnd())
+
+	// ITEMS read lock
+	lock.RLock()
+	defer lock.RUnlock()
 
 	for _, i := range S2CELLS[min : max+1] {
 		if cu.ContainsCellID(i.ID) {

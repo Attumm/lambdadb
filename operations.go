@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	//"reflect"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -50,7 +51,7 @@ func decodeUrl(s string) string {
 }
 
 // util for api
-func parseURLParameters(r *http.Request) Query {
+func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
@@ -65,11 +66,11 @@ func parseURLParameters(r *http.Request) Query {
 	if SETTINGS.Get("debug") == "yes" {
 
 		for key, value := range r.Form {
-			fmt.Printf("%s = %s\n", key, value)
+			fmt.Printf("F %s = %s\n", key, value)
 		}
 		for key, value := range urlItems {
 
-			fmt.Printf("%s = %s\n", key, value)
+			fmt.Printf("P %s = %s\n", key, value)
 		}
 	}
 
@@ -140,6 +141,7 @@ func parseURLParameters(r *http.Request) Query {
 			fmt.Println("parsing geojson error")
 			fmt.Println(err)
 			geometryGiven = false
+			return Query{}, errors.New("failed to parse geojson")
 		}
 	}
 
@@ -167,7 +169,7 @@ func parseURLParameters(r *http.Request) Query {
 		GeometryGiven: geometryGiven,
 
 		ReturnFormat: format,
-	}
+	}, nil
 }
 
 func groupByRunner(items Items, groubByParameter string) ItemsGroupedBy {
@@ -303,7 +305,7 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	lock.RLock()
 	defer lock.RUnlock()
 
-	//TODO candidate for speedup
+	// TODO candidate for speedup
 	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
