@@ -5,7 +5,7 @@ RUN apk update && apk add --no-cache git
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /app
-COPY . /app/
+COPY *.go /app/
 
 # Fetch dependencies.
 RUN go get -d -v

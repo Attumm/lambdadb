@@ -28,6 +28,7 @@ type ItemsGroupedBy map[string]Items
 type ItemsChannel chan Items
 
 var ITEMS labeledItems
+var itemChan ItemsChannel
 
 type jwtConfig struct {
 	Enabled      bool
@@ -54,9 +55,7 @@ const (
 	DebugColorN   = "\033[0;36m%s\033[0m\n"
 )
 
-func init() {
-
-}
+func init() {}
 
 func loadcsv(itemChan ItemsChannel) {
 	log.Print("loading given csv")
