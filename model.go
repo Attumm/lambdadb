@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	//"github.com/golang/geo/s2"
 )
 
 type fieldIdxMap map[string]uint16
@@ -985,6 +984,7 @@ func validateRegisters() {
 	var i = Item{}
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
+		// TODO make exception for geo column.
 		for _, f := range filters {
 			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
 				log.Fatal(c + " is missing in RegisterMap")

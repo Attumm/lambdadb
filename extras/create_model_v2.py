@@ -197,7 +197,8 @@ output = modeltemplate.render(
     columnFilters=''.join(columnFilters),
     registerFilters=''.join(registerFilters),
     sortColumns=''.join(sortColumns),
-    indexcolumn=allcolumns[index]
+    indexcolumn=allcolumns[index],
+    geometryGetter='""',
 )
 
 f = open('model.go', 'w')
