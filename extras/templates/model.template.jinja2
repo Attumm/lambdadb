@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -112,6 +113,11 @@ func (i Item) GetIndex()string{
 	return Getters{{indexcolumn}}(&i)
 }
 
+
+func (i Item) GetGeometry() string {
+	return {{geometryGetter}}
+}
+
 {{columnFilters}}
 
 /*
@@ -165,7 +171,7 @@ func validateRegisters() {
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
 		for _, f := range filters {
-			if _, ok := RegisterFuncMap[c+"-"+f]; !ok {
+			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
 				log.Fatal(c + " is missing in RegisterMap")
 			}
 		}

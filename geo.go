@@ -78,16 +78,14 @@ func (i Item) GeoIndex(label int) error {
 	if err != nil {
 		fmt.Println(err.Error())
 		fmt.Println(i.GetGeometry())
-		fmt.Println(i.Ekey)
-		return fmt.Errorf("wkt error encountered with %s", i.Point)
+		return fmt.Errorf("wkt error encountered with %s", i.GetGeometry())
 	}
 
 	p, err := geom.GetCoordinates(g)
 	if err != nil {
 		fmt.Println(err.Error())
-		fmt.Println(i.Ekey)
 		fmt.Println(i.GetGeometry())
-		fmt.Printf("geom error encountered with %s", i.Point)
+		fmt.Printf("geom error encountered with %s", i.GetGeometry())
 		return fmt.Errorf("geom error")
 	}
 
@@ -99,7 +97,6 @@ func (i Item) GeoIndex(label int) error {
 	ll := s2.LatLngFromDegrees(x, y)
 
 	if !ll.IsValid() {
-		fmt.Println(i.Ekey)
 		fmt.Println(i.GetGeometry())
 		fmt.Printf("ll geom error encountered with %f %f", x, y)
 		return fmt.Errorf("geom error")
