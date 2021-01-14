@@ -30,12 +30,17 @@ env = Environment(
     loader=FileSystemLoader('./templates'),
 )
 
-# keep track of all column names org are original names
+# keep track of all column names and all original names in csv
 allcolumns = []
+allcolumns_org = []
 repeated = []
 repeated_org = []
 unique = []
 unique_org = []
+ignored = []
+ignored_org = []
+geocolumns = []
+geocolumns_org = []
 
 
 def gocamelCase(string):
@@ -50,26 +55,43 @@ def gocamelCase(string):
 # ask some questions about columns.
 index = 0
 for k in row.keys():
+
+    # go camelcase column names
     kc = gocamelCase(k)
 
+    options = ['r', 'u', 'i', 'g']
     while True:
         # keep asking for valid input
-        q1 = "a repeated value? has less then (2^16=65536) values? Y/n?"
-        yesno = input(f"idx:{index} is {k} {q1}")  # noqa
-        if yesno == '':
-            yesno = 'y'
-        if yesno not in ['y', 'n']:
+        q1 = ("a (R)epeated value? has less then (2^16=65536) option. ",
+              "(U)nique, (G)eo lat/lon point OR (I)gnore ? r/u/g/i?")
+        action = input(f"idx:{index} is {k} {q1}")  # noqa
+        if action == '':
+            print(f"pick one from {options}")
+            continue
+        if action not in options:
             continue
         break
 
-    if yesno == 'y':
+    if action == 'r':
         repeated.append(kc)
         repeated_org.append(k)
-    else:
+    elif action == 'u':
         unique.append(kc)
         unique_org.append(k)
+    elif action == 'i':
+        ignored.append(kc)
+        ignored_org.append(k)
+    elif action == 'g':
+        geocolumns.append(kc)
+        geocolumns_org.append(k)
+        unique.append(kc)
+        unique_org.append(k)
+    else:
+        print('invalid input')
+        sys.exit(-1)
 
     allcolumns.append(kc)
+    allcolumns_org.append(k)
     index += 1
 
 # ask for a index column
@@ -78,10 +100,17 @@ while True:
     index = input(f"which column is idx? 0 - {len(allcolumns) - 1} ")
     try:
         index = int(index)
-        if index < len(allcolumns):
+
+        if allcolumns[index] in ignored:
+            print('Selected an ignored column for index')
+            raise ValueError
+
+        if -1 < index < len(allcolumns):
             break
+
     except ValueError:
         continue
+
     print('try again..')
 
 # setup initial data structs for each repeated column
@@ -92,15 +121,30 @@ for c in repeated:
     initRepeatColumns.append(initColumntemplate.render(columnname=c))
 
 # create ItemFull struct fields
-columnsItemFull = []
+columnsItemIn = []
 jsonColumn = env.get_template('itemFullColumn.jinja2')
-for c1, c2 in zip(allcolumns, row.keys()):
+for c1, c2 in zip(allcolumns, allcolumns_org):
     onerow = jsonColumn.render(c1=c1, c2=c2)
-    columnsItemFull.append(onerow)
+    columnsItemIn.append(onerow)
+
+# create ItemFull struct fields
+columnsItemOut = []
+jsonColumn = env.get_template('itemFullColumn.jinja2')
+for c1, c2 in zip(allcolumns, allcolumns_org):
+
+    if c1 in ignored:
+        continue
+
+    onerow = jsonColumn.render(c1=c1, c2=c2)
+    columnsItemOut.append(onerow)
 
 # create Item struct fields
 columnsItem = []
-for c1, c2 in zip(allcolumns, row.keys()):
+for c1, c2 in zip(allcolumns, allcolumns_org):
+
+    if c1 in ignored:
+        continue
+
     onerow = f"\t{c1}  string\n"
     if c1 in repeated:
         onerow = f"\t{c1}    uint16\n"
@@ -123,6 +167,10 @@ shrinkItemFields = []
 expandItemFields = []
 
 for c in allcolumns:
+
+    if c in ignored:
+        continue
+
     if c in repeated:
         # string to unint
         shrinkItemFields.append(f"\t\t{c}IdxMap[i.{c}],\n")
@@ -133,9 +181,18 @@ for c in allcolumns:
         expandItemFields.append(f"\t\ti.{c},\n")
 
 
-originalColumns = []
-for c in row.keys():
-    originalColumns.append(f'\t\t"{c}",\n')
+# ItemIn Columns
+inColumns = []
+for c in allcolumns_org:
+    inColumns.append(f'\t\t"{c}",\n')
+
+# ItemOut Columns
+outColumns = []
+for cc, c in zip(allcolumns, allcolumns_org):
+    # cc CamelCaseColumn.
+    if cc in ignored:
+        continue
+    outColumns.append(f'\t\t"{c}",\n')
 
 # create column filters.
 # match, startswith, contains etc
@@ -144,6 +201,9 @@ columnFilters = []
 filtertemplate = env.get_template("filters.jinja2")
 
 for c in allcolumns:
+    if c in ignored:
+        continue
+
     lookup = f"i.{c}"
     if c in repeated:
         lookup = f"{c}[i.{c}]"
@@ -154,7 +214,9 @@ for c in allcolumns:
 registerFilters = []
 rtempl = env.get_template('registerFilters.jinja2')
 # register filters
-for c, co in zip(allcolumns, row.keys()):
+for c, co in zip(allcolumns, allcolumns_org):
+    if c in ignored:
+        continue
     txt = rtempl.render(co=co, column=c)
     registerFilters.append(txt)
 
@@ -163,7 +225,9 @@ sortColumns = []
 sortTemplate = env.get_template('sortfunc.jinja2')
 
 # create sort functions
-for co, c in zip(row.keys(), allcolumns):
+for c, co in zip(allcolumns, allcolumns_org):
+    if c in ignored:
+        continue
 
     c1 = f"items[i].{c} < items[j].{c}"
     c2 = f"items[i].{c} > items[j].{c}"
@@ -177,28 +241,35 @@ for co, c in zip(row.keys(), allcolumns):
 
 
 csv_columns = []
-for c in row.keys():
+for c in allcolumns:
     csv_columns.append(f'\t"{c}",\n')
 
 
 # Finally render the model.go template
 modeltemplate = env.get_template('model.template.jinja2')
 
+geometryGetter = '""'
+print('GEOCOLUMNS: ' + " ".join(geocolumns))
+if len(geocolumns) == 1:
+    geometryGetter = f"Getters{geocolumns[0]}(&i)"
+
 output = modeltemplate.render(
     initRepeatColumns=''.join(initRepeatColumns),
-    columnsItemFull=''.join(columnsItemFull),
+    columnsItemIn=''.join(columnsItemIn),
+    columnsItemOut=''.join(columnsItemOut),
     columnsItem=''.join(columnsItem),
     shrinkVars=''.join(shrinkVars),
     shrinkItems=''.join(shrinkItems),
     shrinkItemFields=''.join(shrinkItemFields),
     expandItemFields=''.join(expandItemFields),
     csv_columns=''.join(csv_columns),
-    originalColumns=''.join(originalColumns),
+    inColumns=''.join(inColumns),
+    outColumns=''.join(outColumns),
     columnFilters=''.join(columnFilters),
     registerFilters=''.join(registerFilters),
     sortColumns=''.join(sortColumns),
     indexcolumn=allcolumns[index],
-    geometryGetter='""',
+    geometryGetter=geometryGetter,
 )
 
 f = open('model.go', 'w')

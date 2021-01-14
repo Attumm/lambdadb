@@ -62,8 +62,8 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	items := Items{}
 
 	for {
-		itemFull := ItemFull{}
-		columns := itemFull.Columns()
+		itemIn := ItemIn{}
+		columns := itemIn.Columns()
 		cols := make([]interface{}, len(columns))
 		record, err := reader.Read()
 
@@ -98,7 +98,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
 		// fill the new Item instance with values
-		if err := json.Unmarshal([]byte(b), &itemFull); err != nil {
+		if err := json.Unmarshal([]byte(b), &itemIn); err != nil {
 			line := strings.Join(record, delimiter)
 			failed++
 
@@ -115,7 +115,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			itemChan <- items
 			items = Items{}
 		}
-		smallItem := itemFull.Shrink()
+		smallItem := itemIn.Shrink()
 		items = append(items, &smallItem)
 		success++
 	}

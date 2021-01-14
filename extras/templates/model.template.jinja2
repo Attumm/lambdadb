@@ -43,11 +43,18 @@ func init() {
 {{itemStructs}}
 
 
-type ItemFull struct {
+type ItemIn struct {
 
-{{columnsItemFull}}
+{{columnsItemIn}}
 
 }
+
+type ItemOut struct {
+
+{{columnsItemOut}}
+
+}
+
 
 type Item struct {
 
@@ -55,15 +62,9 @@ type Item struct {
 
 }
 
-func (i Item) Columns() []string {
-
-	return []string{
-		{{csv_columns}}
-	}
-}
 
 // Shrink create smaller Item using uint16
-func (i ItemFull) Shrink() Item {
+func (i ItemIn) Shrink() Item {
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -77,25 +78,34 @@ func (i ItemFull) Shrink() Item {
 	}
 }
 
-func (i Item) Serialize() ItemFull {
+func (i Item) Serialize() ItemOut {
 
 	lock.RLock()
 	defer lock.RUnlock()
 
-	return ItemFull{
+	return ItemOut{
 
 {{expandItemFields}}
 
 	}
 }
 
-func (i ItemFull) Columns() []string {
+func (i ItemIn) Columns() []string {
 	return []string{
 
-{{originalColumns}}
+{{inColumns}}
 
 	}
 }
+
+func (i ItemOut) Columns() []string {
+	return []string{
+
+{{outColumns}}
+
+	}
+}
+
 
 func (i Item) Row() []string {
 
@@ -167,7 +177,7 @@ var RegisterReduce registerReduce
 
 // ValidateRegsiters validate exposed columns do match filter names
 func validateRegisters() {
-	var i = Item{}
+	var i = ItemOut{}
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
 		for _, f := range filters {

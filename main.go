@@ -23,7 +23,8 @@ type registerFormatMap map[string]formatRespFunc
 //Items as Example
 type labeledItems map[int]*Item
 type Items []*Item
-type ItemsFull []*ItemFull
+type ItemsIn []*ItemIn
+type ItemsOut []*ItemOut
 
 type ItemsGroupedBy map[string]Items
 type ItemsChannel chan Items

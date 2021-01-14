@@ -368,29 +368,29 @@ type Meta struct {
 }
 
 type searchResponse struct {
-	Count int       `json:"count"`
-	Data  ItemsFull `json:"data"`
-	MMeta *Meta     `json:"meta"`
+	Count int      `json:"count"`
+	Data  ItemsOut `json:"data"`
+	MMeta *Meta    `json:"meta"`
 }
 
 func makeResp(items Items) searchResponse {
 
-	itemsfull := make(ItemsFull, 0, len(items))
+	itemsout := make(ItemsOut, 0, len(items))
 
 	for _, oneitem := range items {
 		orgItem := oneitem.Serialize()
-		itemsfull = append(itemsfull, &orgItem)
+		itemsout = append(itemsout, &orgItem)
 	}
 
 	fields := []ShowItem{}
-	columns := ItemFull{}.Columns()
+	columns := ItemOut{}.Columns()
 	for _, column := range columns {
 		fields = append(fields, ShowItem{IsShow: true, Name: column, Label: column})
 	}
 
 	return searchResponse{
 		Count: len(items),
-		Data:  itemsfull,
+		Data:  itemsout,
 		MMeta: &Meta{Fields: fields, View: "table"},
 	}
 }
