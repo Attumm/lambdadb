@@ -53,11 +53,17 @@ func loadcsv(itemChan ItemsChannel) {
 	}
 
 	// make sure channels are empty
-	time.Sleep(1 * time.Second)
-	S2CELLS.Sort()
-	fmt.Println("Sorted")
 	// add timeout there is no garantee ItemsChannel
 	// is empty and you miss a few records
+	time.Sleep(5 * time.Second)
+	S2CELLS.Sort()
+	fmt.Println("Sorted")
+
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	GroupByBodyCache = make(map[string]GroupByResult)
+	GroupByHeaderCache = make(map[string]HeaderData)
 	// makeIndex()
 }
 

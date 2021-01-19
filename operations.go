@@ -6,9 +6,9 @@ import (
 	"github.com/go-spatial/geom"
 	"github.com/go-spatial/geom/encoding/geojson"
 	"net/http"
-	"net/url"
 	//"reflect"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +17,16 @@ import (
 type filterFuncc func(*Item, string) bool
 type registerFuncType map[string]filterFuncc
 type filterType map[string][]string
+
+func (ft filterType) CacheKey() string {
+	filterlist := []string{}
+	for k, v := range ft {
+		filterlist = append(filterlist, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(filterlist)
+	return strings.Join(filterlist, "-")
+}
+
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
@@ -54,20 +64,20 @@ func (q Query) EarlyExit() bool {
 // return cachable key for query
 func (q Query) CacheKey() (string, error) {
 
+	if q.EarlyExit() {
+		return "", errors.New("not cached")
+	}
+
 	keys := []string{
+		q.Filters.CacheKey(),
+		q.Excludes.CacheKey(),
+		q.Anys.CacheKey(),
+		q.GroupBy,
+		q.Reduce,
 		q.ReturnFormat,
 	}
 
 	return strings.Join(keys, "-"), nil
-}
-
-func decodeUrl(s string) string {
-	newS, err := url.QueryUnescape(s)
-	if err != nil {
-		fmt.Println("oh no error", err)
-		return s
-	}
-	return newS
 }
 
 // parseURLParameters checks parameters and builds a query to be run.
@@ -79,10 +89,8 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	reduce := ""
 
 	//TODO change query to be based on input.
-
 	urlItems := r.URL.Query()
-
-	// we can post gejson data
+	// parse post geojson data
 	r.ParseForm()
 
 	if SETTINGS.Get("debug") == "yes" {
@@ -99,12 +107,7 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	for k := range RegisterFuncMap {
 		parameter, parameterFound := urlItems[k]
 		if parameterFound && parameter[0] != "" {
-			newSl := make([]string, len(parameter))
-			for i, v := range parameter {
-				newSl[i] = decodeUrl(v)
-			}
-			//filterMap[k] = parameter
-			filterMap[k] = newSl
+			filterMap[k] = parameter
 		}
 		parameter, parameterFound = urlItems["!"+k]
 		if parameterFound && parameter[0] != "" {
