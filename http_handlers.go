@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"index/suffixarray"
 	"io/ioutil"
@@ -68,9 +69,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 		setHeader(items, w, query, queryTime)
 
-		groupByS, groupByFound := r.URL.Query()["groupby"]
-
-		if !groupByFound {
+		if query.GroupBy == "" {
 			if query.ReturnFormat == "csv" {
 				writeCSV(items, w)
 			} else {
@@ -81,16 +80,15 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			return
 		}
 
-		groupByItems := groupByRunner(items, groupByS[0])
+		groupByItems := groupByRunner(items, query.GroupBy)
 		items = nil
 
-		reduceName, reduceFound := r.URL.Query()["reduce"]
-
-		if reduceFound {
+		if query.Reduce != "" {
 			result := make(map[string]map[string]string)
-			reduceFunc, reduceFuncFound := operations.Reduce[reduceName[0]]
+			reduceFunc, reduceFuncFound := operations.Reduce[query.Reduce]
 			if !reduceFuncFound {
-				json.NewEncoder(w).Encode(result)
+				err = errors.New("invalid reduce")
+				hanleQueryError(err, w)
 				return
 			}
 			for key, val := range groupByItems {

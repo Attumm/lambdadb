@@ -10,13 +10,23 @@ import (
 	//"reflect"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 )
+
+type filterFuncc func(*Item, string) bool
+type registerFuncType map[string]filterFuncc
+type filterType map[string][]string
+type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
+type registerFormatMap map[string]formatRespFunc
 
 type Query struct {
 	Filters  filterType
 	Excludes filterType
 	Anys     filterType
+
+	GroupBy string
+	Reduce  string
 
 	Limit         int
 	LimitGiven    bool
@@ -41,6 +51,16 @@ func (q Query) EarlyExit() bool {
 	return q.LimitGiven && !q.PageGiven && !q.SortByGiven
 }
 
+// return cachable key for query
+func (q Query) CacheKey() (string, error) {
+
+	keys := []string{
+		q.ReturnFormat,
+	}
+
+	return strings.Join(keys, "-"), nil
+}
+
 func decodeUrl(s string) string {
 	newS, err := url.QueryUnescape(s)
 	if err != nil {
@@ -50,11 +70,13 @@ func decodeUrl(s string) string {
 	return newS
 }
 
-// util for api
+// parseURLParameters checks parameters and builds a query to be run.
 func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+	groupBy := ""
+	reduce := ""
 
 	//TODO change query to be based on input.
 
@@ -92,6 +114,27 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		if parameterFound && parameter[0] != "" {
 			anyMap[k] = parameter
 		}
+	}
+
+	// Check and validate groupby parameter
+	parameter, found := urlItems["groupby"]
+	if found && parameter[0] != "" {
+		_, funcFound := RegisterGroupBy[parameter[0]]
+		if !funcFound {
+			return Query{}, errors.New("Invalid groupby parameter")
+		}
+		groupBy = parameter[0]
+
+	}
+
+	// Check and validate reduce parameter
+	parameter, found = urlItems["reduce"]
+	if found && parameter[0] != "" {
+		_, funcFound := RegisterReduce[parameter[0]]
+		if !funcFound {
+			return Query{}, errors.New("Invalid reduce parameter")
+		}
+		reduce = parameter[0]
 	}
 
 	// TODO there must be better way
@@ -149,6 +192,8 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
+		GroupBy:  groupBy,
+		Reduce:   reduce,
 
 		Limit:      limit,
 		LimitGiven: limitGiven,

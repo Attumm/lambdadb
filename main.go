@@ -7,15 +7,6 @@ import (
 	"time"
 )
 
-type filterFuncc func(*Item, string) bool
-type registerFuncType map[string]filterFuncc
-type registerGroupByFunc map[string]func(*Item) string
-type registerGettersMap map[string]func(*Item) string
-type registerReduce map[string]func(Items) map[string]string
-type filterType map[string][]string
-type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
-type registerFormatMap map[string]formatRespFunc
-
 //Items as Example
 type labeledItems map[int]*Item
 type Items []*Item
@@ -86,7 +77,12 @@ func main() {
 
 	ITEMS = labeledItems{}
 
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
+	Operations = GroupedOperations{
+		Funcs:   RegisterFuncMap,
+		GroupBy: RegisterGroupBy,
+		Getters: RegisterGetters,
+		Reduce:  RegisterReduce,
+	}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
@@ -115,22 +111,25 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
+	// www frontend.
+	mux.Handle("/", http.FileServer(http.Dir("./www2")))
+	mux.Handle("/dsm-search", http.FileServer(http.Dir("./www2")))
+
 	if SETTINGS.Get("readonly") != "yes" {
 		mux.HandleFunc("/add/", addRest)
 		mux.HandleFunc("/rm/", rmRest)
 		mux.HandleFunc("/save/", saveRest)
 		mux.HandleFunc("/load/", loadRest)
-
-		mux.Handle("/", http.FileServer(http.Dir("./www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	}
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
 
-	if SETTINGS.Get("debug") == "yes" {
-		go runPrintMem()
-	}
+	/*
+		if SETTINGS.Get("debug") == "yes" {
+			go runPrintMem()
+		}
+	*/
 
 	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))
 }
