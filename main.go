@@ -11,15 +11,6 @@ import (
 	"time"
 )
 
-type filterFuncc func(*Item, string) bool
-type registerFuncType map[string]filterFuncc
-type registerGroupByFunc map[string]func(*Item) string
-type registerGettersMap map[string]func(*Item) string
-type registerReduce map[string]func(Items) map[string]string
-type filterType map[string][]string
-type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
-type registerFormatMap map[string]formatRespFunc
-
 //Items as Example
 type labeledItems map[int]*Item
 type Items []*Item
@@ -107,7 +98,12 @@ func main() {
 
 	ITEMS = labeledItems{}
 
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
+	Operations = GroupedOperations{
+		Funcs:   RegisterFuncMap,
+		GroupBy: RegisterGroupBy,
+		Getters: RegisterGetters,
+		Reduce:  RegisterReduce,
+	}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
@@ -163,6 +159,15 @@ func main() {
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
 	fmt.Printf(InfoColorN, msg)
+
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
+	fmt.Printf(InfoColorN, msg)
+
+	/*
+		if SETTINGS.Get("debug") == "yes" {
+			go runPrintMem()
+		}
+	*/
 
 	middleware := MIDDLEWARE(cors)
 	log.Fatal(http.ListenAndServe(ipPort, middleware(mux)))

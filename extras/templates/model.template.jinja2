@@ -8,6 +8,10 @@ import (
 	"sync"
 )
 
+type registerGroupByFunc map[string]func(*Item) string
+type registerGettersMap map[string]func(*Item) string
+type registerReduce map[string]func(Items) map[string]string
+
 type fieldIdxMap map[string]uint16
 type fieldMapIdx map[uint16]string
 type fieldItemmap map[uint16][]*Item

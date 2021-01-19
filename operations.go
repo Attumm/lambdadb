@@ -40,6 +40,7 @@ func (ft filterType) CacheKey() string {
 	return strings.Join(filterlist, "-")
 }
 
+type filterType map[string][]string
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
@@ -48,6 +49,9 @@ type Query struct {
 	Excludes  filterType
 	Anys      filterType
 	BitArrays filterType
+
+	GroupBy string
+	Reduce  string
 
 	GroupBy string
 	Reduce  string
@@ -94,6 +98,18 @@ func (q Query) CacheKey() (string, error) {
 		if filterFound {
 			return "", errors.New("bitarrays filters do not need to be cached")
 		}
+	keys := []string{
+		q.ReturnFormat,
+	}
+
+	return strings.Join(keys, "-"), nil
+}
+
+func decodeUrl(s string) string {
+	newS, err := url.QueryUnescape(s)
+	if err != nil {
+		fmt.Println("oh no error", err)
+		return s
 	}
 
 	keys := []string{
@@ -108,10 +124,13 @@ func (q Query) CacheKey() (string, error) {
 	return strings.Join(keys, "-"), nil
 }
 
+// parseURLParameters checks parameters and builds a query to be run.
 func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+	groupBy := ""
+	reduce := ""
 
 	groupBy := ""
 	reduce := ""
@@ -169,6 +188,20 @@ func parseURLParameters(r *http.Request) (Query, error) {
 
 	// Check and validate reduce parameter
 	parameter, found = r.Form["reduce"]
+
+	parameter, found := urlItems["groupby"]
+	if found && parameter[0] != "" {
+		_, funcFound := RegisterGroupBy[parameter[0]]
+		if !funcFound {
+			return Query{}, errors.New("Invalid groupby parameter")
+		}
+		groupBy = parameter[0]
+
+	}
+
+	// Check and validate reduce parameter
+	parameter, found = urlItems["reduce"]
+
 	if found && parameter[0] != "" {
 		_, funcFound := RegisterReduce[parameter[0]]
 		if !funcFound {
@@ -232,6 +265,8 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
+		GroupBy:  groupBy,
+		Reduce:   reduce,
 
 		GroupBy: groupBy,
 		Reduce:  reduce,
