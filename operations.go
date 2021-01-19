@@ -12,8 +12,10 @@ import (
 	"log"
 	"net/url"
 	"sort"
+
 	//"reflect"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -41,6 +43,16 @@ func (ft filterType) CacheKey() string {
 }
 
 type filterType map[string][]string
+
+func (ft filterType) CacheKey() string {
+	filterlist := []string{}
+	for k, v := range ft {
+		filterlist = append(filterlist, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(filterlist)
+	return strings.Join(filterlist, "-")
+}
+
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
@@ -98,11 +110,23 @@ func (q Query) CacheKey() (string, error) {
 		if filterFound {
 			return "", errors.New("bitarrays filters do not need to be cached")
 		}
+	}
+
+	if q.EarlyExit() {
+		return "", errors.New("not cached")
+	}
+
 	keys := []string{
+		q.Filters.CacheKey(),
+		q.Excludes.CacheKey(),
+		q.Anys.CacheKey(),
+		q.GroupBy,
+		q.Reduce,
 		q.ReturnFormat,
 	}
 
 	return strings.Join(keys, "-"), nil
+
 }
 
 func decodeUrl(s string) string {
@@ -147,6 +171,9 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	}
 
 	// we can post gejson data
+
+	urlItems := r.URL.Query()
+	// parse post geojson data
 	r.ParseForm()
 
 	if SETTINGS.Get("debug") == "yes" {

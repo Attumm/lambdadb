@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -45,11 +46,46 @@ func hanleQueryError(err error, w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(response)
 }
 
+type GroupByResult map[string]map[string]string
+
+var GroupByBodyCache = make(map[string]GroupByResult)
+var GroupByHeaderCache = make(map[string]HeaderData)
+
+var cacheLock = sync.RWMutex{}
+
+// isCached try to find repsonse in cache (groupby only)
+func isCached(w http.ResponseWriter, r *http.Request, query Query) bool {
+	cacheKey, err := query.CacheKey()
+
+	// fmt.Println(cacheKey)
+
+	if err == nil && len(query.GroupBy) > 0 && len(query.Reduce) > 0 {
+		cacheLock.Lock()
+		groupByResult, found := GroupByBodyCache[cacheKey]
+		headerCache, _ := GroupByHeaderCache[cacheKey]
+		cacheLock.Unlock()
+		if found {
+
+			w.Header().Set("Content-Type", "application/json")
+			for key, val := range headerCache {
+				w.Header().Set(key, val)
+			}
+			json.NewEncoder(w).Encode(groupByResult)
+			return found
+		}
+	}
+	return false
+}
+
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query, err := parseURLParameters(r)
 		if err != nil {
 			hanleQueryError(err, w)
+			return
+		}
+
+		if isCached(w, r, query) {
 			return
 		}
 
@@ -79,10 +115,10 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 		items = nil
 
 		if query.Reduce != "" {
-			result := make(map[string]map[string]string)
+			result := make(GroupByResult)
 			reduceFunc, reduceFuncFound := operations.Reduce[query.Reduce]
 			if !reduceFuncFound {
-				err = errors.New("invalid reduce")
+				err = errors.New("invalid reduce parameter value")
 				hanleQueryError(err, w)
 				return
 			}
@@ -95,7 +131,16 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 				return
 			}
 
+			// Cache group by repsonse
+			cacheLock.Lock()
+			cacheKey, _ := query.CacheKey()
+			GroupByBodyCache[cacheKey] = result
+			headerData := getHeaderData(items, query, queryTime)
+			GroupByHeaderCache[cacheKey] = headerData
+			cacheLock.Unlock()
+
 			json.NewEncoder(w).Encode(result)
+
 			return
 		}
 
@@ -449,6 +494,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+
 		for key, val := range headerData {
 			w.Header().Set(key, val)
 		}

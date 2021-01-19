@@ -6,7 +6,7 @@ import (
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
 	//"github.com/prometheus/client_golang/prometheus"
 	//"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
+	// "github.com/prometheus/client_golang/prometheus/promhttp"
 	"net/http" //  "runtime/debug" "github.com/pkg/profile")
 	"time"
 )
@@ -62,11 +62,17 @@ func loadcsv(itemChan ItemsChannel) {
 	}
 
 	// make sure channels are empty
-	time.Sleep(1 * time.Second)
-	S2CELLS.Sort()
-	fmt.Println("Sorted")
 	// add timeout there is no garantee ItemsChannel
 	// is empty and you miss a few records
+	time.Sleep(5 * time.Second)
+	S2CELLS.Sort()
+	fmt.Println("Sorted")
+
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+
+	GroupByBodyCache = make(map[string]GroupByResult)
+	GroupByHeaderCache = make(map[string]HeaderData)
 	// makeIndex()
 }
 
@@ -158,9 +164,6 @@ func main() {
 	cors := SETTINGS.Get("CORS") == "y"
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
-	fmt.Printf(InfoColorN, msg)
-
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
 
 	/*
