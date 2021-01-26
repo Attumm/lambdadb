@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	csv "github.com/JensRantil/go-csv"
+	"github.com/cheggaaa/pb"
 	"io"
 	"log"
 	"os"
 	"strings"
 	"unicode/utf8"
-
-	csv "github.com/JensRantil/go-csv"
-	"github.com/cheggaaa/pb"
 )
 
 func containsDelimiter(col string) bool {
@@ -59,7 +58,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	success := 0
 	failed := 0
 
-	items := Items{}
+	items := ItemsIn{}
 
 	for {
 		itemIn := ItemIn{}
@@ -113,10 +112,9 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		if len(items) > 100000 {
 			itemChan <- items
-			items = Items{}
+			items = ItemsIn{}
 		}
-		smallItem := itemIn.Shrink()
-		items = append(items, &smallItem)
+		items = append(items, &itemIn)
 		success++
 	}
 

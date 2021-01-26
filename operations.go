@@ -3,18 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/go-spatial/geom"
-	"github.com/go-spatial/geom/encoding/geojson"
 	"net/http"
-
-	// "reflect"
-	"errors"
-	"log"
 	"net/url"
 	"sort"
 
-	//"reflect"
-	"errors"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -139,6 +132,7 @@ func decodeUrl(s string) string {
 	keys := []string{
 		q.Filters.CacheKey(),
 		q.Excludes.CacheKey(),
+		q.BitArrays.CacheKey(),
 		q.Anys.CacheKey(),
 		q.GroupBy,
 		q.Reduce,
@@ -156,9 +150,6 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	groupBy := ""
 	reduce := ""
 
-	groupBy := ""
-	reduce := ""
-
 	//TODO change query to be based on input.
 
 	// parse params and body posts // (geo)json data
@@ -173,17 +164,12 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	// we can post gejson data
 
 	urlItems := r.URL.Query()
-	// parse post geojson data
+	// parse params and body posts // (geo)json data
 	r.ParseForm()
 
 	if SETTINGS.Get("debug") == "yes" {
-
 		for key, value := range r.Form {
 			fmt.Printf("F %s = %s\n", key, value)
-		}
-		for key, value := range urlItems {
-
-			fmt.Printf("P %s = %s\n", key, value)
 		}
 	}
 
@@ -204,6 +190,7 @@ func parseURLParameters(r *http.Request) (Query, error) {
 
 	// Check and validate groupby parameter
 	parameter, found := r.Form["groupby"]
+
 	if found && parameter[0] != "" {
 		_, funcFound1 := RegisterGroupBy[parameter[0]]
 		_, funcFound2 := RegisterGroupByCustom[parameter[0]]
@@ -217,6 +204,7 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	parameter, found = r.Form["reduce"]
 
 	parameter, found := urlItems["groupby"]
+
 	if found && parameter[0] != "" {
 		_, funcFound := RegisterGroupBy[parameter[0]]
 		if !funcFound {
@@ -227,7 +215,7 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	}
 
 	// Check and validate reduce parameter
-	parameter, found = urlItems["reduce"]
+	parameter, found = r.Form["reduce"]
 
 	if found && parameter[0] != "" {
 		_, funcFound := RegisterReduce[parameter[0]]
@@ -292,8 +280,9 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
-		GroupBy:  groupBy,
-		Reduce:   reduce,
+
+		GroupBy: groupBy,
+		Reduce:  reduce,
 
 		GroupBy: groupBy,
 		Reduce:  reduce,
@@ -466,7 +455,13 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	lock.RLock()
 	defer lock.RUnlock()
 
+<<<<<<< HEAD
 	for _, item := range items {
+=======
+	// TODO candidate for speedup
+
+	for _, item := range *items {
+>>>>>>> 164af00... start factoring bitarray into templateable code
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -518,12 +513,17 @@ func bitArrayFilter(
 
 	combinedBitArrays := make([]bitarray.BitArray, 0)
 
+<<<<<<< HEAD
 	for k := range operations.BitArrays {
 		parameter, foundkey := query.Filters["match-"+k]
 
 		if len(parameter) == 0 {
 			continue
 		}
+=======
+	for k, _ := range operations.BitArrays {
+		parameter, foundkey := query.Filters[k]
+>>>>>>> 164af00... start factoring bitarray into templateable code
 		if !foundkey {
 			continue
 		}
@@ -539,8 +539,13 @@ func bitArrayFilter(
 
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
+<<<<<<< HEAD
 	} else {
 		log.Println("no bitarrays found")
+=======
+		fmt.Println(bitArrayResult)
+	} else {
+>>>>>>> 164af00... start factoring bitarray into templateable code
 		return nil, errors.New("no bitarray found")
 	}
 
@@ -551,9 +556,16 @@ func bitArrayFilter(
 		}
 	}
 
+<<<<<<< HEAD
 	// TODO OR
 	// TODO EXCLUDE
 
+=======
+	fmt.Println(len(combinedBitArrays))
+	// TODO OR
+	// TODO EXCLUDE
+	fmt.Println(bitArrayResult)
+>>>>>>> 164af00... start factoring bitarray into templateable code
 	if bitArrayResult == nil {
 		log.Fatal("something went wrong with bitarray..")
 	}
@@ -561,8 +573,26 @@ func bitArrayFilter(
 	newItems := make(labeledItems, 0)
 	labels := bitArrayResult.ToNums()
 
+<<<<<<< HEAD
 	for _, l := range labels {
 		newItems = append(newItems, (*items)[int(l)])
+=======
+	/*
+		b1 := (*items)[int(labels[0])].Serialize().Buurtcode
+		b2 := (*items)[int(labels[len(labels)-1])].Serialize().Buurtcode
+
+		// sanity check.
+		if !(b1 == b2 && b2 == p[0]) {
+			msg := fmt.Sprintf(
+				"bitarray indexing error values mismatch! !(%s == %s == %s)",
+				b1, b2, p[0])
+			log.Fatal(msg)
+		}
+	*/
+
+	for _, l := range labels {
+		newItems[int(l)] = (*items)[int(l)]
+>>>>>>> 164af00... start factoring bitarray into templateable code
 	}
 
 	return newItems, nil
@@ -592,6 +622,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		nextItems = &filteredItems
 	}
 
+<<<<<<< HEAD
 	if query.IndexGiven && len(STR_INDEX) > 0 {
 		items = make(Items, 0)
 		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
@@ -622,10 +653,12 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		}
 	}
 
+=======
+>>>>>>> 164af00... start factoring bitarray into templateable code
 	if query.EarlyExit() {
-		newItems = filteredEarlyExit(items, operations, query)
+		newItems = filteredEarlyExit(nextItems, operations, query)
 	} else {
-		newItems = filtered(items, operations, query)
+		newItems = filtered(nextItems, operations, query)
 	}
 
 	diff := time.Since(start)

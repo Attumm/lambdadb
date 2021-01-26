@@ -67,8 +67,12 @@ func (c cellIndexNode) IsEmpty() bool {
 	return c.ID == 0
 }
 
-//GeoIndex for each items determine S2Cell and store it.
+// GeoIndex for each items determine S2Cell and store it.
 func (i Item) GeoIndex(label int) error {
+
+	lock.Lock()
+	defer lock.Unlock()
+
 	if i.GetGeometry() == "" {
 		return fmt.Errorf("missing wkt geometry")
 	}
@@ -154,7 +158,7 @@ func SearchGeoItems(cu s2.CellUnion) labeledItems {
 
 	for _, i := range S2CELLS[min : max+1] {
 		if cu.ContainsCellID(i.ID) {
-			newItems[i.Label] = ITEMS[i.Label]
+			newItems = append(newItems, ITEMS[i.Label])
 		}
 	}
 
