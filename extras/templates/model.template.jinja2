@@ -6,15 +6,19 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/Workiva/go-datastructures/bitarray"
 )
 
 type registerGroupByFunc map[string]func(*Item) string
 type registerGettersMap map[string]func(*Item) string
 type registerReduce map[string]func(Items) map[string]string
 
+type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
+
 type fieldIdxMap map[string]uint16
 type fieldMapIdx map[uint16]string
-type fieldItemmap map[uint16][]*Item
+type fieldItemsMap map[uint16]bitarray.BitArray
 
 // Column maps.
 // Store for each non distinct/repeated column
@@ -31,7 +35,11 @@ var {columnname} fieldMapIdx
 var {columnname}Items fieldItemmap
 */
 
+// item map lock
 var lock = sync.RWMutex{}
+
+// bitArray Lock
+var balock = sync.RWMutex{}
 
 func init() {
 
@@ -62,13 +70,14 @@ type ItemOut struct {
 
 type Item struct {
 
+	Label                int  // internal index in ITEMS
 {{columnsItem}}
 
 }
 
 
 // Shrink create smaller Item using uint16
-func (i ItemIn) Shrink() Item {
+func (i ItemIn) Shrink(label int) Item {
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -77,9 +86,39 @@ func (i ItemIn) Shrink() Item {
 
 	return Item{
 
+		label,
+
 {{shrinkItemFields}}
 
 	}
+}
+
+// Store selected columns in byte array
+func (i Item) StoreBitArrayColumns() {
+
+	balock.Lock()
+	defer balock.Unlock()
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	/*
+
+	var ba = birarray.BitArray
+	var ok = error
+
+	// Column Buurtcode has byte arrays for
+	ba, ok = BuurtcodeItems[i.Buurtcode]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		BuurtcodeItems[i.Buurtcode] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+
+	TODO ADD BIT-ARRAY COLUMNS.
+	*/
+
 }
 
 func (i Item) Serialize() ItemOut {
@@ -170,6 +209,7 @@ type GroupedOperations struct {
 	GroupBy registerGroupByFunc
 	Getters registerGettersMap
 	Reduce  registerReduce
+	BitArrays registerBitArray
 }
 
 var Operations GroupedOperations
@@ -178,6 +218,7 @@ var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
 var RegisterGetters registerGettersMap
 var RegisterReduce registerReduce
+var RegisterBitArray registerBitArray
 
 // ValidateRegsiters validate exposed columns do match filter names
 func validateRegisters() {
@@ -201,6 +242,10 @@ func init() {
 
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
+	// example RegisterFuncMap["search"] = FilterEkeyStartsWith
+
+	//RegisterFuncMap["value"] = 'EDITYOURSELF'
+	// example RegisterGetters["value"] = GettersEkey
 
 	// register filters
 
