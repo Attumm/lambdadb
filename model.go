@@ -1,20 +1,27 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/Workiva/go-datastructures/bitarray"
 )
+
+const datasetSize uint64 = 8300000
 
 type registerGroupByFunc map[string]func(*Item) string
 type registerGettersMap map[string]func(*Item) string
 type registerReduce map[string]func(Items) map[string]string
 
+type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
+
 type fieldIdxMap map[string]uint16
 type fieldMapIdx map[uint16]string
-type fieldItemmap map[uint16][]*Item
+type fieldItemsMap map[uint16]bitarray.BitArray
 
 // Column maps.
 // Store for each non distinct/repeated column
@@ -49,6 +56,7 @@ var Gemeentenaam fieldMapIdx
 var BuurtcodeTracker uint16
 var BuurtcodeIdxMap fieldIdxMap
 var Buurtcode fieldMapIdx
+var BuurtcodeItems fieldItemsMap
 
 var WijkcodeTracker uint16
 var WijkcodeIdxMap fieldIdxMap
@@ -90,6 +98,7 @@ var {columnname}Items fieldItemmap
 */
 
 var lock = sync.RWMutex{}
+var balock = sync.RWMutex{}
 
 func init() {
 
@@ -120,6 +129,7 @@ func init() {
 	BuurtcodeTracker = 0
 	BuurtcodeIdxMap = make(fieldIdxMap)
 	Buurtcode = make(fieldMapIdx)
+	BuurtcodeItems = make(fieldItemsMap)
 
 	WijkcodeTracker = 0
 	WijkcodeIdxMap = make(fieldIdxMap)
@@ -212,6 +222,7 @@ type ItemOut struct {
 }
 
 type Item struct {
+	Label                int
 	Pid                  string
 	Vid                  string
 	Numid                string
@@ -233,11 +244,11 @@ type Item struct {
 	GasAansluitingen2020 uint16
 	Gasm32020            uint16
 	Kwh2020              uint16
-	Gebruiksdoelen       uint16
+	Gebruiksdoelen       []uint16
 }
 
 // Shrink create smaller Item using uint16
-func (i ItemIn) Shrink() Item {
+func (i ItemIn) Shrink(label int) Item {
 
 	lock.Lock()
 	defer lock.Unlock()
@@ -317,6 +328,7 @@ func (i ItemIn) Shrink() Item {
 		BuurtcodeIdxMap[i.Buurtcode] = BuurtcodeTracker
 		// increase tracker
 		BuurtcodeTracker += 1
+
 	}
 
 	//check if column value is already present
@@ -398,17 +410,35 @@ func (i ItemIn) Shrink() Item {
 
 	//check if column value is already present
 	//else store new key
-	if _, ok := GebruiksdoelenIdxMap[i.Gebruiksdoelen]; !ok {
-		// store Gebruiksdoelen in map at current index of tracker
-		Gebruiksdoelen[GebruiksdoelenTracker] = i.Gebruiksdoelen
-		// store key - idx
-		GebruiksdoelenIdxMap[i.Gebruiksdoelen] = GebruiksdoelenTracker
-		// increase tracker
-		GebruiksdoelenTracker += 1
+	doelen := make([]uint16, 0)
+
+	// parsing {a, b} array values
+	// string should be at least 2 example "{}" == size 2
+	if len(i.Gebruiksdoelen) > 2 {
+
+		gebruiksdoelen, err := ParsePGArray(i.Gebruiksdoelen)
+		if err != nil {
+			log.Fatal(err, "error parsing array ")
+		}
+
+		for _, gd := range gebruiksdoelen {
+			if _, ok := GebruiksdoelenIdxMap[gd]; !ok {
+				// store Gebruiksdoelen in map at current index of tracker
+				Gebruiksdoelen[GebruiksdoelenTracker] = gd
+				// store key - idx
+				GebruiksdoelenIdxMap[gd] = GebruiksdoelenTracker
+				// increase tracker
+				GebruiksdoelenTracker += 1
+			}
+		}
+
+		for _, v := range gebruiksdoelen {
+			doelen = append(doelen, GebruiksdoelenIdxMap[v])
+		}
 	}
 
 	return Item{
-
+		label,
 		i.Pid,
 		i.Vid,
 		i.Numid,
@@ -430,8 +460,27 @@ func (i ItemIn) Shrink() Item {
 		GasAansluitingen2020IdxMap[i.GasAansluitingen2020],
 		Gasm32020IdxMap[i.Gasm32020],
 		Kwh2020IdxMap[i.Kwh2020],
-		GebruiksdoelenIdxMap[i.Gebruiksdoelen],
+		doelen,
 	}
+}
+
+// Store selected columns in byte array
+func (i Item) StoreBitArrayColumns() {
+
+	balock.Lock()
+	defer balock.Unlock()
+
+	lock.RLock()
+	defer lock.RUnlock()
+
+	// Column Buurtcode has byte arrays for
+	ba, ok := BuurtcodeItems[i.Buurtcode]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		BuurtcodeItems[i.Buurtcode] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
 }
 
 func (i Item) Serialize() ItemOut {
@@ -440,7 +489,6 @@ func (i Item) Serialize() ItemOut {
 	defer lock.RUnlock()
 
 	return ItemOut{
-
 		i.Pid,
 		i.Vid,
 		i.Numid,
@@ -462,7 +510,7 @@ func (i Item) Serialize() ItemOut {
 		GasAansluitingen2020[i.GasAansluitingen2020],
 		Gasm32020[i.Gasm32020],
 		Kwh2020[i.Kwh2020],
-		Gebruiksdoelen[i.Gebruiksdoelen],
+		GettersGebruiksdoelen(&i),
 	}
 }
 
@@ -551,7 +599,7 @@ func (i Item) Row() []string {
 		GasAansluitingen2020[i.GasAansluitingen2020],
 		Gasm32020[i.Gasm32020],
 		Kwh2020[i.Kwh2020],
-		Gebruiksdoelen[i.Gebruiksdoelen],
+		GettersGebruiksdoelen(&i),
 	}
 }
 
@@ -576,6 +624,10 @@ func FilterPidStartsWith(i *Item, s string) bool {
 // match filters Pid
 func FilterPidMatch(i *Item, s string) bool {
 	return i.Pid == s
+}
+
+func makeSArray(s string) []string {
+	return []string{s}
 }
 
 // getter Pid
@@ -985,22 +1037,59 @@ func GettersKwh2020(i *Item) string {
 
 // contain filter Gebruiksdoelen
 func FilterGebruiksdoelenContains(i *Item, s string) bool {
-	return strings.Contains(Gebruiksdoelen[i.Gebruiksdoelen], s)
+	for _, v := range i.Gebruiksdoelen {
+		vs := Gebruiksdoelen[v]
+		if strings.Contains(vs, s) {
+			return true
+		}
+	}
+	return false
 }
 
 // startswith filter Gebruiksdoelen
 func FilterGebruiksdoelenStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Gebruiksdoelen[i.Gebruiksdoelen], s)
+	for _, v := range i.Gebruiksdoelen {
+		vs := Gebruiksdoelen[v]
+		if strings.HasPrefix(vs, s) {
+			return true
+		}
+	}
+	return false
+
 }
 
 // match filters Gebruiksdoelen
 func FilterGebruiksdoelenMatch(i *Item, s string) bool {
-	return Gebruiksdoelen[i.Gebruiksdoelen] == s
+	for _, v := range i.Gebruiksdoelen {
+		vs := Gebruiksdoelen[v]
+		if vs == s {
+			return true
+		}
+	}
+	return false
 }
 
 // getter Gebruiksdoelen
 func GettersGebruiksdoelen(i *Item) string {
-	return Gebruiksdoelen[i.Gebruiksdoelen]
+	doelen := make([]string, 0)
+	for _, v := range i.Gebruiksdoelen {
+		vs := Gebruiksdoelen[v]
+		doelen = append(doelen, vs)
+	}
+	return strings.Join(doelen, ", ")
+}
+
+// getter Gebruiksdoelen
+func GroupByGettersGebruiksdoelen(i *Item) string {
+	doel := "unknown"
+
+	if len(i.Gebruiksdoelen) > 1 {
+		return "mixed"
+	}
+	if len(i.Gebruiksdoelen) == 1 {
+		return Gebruiksdoelen[i.Gebruiksdoelen[0]]
+	}
+	return doel
 }
 
 /*
@@ -1035,10 +1124,11 @@ func reduceCount(items Items) map[string]string {
 }
 
 type GroupedOperations struct {
-	Funcs   registerFuncType
-	GroupBy registerGroupByFunc
-	Getters registerGettersMap
-	Reduce  registerReduce
+	Funcs     registerFuncType
+	GroupBy   registerGroupByFunc
+	Getters   registerGettersMap
+	Reduce    registerReduce
+	BitArrays registerBitArray
 }
 
 var Operations GroupedOperations
@@ -1047,6 +1137,7 @@ var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
 var RegisterGetters registerGettersMap
 var RegisterReduce registerReduce
+var RegisterBitArray registerBitArray
 
 // ValidateRegsiters validate exposed columns do match filter names
 func validateRegisters() {
@@ -1061,15 +1152,38 @@ func validateRegisters() {
 	}
 }
 
+// GetBitArrayBuurtcode for given v string see if there is
+// a bitarray created.
+func GetBitArrayBuurtcode(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := BuurtcodeIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value")
+	}
+
+	ba, ok := BuurtcodeItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value")
+	}
+
+	return ba, nil
+
+}
+
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
+	RegisterBitArray = make(registerBitArray)
 
-	// register search filter.
+	// Register search filter.
 	RegisterFuncMap["search"] = FilterEkeyStartsWith
+	// RegisterFuncMap["search"] = 'EDITYOURSELF'
+	RegisterGetters["value"] = GettersEkey
 
 	// register filters
 
@@ -1156,6 +1270,7 @@ func init() {
 	RegisterFuncMap["startswith-buurtcode"] = FilterBuurtcodeStartsWith
 	RegisterGetters["buurtcode"] = GettersBuurtcode
 	RegisterGroupBy["buurtcode"] = GettersBuurtcode
+	RegisterBitArray["match-buurtcode"] = GetBitArrayBuurtcode
 
 	//register filters for Wijkcode
 	RegisterFuncMap["match-wijkcode"] = FilterWijkcodeMatch
@@ -1226,6 +1341,7 @@ func init() {
 	RegisterFuncMap["startswith-gebruiksdoelen"] = FilterGebruiksdoelenStartsWith
 	RegisterGetters["gebruiksdoelen"] = GettersGebruiksdoelen
 	RegisterGroupBy["gebruiksdoelen"] = GettersGebruiksdoelen
+	RegisterGroupBy["gebruiksdoelen-mixed"] = GroupByGettersGebruiksdoelen
 
 	validateRegisters()
 
@@ -1339,10 +1455,10 @@ func createSort(items Items) sortLookup {
 		"-kwh_2020": func(i, j int) bool { return Kwh2020[items[i].Kwh2020] > Kwh2020[items[j].Kwh2020] },
 
 		"gebruiksdoelen": func(i, j int) bool {
-			return Gebruiksdoelen[items[i].Gebruiksdoelen] < Gebruiksdoelen[items[j].Gebruiksdoelen]
+			return GettersGebruiksdoelen(items[i]) < GettersGebruiksdoelen(items[j])
 		},
 		"-gebruiksdoelen": func(i, j int) bool {
-			return Gebruiksdoelen[items[i].Gebruiksdoelen] > Gebruiksdoelen[items[j].Gebruiksdoelen]
+			return GettersGebruiksdoelen(items[i]) > GettersGebruiksdoelen(items[j])
 		},
 
 		/*

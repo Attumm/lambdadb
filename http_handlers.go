@@ -61,15 +61,12 @@ var cacheLock = sync.RWMutex{}
 func isCached(w http.ResponseWriter, r *http.Request, query Query) bool {
 	cacheKey, err := query.CacheKey()
 
-	// fmt.Println(cacheKey)
-
 	if err == nil && len(query.GroupBy) > 0 && len(query.Reduce) > 0 {
 		cacheLock.Lock()
 		groupByResult, found := GroupByBodyCache[cacheKey]
 		headerCache, _ := GroupByHeaderCache[cacheKey]
 		cacheLock.Unlock()
 		if found {
-
 			w.Header().Set("Content-Type", "application/json")
 			for key, val := range headerCache {
 				w.Header().Set(key, val)
@@ -89,9 +86,10 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			return
 		}
 
-		if isCached(w, r, query) {
-			return
-		}
+		//if isCached(w, r, query) {
+		//	fmt.Println(InfoColor, "cache used")
+		//	return
+		//}
 
 		items, queryTime := runQuery(&ITEMS, query, operations)
 
@@ -151,26 +149,10 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 	}
 }
 
-func ItemChanWorker(itemChan ItemsChannel) {
-	label := 0
-
-	for items := range itemChan {
-		lock.Lock()
-		for _, itm := range items {
-			if itm != nil {
-				ITEMS[label] = itm
-				itm.GeoIndex(label)
-				label++
-			}
-		}
-		lock.Unlock()
-	}
-}
-
 func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jsonDecoder := json.NewDecoder(r.Body)
-		var items Items
+		var items ItemsIn
 		err := jsonDecoder.Decode(&items)
 		if err != nil {
 			fmt.Println(err)
@@ -313,37 +295,6 @@ func validColumn(column string, columns []string) bool {
 	return false
 }
 
-// Other wise also known in mathematics as set but in http name it would be confused with the verb set.
-//func UniqueValuesInColumn(w http.ResponseWriter, r *http.Request) {
-//	column := r.URL.Path[1:]
-//	response := make(map[string]string)
-//	if len(ITEMS) == 0 {
-//		response["message"] = fmt.Sprint("invalid input: ", column)
-//		w.WriteHeader(400)
-//		json.NewEncoder(w).Encode(response)
-//		return
-//
-//	}
-//	validColumns := ITEMS[0].Columns()
-//
-//	if !validColumn(column, validColumns) {
-//		w.WriteHeader(400)
-//
-//		response["message"] = fmt.Sprint("invalid input: ", column)
-//		response["input"] = column
-//		response["valid input"] = strings.Join(validColumns, ", ")
-//		json.NewEncoder(w).Encode(response)
-//		return
-//	}
-//	set := make(map[string]bool)
-//	for item := range ITEMS {
-//		r := reflect.ValueOf(item)
-//		value := reflect.Indirect(r).FieldByName(column)
-//		valu
-//		set[value.Str()] = true
-//	}
-//
-//}
 type ShowItem struct {
 	IsShow bool   `json:"isShow"`
 	Label  string `json:"label"`
@@ -404,16 +355,19 @@ func CORS(h http.Handler) http.Handler {
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query, err := parseURLParameters(r)
+
 		if err != nil {
 			hanleQueryError(err, w)
 			return
 		}
 
 		items, queryTime := runQuery(&ITEMS, query, operations)
+
 		if len(items) == 0 {
 			w.WriteHeader(404)
 			return
 		}
+
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
@@ -448,11 +402,14 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]
 		}
-		if _, ok := operations.Getters[column]; !ok {
-			w.WriteHeader(404)
-			w.Write([]byte("wrong column name"))
-			return
-		}
+
+		/*
+			if _, ok := operations.Getters[column]; !ok {
+				w.WriteHeader(404)
+				w.Write([]byte("wrong column name"))
+				return
+			}
+		*/
 
 		results, queryTime := runTypeAheadQuery(&ITEMS, column, query, operations)
 		if len(results) == 0 {

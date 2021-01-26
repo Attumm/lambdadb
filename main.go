@@ -7,18 +7,6 @@ import (
 	"time"
 )
 
-//Items as Example
-type labeledItems map[int]*Item
-type Items []*Item
-type ItemsIn []*ItemIn
-type ItemsOut []*ItemOut
-
-type ItemsGroupedBy map[string]Items
-type ItemsChannel chan Items
-
-var ITEMS labeledItems
-var itemChan ItemsChannel
-
 type jwtConfig struct {
 	Enabled      bool
 	SharedSecret string
@@ -79,15 +67,18 @@ func main() {
 	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
 	SETTINGS.Set("debug", "no", "print memory usage")
 
+	SETTINGS.Set("groupbycache", "yes", "use in memory cache")
+
 	SETTINGS.Parse()
 
-	ITEMS = labeledItems{}
+	// ITEMS = labeledItems{}
 
 	Operations = GroupedOperations{
-		Funcs:   RegisterFuncMap,
-		GroupBy: RegisterGroupBy,
-		Getters: RegisterGetters,
-		Reduce:  RegisterReduce,
+		Funcs:     RegisterFuncMap,
+		GroupBy:   RegisterGroupBy,
+		Getters:   RegisterGetters,
+		Reduce:    RegisterReduce,
+		BitArrays: RegisterBitArray,
 	}
 	itemChan := make(ItemsChannel, 1000)
 
