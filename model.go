@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"log"
 	"sort"
 	"strconv"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/Workiva/go-datastructures/bitarray"
 )
-
-const datasetSize uint64 = 8300000
 
 type registerGroupByFunc map[string]func(*Item) string
 type registerGettersMap map[string]func(*Item) string
