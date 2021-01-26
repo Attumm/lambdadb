@@ -64,9 +64,11 @@ func isCached(w http.ResponseWriter, r *http.Request, query Query) bool {
 		cacheLock.Unlock()
 		if found {
 			w.Header().Set("Content-Type", "application/json")
+
 			for key, val := range headerCache {
 				w.Header().Set(key, val)
 			}
+			w.Header().Set("used-cache", "yes")
 			json.NewEncoder(w).Encode(groupByResult)
 			return found
 		}
@@ -82,10 +84,9 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			return
 		}
 
-		//if isCached(w, r, query) {
-		//	fmt.Println(InfoColor, "cache used")
-		//	return
-		//}
+		if isCached(w, r, query) {
+			return
+		}
 
 		items, queryTime := runQuery(&ITEMS, query, operations)
 
