@@ -86,7 +86,7 @@ func (q Query) CacheKey() (string, error) {
 	for k := range RegisterBitArray {
 		_, filterFound := q.Filters[k]
 		if filterFound {
-			return "", errors.New("bitarrays not cached")
+			return "", errors.New("bitarrays no need to be cached")
 		}
 	}
 
@@ -565,6 +565,7 @@ func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
 		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
 	}
 
+	headerData["Cache-Control"] = "public, max-age=300"
 	headerData["Total-Items"] = strconv.Itoa(len(items))
 	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
 	bytesQuery, _ := json.Marshal(query)
