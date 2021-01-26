@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
-	//"github.com/prometheus/client_golang/prometheus"
-	//"github.com/prometheus/client_golang/prometheus/promauto"
-	// "github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http" //  "runtime/debug" "github.com/pkg/profile")
 	"time"
 )
 
@@ -156,12 +155,6 @@ func main() {
 
 	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
 	fmt.Printf(InfoColorN, msg)
-
-	/*
-		if SETTINGS.Get("debug") == "yes" {
-			go runPrintMem()
-		}
-	*/
 
 	middleware := MIDDLEWARE(cors)
 	log.Fatal(http.ListenAndServe(ipPort, middleware(mux)))

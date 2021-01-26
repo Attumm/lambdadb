@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"log"
-	"sort"
+	//"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -35,8 +35,6 @@ func (ft filterType) CacheKey() string {
 	return strings.Join(filterlist, "-")
 }
 
-type filterType map[string][]string
-
 func (ft filterType) CacheKey() string {
 	filterlist := []string{}
 	for k, v := range ft {
@@ -54,9 +52,6 @@ type Query struct {
 	Excludes  filterType
 	Anys      filterType
 	BitArrays filterType
-
-	GroupBy string
-	Reduce  string
 
 	GroupBy string
 	Reduce  string
@@ -125,14 +120,12 @@ func (q Query) CacheKey() (string, error) {
 func decodeUrl(s string) string {
 	newS, err := url.QueryUnescape(s)
 	if err != nil {
-		fmt.Println("oh no error", err)
-		return s
+		return "", errors.New("bitarrays not cached")
 	}
 
 	keys := []string{
 		q.Filters.CacheKey(),
 		q.Excludes.CacheKey(),
-		q.BitArrays.CacheKey(),
 		q.Anys.CacheKey(),
 		q.GroupBy,
 		q.Reduce,
@@ -455,13 +448,7 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	lock.RLock()
 	defer lock.RUnlock()
 
-<<<<<<< HEAD
 	for _, item := range items {
-=======
-	// TODO candidate for speedup
-
-	for _, item := range *items {
->>>>>>> 164af00... start factoring bitarray into templateable code
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -513,17 +500,12 @@ func bitArrayFilter(
 
 	combinedBitArrays := make([]bitarray.BitArray, 0)
 
-<<<<<<< HEAD
 	for k := range operations.BitArrays {
 		parameter, foundkey := query.Filters["match-"+k]
 
 		if len(parameter) == 0 {
 			continue
 		}
-=======
-	for k, _ := range operations.BitArrays {
-		parameter, foundkey := query.Filters[k]
->>>>>>> 164af00... start factoring bitarray into templateable code
 		if !foundkey {
 			continue
 		}
@@ -539,13 +521,7 @@ func bitArrayFilter(
 
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
-<<<<<<< HEAD
 	} else {
-		log.Println("no bitarrays found")
-=======
-		fmt.Println(bitArrayResult)
-	} else {
->>>>>>> 164af00... start factoring bitarray into templateable code
 		return nil, errors.New("no bitarray found")
 	}
 
@@ -556,16 +532,9 @@ func bitArrayFilter(
 		}
 	}
 
-<<<<<<< HEAD
 	// TODO OR
 	// TODO EXCLUDE
 
-=======
-	fmt.Println(len(combinedBitArrays))
-	// TODO OR
-	// TODO EXCLUDE
-	fmt.Println(bitArrayResult)
->>>>>>> 164af00... start factoring bitarray into templateable code
 	if bitArrayResult == nil {
 		log.Fatal("something went wrong with bitarray..")
 	}
@@ -573,26 +542,8 @@ func bitArrayFilter(
 	newItems := make(labeledItems, 0)
 	labels := bitArrayResult.ToNums()
 
-<<<<<<< HEAD
 	for _, l := range labels {
 		newItems = append(newItems, (*items)[int(l)])
-=======
-	/*
-		b1 := (*items)[int(labels[0])].Serialize().Buurtcode
-		b2 := (*items)[int(labels[len(labels)-1])].Serialize().Buurtcode
-
-		// sanity check.
-		if !(b1 == b2 && b2 == p[0]) {
-			msg := fmt.Sprintf(
-				"bitarray indexing error values mismatch! !(%s == %s == %s)",
-				b1, b2, p[0])
-			log.Fatal(msg)
-		}
-	*/
-
-	for _, l := range labels {
-		newItems[int(l)] = (*items)[int(l)]
->>>>>>> 164af00... start factoring bitarray into templateable code
 	}
 
 	return newItems, nil
@@ -622,7 +573,6 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		nextItems = &filteredItems
 	}
 
-<<<<<<< HEAD
 	if query.IndexGiven && len(STR_INDEX) > 0 {
 		items = make(Items, 0)
 		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
@@ -653,8 +603,6 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		}
 	}
 
-=======
->>>>>>> 164af00... start factoring bitarray into templateable code
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(nextItems, operations, query)
 	} else {
