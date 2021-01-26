@@ -48,6 +48,7 @@ var LabelscoreDefinitief fieldMapIdx
 var GemeentecodeTracker uint16
 var GemeentecodeIdxMap fieldIdxMap
 var Gemeentecode fieldMapIdx
+var GemeentecodeItems fieldItemsMap
 
 var GemeentenaamTracker uint16
 var GemeentenaamIdxMap fieldIdxMap
@@ -61,6 +62,7 @@ var BuurtcodeItems fieldItemsMap
 var WijkcodeTracker uint16
 var WijkcodeIdxMap fieldIdxMap
 var Wijkcode fieldMapIdx
+var WijkcodeItems fieldItemsMap
 
 var ProvinciecodeTracker uint16
 var ProvinciecodeIdxMap fieldIdxMap
@@ -121,6 +123,7 @@ func init() {
 	GemeentecodeTracker = 0
 	GemeentecodeIdxMap = make(fieldIdxMap)
 	Gemeentecode = make(fieldMapIdx)
+	GemeentecodeItems = make(fieldItemsMap)
 
 	GemeentenaamTracker = 0
 	GemeentenaamIdxMap = make(fieldIdxMap)
@@ -134,6 +137,7 @@ func init() {
 	WijkcodeTracker = 0
 	WijkcodeIdxMap = make(fieldIdxMap)
 	Wijkcode = make(fieldMapIdx)
+	WijkcodeItems = make(fieldItemsMap)
 
 	ProvinciecodeTracker = 0
 	ProvinciecodeIdxMap = make(fieldIdxMap)
@@ -480,6 +484,22 @@ func (i Item) StoreBitArrayColumns() {
 		BuurtcodeItems[i.Buurtcode] = ba
 	}
 
+	ba.SetBit(uint64(i.Label))
+
+	// Column Wijkcode has byte arrays for
+	ba, ok = WijkcodeItems[i.Wijkcode]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		WijkcodeItems[i.Wijkcode] = ba
+	}
+	ba.SetBit(uint64(i.Label))
+
+	// Column Wijkcode has byte arrays for
+	ba, ok = GemeentecodeItems[i.Gemeentecode]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		GemeentecodeItems[i.Gemeentecode] = ba
+	}
 	ba.SetBit(uint64(i.Label))
 }
 
@@ -1172,6 +1192,46 @@ func GetBitArrayBuurtcode(v string) (bitarray.BitArray, error) {
 
 }
 
+// GetBitArrayWijkcode for given v string see if there is
+// a bitarray created.
+func GetBitArrayWijkcode(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := WijkcodeIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value")
+	}
+
+	ba, ok := WijkcodeItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value")
+	}
+
+	return ba, nil
+
+}
+
+// GetBitArrayWijkcode for given v string see if there is
+// a bitarray created.
+func GetBitArrayGemeentecode(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := GemeentecodeIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value")
+	}
+
+	ba, ok := GemeentecodeItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value")
+	}
+
+	return ba, nil
+
+}
+
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
@@ -1256,6 +1316,7 @@ func init() {
 	RegisterFuncMap["startswith-gemeentecode"] = FilterGemeentecodeStartsWith
 	RegisterGetters["gemeentecode"] = GettersGemeentecode
 	RegisterGroupBy["gemeentecode"] = GettersGemeentecode
+	RegisterBitArray["match-gemeentecode"] = GetBitArrayGemeentecode
 
 	//register filters for Gemeentenaam
 	RegisterFuncMap["match-gemeentenaam"] = FilterGemeentenaamMatch
@@ -1278,6 +1339,7 @@ func init() {
 	RegisterFuncMap["startswith-wijkcode"] = FilterWijkcodeStartsWith
 	RegisterGetters["wijkcode"] = GettersWijkcode
 	RegisterGroupBy["wijkcode"] = GettersWijkcode
+	RegisterBitArray["match-wijkcode"] = GetBitArrayWijkcode
 
 	//register filters for Provinciecode
 	RegisterFuncMap["match-provinciecode"] = FilterProvinciecodeMatch

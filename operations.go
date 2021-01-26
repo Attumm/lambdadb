@@ -79,11 +79,20 @@ func (q Query) CacheKey() (string, error) {
 	if q.EarlyExit() {
 		return "", errors.New("not cached")
 	}
+	if q.GeometryGiven {
+		return "", errors.New("geo not cached")
+	}
+
+	for k := range RegisterBitArray {
+		_, filterFound := q.Filters[k]
+		if filterFound {
+			return "", errors.New("bitarrays not cached")
+		}
+	}
 
 	keys := []string{
 		q.Filters.CacheKey(),
 		q.Excludes.CacheKey(),
-		q.BitArrays.CacheKey(),
 		q.Anys.CacheKey(),
 		q.GroupBy,
 		q.Reduce,
@@ -419,6 +428,9 @@ func bitArrayFilter(
 
 	for k, _ := range operations.BitArrays {
 		parameter, foundkey := query.Filters[k]
+		if len(parameter) == 0 {
+			continue
+		}
 		if !foundkey {
 			continue
 		}
@@ -434,7 +446,6 @@ func bitArrayFilter(
 
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
-		fmt.Println(bitArrayResult)
 	} else {
 		return nil, errors.New("no bitarray found")
 	}
@@ -446,10 +457,9 @@ func bitArrayFilter(
 		}
 	}
 
-	fmt.Println(len(combinedBitArrays))
 	// TODO OR
 	// TODO EXCLUDE
-	fmt.Println(bitArrayResult)
+
 	if bitArrayResult == nil {
 		log.Fatal("something went wrong with bitarray..")
 	}
@@ -457,21 +467,8 @@ func bitArrayFilter(
 	newItems := make(labeledItems, 0)
 	labels := bitArrayResult.ToNums()
 
-	/*
-		b1 := (*items)[int(labels[0])].Serialize().Buurtcode
-		b2 := (*items)[int(labels[len(labels)-1])].Serialize().Buurtcode
-
-		// sanity check.
-		if !(b1 == b2 && b2 == p[0]) {
-			msg := fmt.Sprintf(
-				"bitarray indexing error values mismatch! !(%s == %s == %s)",
-				b1, b2, p[0])
-			log.Fatal(msg)
-		}
-	*/
-
 	for _, l := range labels {
-		newItems[int(l)] = (*items)[int(l)]
+		newItems = append(newItems, (*items)[int(l)])
 	}
 
 	return newItems, nil

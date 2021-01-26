@@ -29,7 +29,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 				smallItem := itm.Shrink(label)
 				smallItem.StoreBitArrayColumns()
 				ITEMS = append(ITEMS, &smallItem)
-				//ITEMS[label] = &smallItem
+				// ITEMS[label] = &smallItem
 				if ITEMS[label] != &smallItem {
 					log.Fatal("storing item index off")
 				}
