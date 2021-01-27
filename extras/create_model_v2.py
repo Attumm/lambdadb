@@ -2,11 +2,20 @@
 """
 Load first rows from csv, ask some questions
 and generate a models.go to jumpstart
-your project for the given csv file.
+your lambda_db project for the given csv file
 
-Much morge memory efficient then v1 because repeated
-values are now stored in a map and each individual item
-only stores uint16 reference.
+models.go contains all the field information
+and functions of rows in your data.
+
+- Repeated option to store repeated
+  values in a map and each individual items
+  only stores uint16 reference to map key.
+
+- BitArray option which is like Repeated
+  value but also creates a map[key]bitmap for all
+  items containing field value. Makes it possible
+  to do fast 'match' lookups.
+
 
 python create_model.py your.csv
 """
@@ -35,6 +44,9 @@ allcolumns = []
 allcolumns_org = []
 repeated = []
 repeated_org = []
+bitarray = []
+bitarray_org = []
+unique = []
 unique = []
 unique_org = []
 ignored = []
@@ -59,11 +71,13 @@ for k in row.keys():
     # go camelcase column names
     kc = gocamelCase(k)
 
-    options = ['r', 'u', 'i', 'g']
+    options = ['r', 'u', 'i', 'g', 'b']
     while True:
         # keep asking for valid input
-        q1 = ("a (R)epeated value? has less then (2^16=65536) option. ",
-              "(U)nique, (G)eo lat/lon point OR (I)gnore ? r/u/g/i?")
+        q1 = ("(R)epeated value? has less then (2^16=65536) option.",
+              "(B)itarray, repeated column optimized for fast match.",
+              "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
+        )
         action = input(f"idx:{index} is {k} {q1}")  # noqa
         if action == '':
             print(f"pick one from {options}")
@@ -86,6 +100,12 @@ for k in row.keys():
         geocolumns_org.append(k)
         unique.append(kc)
         unique_org.append(k)
+    elif action == 'b':
+        # same as repeated  but with some extra bitarray stuff
+        repeated.append(kc)
+        repeated_org.append(k)
+        bitarray.append(k)
+        bitarray.append(k)
     else:
         print('invalid input')
         sys.exit(-1)
@@ -160,6 +180,10 @@ shrinktemplate = env.get_template('shrinkColumn.jinja2')
 for c in repeated:
     shrinkVars.append(shrinkvartemplate.render(column=c))
     shrinkItems.append(shrinktemplate.render(column=c))
+
+
+bitArrayGetters = []
+bitArrayStore = []
 
 
 # create the actual shrinked/expand Item fields.

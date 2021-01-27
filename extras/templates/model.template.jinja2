@@ -1,3 +1,15 @@
+/*
+	model.go define the 'items' to store.
+	All columns with getters and setters are defined here.
+
+	ItemIn, represent rows from the Input data
+	Item, the compact item stored in memmory
+	ItemOut, defines how and which fields are exported out
+	of the API. It is possible to ignore input columns
+
+	Optionally bitarrays are created.
+*/
+
 package main
 
 import (
@@ -93,7 +105,8 @@ func (i ItemIn) Shrink(label int) Item {
 	}
 }
 
-// Store selected columns in byte array
+// Store selected columns in seperate map[columnvalue]bitarray
+// for gast item lookup
 func (i Item) StoreBitArrayColumns() {
 
 	balock.Lock()
