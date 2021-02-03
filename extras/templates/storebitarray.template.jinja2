@@ -1,0 +1,9 @@
+
+	// Column {{columnName}} has byte arrays for
+	ba, ok = {{columnName}}Items[i.{{columnName}}]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		{{columnName}}Items[i.{{columnName}}] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))

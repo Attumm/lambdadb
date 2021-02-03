@@ -1,5 +1,7 @@
 
-	{{columnname}}Tracker = 0
-	{{columnname}}IdxMap = make(fieldIdxMap)
-	{{columnname}} = make(fieldMapIdx)
-
+	{{columnName}}Tracker = 0
+	{{columnName}}IdxMap = make(fieldIdxMap)
+	{{columnName}} = make(fieldMapIdx)
+{% if bitarraymap %}
+	{{columnName}}Items = make(fieldItemsMap)
+{% endif %}

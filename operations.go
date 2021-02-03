@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
 	// "reflect"
 	"errors"
 	"log"
@@ -426,8 +427,9 @@ func bitArrayFilter(
 
 	combinedBitArrays := make([]bitarray.BitArray, 0)
 
-	for k, _ := range operations.BitArrays {
-		parameter, foundkey := query.Filters[k]
+	for k := range operations.BitArrays {
+		parameter, foundkey := query.Filters["match-"+k]
+
 		if len(parameter) == 0 {
 			continue
 		}
@@ -447,6 +449,7 @@ func bitArrayFilter(
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
 	} else {
+		log.Println("no bitarrays found")
 		return nil, errors.New("no bitarray found")
 	}
 

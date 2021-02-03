@@ -1,7 +1,32 @@
+/*
+	model.go define the 'items' to store.
+	All columns with getters and setters are defined here.
+
+	ItemIn, represent rows from the Input data
+	Item, the compact item stored in memmory
+	ItemOut, defines how and which fields are exported out
+	of the API. It is possible to ignore input columns
+
+	Repeated values are stored in maps with int numbers
+	as keys.  Optionally bitarrays are created for reapeated
+	column values to do fast bit-wise filtering.
+
+	A S2 geo index in created for lat, lon values.
+
+	Unique values are stored as-is.
+
+	The generated codes leaves room to create custom
+	index functions yourself to create an API with an
+	< 1 ms response time for your specific needs.
+
+	This codebase solves: I need to have an API on this
+	tabular dataset fast!
+*/
+
 package main
 
 import (
-	"log"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"

@@ -74,9 +74,10 @@ for k in row.keys():
     options = ['r', 'u', 'i', 'g', 'b']
     while True:
         # keep asking for valid input
-        q1 = ("(R)epeated value? has less then (2^16=65536) option.",
-              "(B)itarray, repeated column optimized for fast match.",
-              "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
+        q1 = (
+            "(R)epeated value? has less then (2^16=65536) option.",
+            "(B)itarray, repeated column optimized for fast match.",
+            "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
         )
         action = input(f"idx:{index} is {k} {q1}")  # noqa
         if action == '':
@@ -104,8 +105,8 @@ for k in row.keys():
         # same as repeated  but with some extra bitarray stuff
         repeated.append(kc)
         repeated_org.append(k)
-        bitarray.append(k)
-        bitarray.append(k)
+        bitarray.append(kc)
+        bitarray_org.append(k)
     else:
         print('invalid input')
         sys.exit(-1)
@@ -138,7 +139,19 @@ initRepeatColumns = []
 initColumntemplate = env.get_template('initColumn.template.jinja2')
 
 for c in repeated:
-    initRepeatColumns.append(initColumntemplate.render(columnname=c))
+    initRepeatColumns.append(
+        initColumntemplate.render(
+            columnName=c, bitarraymap=c in bitarray)
+    )
+
+# create bitarrays with item labels for column values.
+bitArrayStores = []
+bitArrayGetters = []
+bitArrayStoreTemplate = env.get_template('storebitarray.template.jinja2')
+bitArrayGetTemplate = env.get_template('bitarrayGetter.template.jinja2')
+for r in bitarray:
+    bitArrayStores.append(bitArrayStoreTemplate.render(columnName=r))
+    bitArrayGetters.append(bitArrayGetTemplate.render(columnName=r))
 
 # create ItemFull struct fields
 columnsItemIn = []
@@ -178,12 +191,9 @@ shrinkItems = []
 shrinkvartemplate = env.get_template('shrinkVars.jinja2')
 shrinktemplate = env.get_template('shrinkColumn.jinja2')
 for c in repeated:
-    shrinkVars.append(shrinkvartemplate.render(column=c))
+    shrinkVars.append(
+        shrinkvartemplate.render(column=c, bitarray=c in bitarray))
     shrinkItems.append(shrinktemplate.render(column=c))
-
-
-bitArrayGetters = []
-bitArrayStore = []
 
 
 # create the actual shrinked/expand Item fields.
@@ -241,9 +251,8 @@ rtempl = env.get_template('registerFilters.jinja2')
 for c, co in zip(allcolumns, allcolumns_org):
     if c in ignored:
         continue
-    txt = rtempl.render(co=co, column=c)
+    txt = rtempl.render(co=co, columnName=c, bitarray=c in bitarray)
     registerFilters.append(txt)
-
 
 sortColumns = []
 sortTemplate = env.get_template('sortfunc.jinja2')
@@ -294,6 +303,8 @@ output = modeltemplate.render(
     sortColumns=''.join(sortColumns),
     indexcolumn=allcolumns[index],
     geometryGetter=geometryGetter,
+    bitArrayStores=''.join(bitArrayStores),
+    bitArrayGetters=''.join(bitArrayGetters),
 )
 
 f = open('model.go', 'w')

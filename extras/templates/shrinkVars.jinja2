@@ -2,4 +2,7 @@
 var {{column}}Tracker uint16
 var {{column}}IdxMap fieldIdxMap
 var {{column}} fieldMapIdx
+{% if bitarray %}
+var {{column}}Items fieldItemsMap
+{% endif %}
 
