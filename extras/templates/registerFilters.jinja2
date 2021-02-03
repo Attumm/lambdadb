@@ -1,8 +1,11 @@
 
-	//register filters for {{column}}
-	RegisterFuncMap["match-{{co}}"] = Filter{{column}}Match
-	RegisterFuncMap["contains-{{co}}"] = Filter{{column}}Contains
-	RegisterFuncMap["startswith-{{co}}"] = Filter{{column}}StartsWith
-	RegisterGetters["{{co}}"] = Getters{{column}}
-	RegisterGroupBy["{{co}}"] = Getters{{column}}
+	//register filters for {{columnName}}
+	RegisterFuncMap["match-{{co}}"] = Filter{{columnName}}Match
+	RegisterFuncMap["contains-{{co}}"] = Filter{{columnName}}Contains
+	RegisterFuncMap["startswith-{{co}}"] = Filter{{columnName}}StartsWith
+	RegisterGetters["{{co}}"] = Getters{{columnName}}
+	RegisterGroupBy["{{co}}"] = Getters{{columnName}}
+{% if bitarray %}
+	RegisterBitArray["{{co}}"] = GetBitArray{{columnName}}
+{% endif %}
 

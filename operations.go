@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	// "reflect"
+	"errors"
+	"log"
 	"sort"
 
 	"log"
@@ -522,6 +526,7 @@ func bitArrayFilter(
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
 	} else {
+		log.Println("no bitarrays found")
 		return nil, errors.New("no bitarray found")
 	}
 

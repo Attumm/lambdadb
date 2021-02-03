@@ -7,7 +7,20 @@
 	ItemOut, defines how and which fields are exported out
 	of the API. It is possible to ignore input columns
 
-	Optionally bitarrays are created.
+	Repeated values are stored in maps with int numbers
+	as keys.  Optionally bitarrays are created for reapeated
+	column values to do fast bit-wise filtering.
+
+	A S2 geo index in created for lat, lon values.
+
+	Unique values are stored as-is.
+
+	The generated codes leaves room to create custom
+	index functions yourself to create an API with an
+	< 1 ms response time for your specific needs.
+
+	This codebase solves: I need to have an API on this
+	tabular dataset fast!
 */
 
 package main
@@ -18,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"errors"
 
 	"github.com/Workiva/go-datastructures/bitarray"
 )
@@ -52,6 +66,7 @@ var lock = sync.RWMutex{}
 
 // bitArray Lock
 var balock = sync.RWMutex{}
+
 
 func init() {
 
@@ -115,21 +130,22 @@ func (i Item) StoreBitArrayColumns() {
 	lock.RLock()
 	defer lock.RUnlock()
 
+        {% if bitArrayStores is defined %}
+	var ba bitarray.BitArray
+	var ok bool
+
+	{{ bitArrayStores }}
+
+	{% endif %}
+
 	/*
-
-	var ba = birarray.BitArray
-	var ok = error
-
 	// Column Buurtcode has byte arrays for
 	ba, ok = BuurtcodeItems[i.Buurtcode]
 	if !ok {
 		ba = bitarray.NewSparseBitArray()
 		BuurtcodeItems[i.Buurtcode] = ba
 	}
-
 	ba.SetBit(uint64(i.Label))
-
-	TODO ADD BIT-ARRAY COLUMNS.
 	*/
 
 }
@@ -234,17 +250,21 @@ var RegisterReduce registerReduce
 var RegisterBitArray registerBitArray
 
 // ValidateRegsiters validate exposed columns do match filter names
-func validateRegisters() {
+func validateRegisters() error {
 	var i = ItemOut{}
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
 		for _, f := range filters {
 			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
-				log.Fatal(c + " is missing in RegisterMap")
+				return errors.New(c + " is missing in RegisterMap")
 			}
 		}
 	}
+	return nil
 }
+
+{{bitArrayGetters}}
+
 
 func init() {
 
@@ -252,6 +272,7 @@ func init() {
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
+	RegisterBitArray = make(registerBitArray)
 
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
