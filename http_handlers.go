@@ -130,7 +130,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 				return
 			}
 
-			// Cache group by repsonse
+			// Cache group-by reduce repsonse
 			cacheLock.Lock()
 			cacheKey, _ := query.CacheKey()
 			GroupByBodyCache[cacheKey] = result
