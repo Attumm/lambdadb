@@ -27,6 +27,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ import (
 	"github.com/Workiva/go-datastructures/bitarray"
 )
 
+type registerCustomGroupByFunc map[string]func(*Item, ItemsGroupedBy)
 type registerGroupByFunc map[string]func(*Item) string
 type registerGettersMap map[string]func(*Item) string
 type registerReduce map[string]func(Items) map[string]string
@@ -1122,16 +1124,12 @@ func GettersGebruiksdoelen(i *Item) string {
 }
 
 // getter Gebruiksdoelen
-func GroupByGettersGebruiksdoelen(i *Item) string {
-	doel := "unknown"
+func GroupByGettersGebruiksdoelen(item *Item, grouping ItemsGroupedBy) {
 
-	if len(i.Gebruiksdoelen) > 1 {
-		return "mixed"
+	for i := range item.Gebruiksdoelen {
+		groupkey := Gebruiksdoelen[item.Gebruiksdoelen[i]]
+		grouping[groupkey] = append(grouping[groupkey], item)
 	}
-	if len(i.Gebruiksdoelen) == 1 {
-		return Gebruiksdoelen[i.Gebruiksdoelen[0]]
-	}
-	return doel
 }
 
 /*
@@ -1177,6 +1175,7 @@ var Operations GroupedOperations
 
 var RegisterFuncMap registerFuncType
 var RegisterGroupBy registerGroupByFunc
+var RegisterGroupByCustom registerCustomGroupByFunc
 var RegisterGetters registerGettersMap
 var RegisterReduce registerReduce
 var RegisterBitArray registerBitArray
@@ -1261,6 +1260,7 @@ func init() {
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
 	RegisterBitArray = make(registerBitArray)
+	RegisterGroupByCustom = make(registerCustomGroupByFunc)
 
 	// Register search filter.
 	RegisterFuncMap["search"] = FilterEkeyStartsWith
@@ -1425,7 +1425,8 @@ func init() {
 	RegisterFuncMap["startswith-gebruiksdoelen"] = FilterGebruiksdoelenStartsWith
 	RegisterGetters["gebruiksdoelen"] = GettersGebruiksdoelen
 	RegisterGroupBy["gebruiksdoelen"] = GettersGebruiksdoelen
-	RegisterGroupBy["gebruiksdoelen-mixed"] = GroupByGettersGebruiksdoelen
+
+	RegisterGroupByCustom["gebruiksdoelen-mixed"] = GroupByGettersGebruiksdoelen
 
 	validateRegisters()
 

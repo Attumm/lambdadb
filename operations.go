@@ -138,12 +138,12 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	// Check and validate groupby parameter
 	parameter, found := r.Form["groupby"]
 	if found && parameter[0] != "" {
-		_, funcFound := RegisterGroupBy[parameter[0]]
-		if !funcFound {
-			return Query{}, errors.New("Invalid groupby parameter")
+		_, funcFound1 := RegisterGroupBy[parameter[0]]
+		_, funcFound2 := RegisterGroupByCustom[parameter[0]]
+		if !funcFound1 && !funcFound2 {
+			return Query{}, errors.New("invalid groupby parameter")
 		}
 		groupBy = parameter[0]
-
 	}
 
 	// Check and validate reduce parameter
@@ -237,15 +237,23 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	}, nil
 }
 
-func groupByRunner(items Items, groubByParameter string) ItemsGroupedBy {
+func groupByRunner(items Items, groupByParameter string) ItemsGroupedBy {
 	grouping := make(ItemsGroupedBy)
-	groupingFunc := RegisterGroupBy[groubByParameter]
-	if groupingFunc == nil {
+	groupingFunc := RegisterGroupBy[groupByParameter]
+
+	customGrouping := RegisterGroupByCustom[groupByParameter]
+
+	if groupingFunc == nil && customGrouping == nil {
 		return grouping
 	}
+
 	for _, item := range items {
-		GroupingKey := groupingFunc(item)
-		grouping[GroupingKey] = append(grouping[GroupingKey], item)
+		if customGrouping == nil {
+			GroupingKey := groupingFunc(item)
+			grouping[GroupingKey] = append(grouping[GroupingKey], item)
+		} else {
+			customGrouping(item, grouping)
+		}
 	}
 	return grouping
 }
