@@ -61,40 +61,55 @@ var WoningTypeTracker uint16
 var WoningTypeIdxMap fieldIdxMap
 var WoningType fieldMapIdx
 
+var WoningTypeItems fieldItemsMap
+
 var LabelscoreVoorlopigTracker uint16
 var LabelscoreVoorlopigIdxMap fieldIdxMap
 var LabelscoreVoorlopig fieldMapIdx
+
+var LabelscoreVoorlopigItems fieldItemsMap
 
 var LabelscoreDefinitiefTracker uint16
 var LabelscoreDefinitiefIdxMap fieldIdxMap
 var LabelscoreDefinitief fieldMapIdx
 
+var LabelscoreDefinitiefItems fieldItemsMap
+
 var GemeentecodeTracker uint16
 var GemeentecodeIdxMap fieldIdxMap
 var Gemeentecode fieldMapIdx
+
 var GemeentecodeItems fieldItemsMap
 
 var GemeentenaamTracker uint16
 var GemeentenaamIdxMap fieldIdxMap
 var Gemeentenaam fieldMapIdx
 
+var GemeentenaamItems fieldItemsMap
+
 var BuurtcodeTracker uint16
 var BuurtcodeIdxMap fieldIdxMap
 var Buurtcode fieldMapIdx
+
 var BuurtcodeItems fieldItemsMap
 
 var WijkcodeTracker uint16
 var WijkcodeIdxMap fieldIdxMap
 var Wijkcode fieldMapIdx
+
 var WijkcodeItems fieldItemsMap
 
 var ProvinciecodeTracker uint16
 var ProvinciecodeIdxMap fieldIdxMap
 var Provinciecode fieldMapIdx
 
+var ProvinciecodeItems fieldItemsMap
+
 var ProvincienaamTracker uint16
 var ProvincienaamIdxMap fieldIdxMap
 var Provincienaam fieldMapIdx
+
+var ProvincienaamItems fieldItemsMap
 
 var PandGasAansluitingenTracker uint16
 var PandGasAansluitingenIdxMap fieldIdxMap
@@ -123,7 +138,10 @@ var {columnname} fieldMapIdx
 var {columnname}Items fieldItemmap
 */
 
+// item map lock
 var lock = sync.RWMutex{}
+
+// bitArray Lock
 var balock = sync.RWMutex{}
 
 func init() {
@@ -136,40 +154,55 @@ func init() {
 	WoningTypeIdxMap = make(fieldIdxMap)
 	WoningType = make(fieldMapIdx)
 
+	WoningTypeItems = make(fieldItemsMap)
+
 	LabelscoreVoorlopigTracker = 0
 	LabelscoreVoorlopigIdxMap = make(fieldIdxMap)
 	LabelscoreVoorlopig = make(fieldMapIdx)
+
+	LabelscoreVoorlopigItems = make(fieldItemsMap)
 
 	LabelscoreDefinitiefTracker = 0
 	LabelscoreDefinitiefIdxMap = make(fieldIdxMap)
 	LabelscoreDefinitief = make(fieldMapIdx)
 
+	LabelscoreDefinitiefItems = make(fieldItemsMap)
+
 	GemeentecodeTracker = 0
 	GemeentecodeIdxMap = make(fieldIdxMap)
 	Gemeentecode = make(fieldMapIdx)
+
 	GemeentecodeItems = make(fieldItemsMap)
 
 	GemeentenaamTracker = 0
 	GemeentenaamIdxMap = make(fieldIdxMap)
 	Gemeentenaam = make(fieldMapIdx)
 
+	GemeentenaamItems = make(fieldItemsMap)
+
 	BuurtcodeTracker = 0
 	BuurtcodeIdxMap = make(fieldIdxMap)
 	Buurtcode = make(fieldMapIdx)
+
 	BuurtcodeItems = make(fieldItemsMap)
 
 	WijkcodeTracker = 0
 	WijkcodeIdxMap = make(fieldIdxMap)
 	Wijkcode = make(fieldMapIdx)
+
 	WijkcodeItems = make(fieldItemsMap)
 
 	ProvinciecodeTracker = 0
 	ProvinciecodeIdxMap = make(fieldIdxMap)
 	Provinciecode = make(fieldMapIdx)
 
+	ProvinciecodeItems = make(fieldItemsMap)
+
 	ProvincienaamTracker = 0
 	ProvincienaamIdxMap = make(fieldIdxMap)
 	Provincienaam = make(fieldMapIdx)
+
+	ProvincienaamItems = make(fieldItemsMap)
 
 	PandGasAansluitingenTracker = 0
 	PandGasAansluitingenIdxMap = make(fieldIdxMap)
@@ -250,7 +283,7 @@ type ItemOut struct {
 }
 
 type Item struct {
-	Label                int
+	Label                int // internal index in ITEMS
 	Pid                  string
 	Vid                  string
 	Numid                string
@@ -356,7 +389,6 @@ func (i ItemIn) Shrink(label int) Item {
 		BuurtcodeIdxMap[i.Buurtcode] = BuurtcodeTracker
 		// increase tracker
 		BuurtcodeTracker += 1
-
 	}
 
 	//check if column value is already present
@@ -466,7 +498,9 @@ func (i ItemIn) Shrink(label int) Item {
 	}
 
 	return Item{
+
 		label,
+
 		i.Pid,
 		i.Vid,
 		i.Numid,
@@ -492,7 +526,8 @@ func (i ItemIn) Shrink(label int) Item {
 	}
 }
 
-// Store selected columns in byte array
+// Store selected columns in seperate map[columnvalue]bitarray
+// for gast item lookup
 func (i Item) StoreBitArrayColumns() {
 
 	balock.Lock()
@@ -501,30 +536,92 @@ func (i Item) StoreBitArrayColumns() {
 	lock.RLock()
 	defer lock.RUnlock()
 
+	var ba bitarray.BitArray
+	var ok bool
+
+	// Column WoningType has byte arrays for
+	ba, ok = WoningTypeItems[i.WoningType]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		WoningTypeItems[i.WoningType] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+	// Column LabelscoreVoorlopig has byte arrays for
+	ba, ok = LabelscoreVoorlopigItems[i.LabelscoreVoorlopig]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		LabelscoreVoorlopigItems[i.LabelscoreVoorlopig] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+	// Column LabelscoreDefinitief has byte arrays for
+	ba, ok = LabelscoreDefinitiefItems[i.LabelscoreDefinitief]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		LabelscoreDefinitiefItems[i.LabelscoreDefinitief] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+	// Column Gemeentecode has byte arrays for
+	ba, ok = GemeentecodeItems[i.Gemeentecode]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		GemeentecodeItems[i.Gemeentecode] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+	// Column Gemeentenaam has byte arrays for
+	ba, ok = GemeentenaamItems[i.Gemeentenaam]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		GemeentenaamItems[i.Gemeentenaam] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
 	// Column Buurtcode has byte arrays for
-	ba, ok := BuurtcodeItems[i.Buurtcode]
+	ba, ok = BuurtcodeItems[i.Buurtcode]
 	if !ok {
 		ba = bitarray.NewSparseBitArray()
 		BuurtcodeItems[i.Buurtcode] = ba
 	}
 
 	ba.SetBit(uint64(i.Label))
-
 	// Column Wijkcode has byte arrays for
 	ba, ok = WijkcodeItems[i.Wijkcode]
 	if !ok {
 		ba = bitarray.NewSparseBitArray()
 		WijkcodeItems[i.Wijkcode] = ba
 	}
-	ba.SetBit(uint64(i.Label))
 
-	// Column Wijkcode has byte arrays for
-	ba, ok = GemeentecodeItems[i.Gemeentecode]
+	ba.SetBit(uint64(i.Label))
+	// Column Provinciecode has byte arrays for
+	ba, ok = ProvinciecodeItems[i.Provinciecode]
 	if !ok {
 		ba = bitarray.NewSparseBitArray()
-		GemeentecodeItems[i.Gemeentecode] = ba
+		ProvinciecodeItems[i.Provinciecode] = ba
 	}
+
 	ba.SetBit(uint64(i.Label))
+	// Column Provincienaam has byte arrays for
+	ba, ok = ProvincienaamItems[i.Provincienaam]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		ProvincienaamItems[i.Provincienaam] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
+
+	/*
+		// Column Buurtcode has byte arrays for
+		ba, ok = BuurtcodeItems[i.Buurtcode]
+		if !ok {
+			ba = bitarray.NewSparseBitArray()
+			BuurtcodeItems[i.Buurtcode] = ba
+		}
+		ba.SetBit(uint64(i.Label))
+	*/
+
 }
 
 func (i Item) Serialize() ItemOut {
@@ -533,6 +630,7 @@ func (i Item) Serialize() ItemOut {
 	defer lock.RUnlock()
 
 	return ItemOut{
+
 		i.Pid,
 		i.Vid,
 		i.Numid,
@@ -668,10 +766,6 @@ func FilterPidStartsWith(i *Item, s string) bool {
 // match filters Pid
 func FilterPidMatch(i *Item, s string) bool {
 	return i.Pid == s
-}
-
-func makeSArray(s string) []string {
-	return []string{s}
 }
 
 // getter Pid
@@ -1181,16 +1275,112 @@ var RegisterReduce registerReduce
 var RegisterBitArray registerBitArray
 
 // ValidateRegsiters validate exposed columns do match filter names
-func validateRegisters() {
+func validateRegisters() error {
 	var i = ItemOut{}
 	var filters = []string{"match", "contains", "startswith"}
 	for _, c := range i.Columns() {
 		for _, f := range filters {
 			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
-				log.Fatal(c + " is missing in RegisterMap")
+				return errors.New(c + " is missing in RegisterMap")
 			}
 		}
 	}
+	return nil
+}
+
+// GetBitArrayWoningType for given v string see if there is
+// a bitarray created.
+func GetBitArrayWoningType(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := WoningTypeIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value WoningType")
+	}
+
+	ba, ok := WoningTypeItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value WoningType")
+	}
+
+	return ba, nil
+}
+
+// GetBitArrayLabelscoreVoorlopig for given v string see if there is
+// a bitarray created.
+func GetBitArrayLabelscoreVoorlopig(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := LabelscoreVoorlopigIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value LabelscoreVoorlopig")
+	}
+
+	ba, ok := LabelscoreVoorlopigItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value LabelscoreVoorlopig")
+	}
+
+	return ba, nil
+}
+
+// GetBitArrayLabelscoreDefinitief for given v string see if there is
+// a bitarray created.
+func GetBitArrayLabelscoreDefinitief(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := LabelscoreDefinitiefIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value LabelscoreDefinitief")
+	}
+
+	ba, ok := LabelscoreDefinitiefItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value LabelscoreDefinitief")
+	}
+
+	return ba, nil
+}
+
+// GetBitArrayGemeentecode for given v string see if there is
+// a bitarray created.
+func GetBitArrayGemeentecode(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := GemeentecodeIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value Gemeentecode")
+	}
+
+	ba, ok := GemeentecodeItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value Gemeentecode")
+	}
+
+	return ba, nil
+}
+
+// GetBitArrayGemeentenaam for given v string see if there is
+// a bitarray created.
+func GetBitArrayGemeentenaam(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := GemeentenaamIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value Gemeentenaam")
+	}
+
+	ba, ok := GemeentenaamItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value Gemeentenaam")
+	}
+
+	return ba, nil
 }
 
 // GetBitArrayBuurtcode for given v string see if there is
@@ -1200,17 +1390,16 @@ func GetBitArrayBuurtcode(v string) (bitarray.BitArray, error) {
 	bpi, ok := BuurtcodeIdxMap[v]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column value")
+		return nil, errors.New("no bitarray filter found for column value Buurtcode")
 	}
 
 	ba, ok := BuurtcodeItems[bpi]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value")
+		return nil, errors.New("no bitarray filter found for column idx value Buurtcode")
 	}
 
 	return ba, nil
-
 }
 
 // GetBitArrayWijkcode for given v string see if there is
@@ -1220,37 +1409,54 @@ func GetBitArrayWijkcode(v string) (bitarray.BitArray, error) {
 	bpi, ok := WijkcodeIdxMap[v]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column value")
+		return nil, errors.New("no bitarray filter found for column value Wijkcode")
 	}
 
 	ba, ok := WijkcodeItems[bpi]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value")
+		return nil, errors.New("no bitarray filter found for column idx value Wijkcode")
 	}
 
 	return ba, nil
-
 }
 
-// GetBitArrayWijkcode for given v string see if there is
+// GetBitArrayProvinciecode for given v string see if there is
 // a bitarray created.
-func GetBitArrayGemeentecode(v string) (bitarray.BitArray, error) {
+func GetBitArrayProvinciecode(v string) (bitarray.BitArray, error) {
 
-	bpi, ok := GemeentecodeIdxMap[v]
+	bpi, ok := ProvinciecodeIdxMap[v]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column value")
+		return nil, errors.New("no bitarray filter found for column value Provinciecode")
 	}
 
-	ba, ok := GemeentecodeItems[bpi]
+	ba, ok := ProvinciecodeItems[bpi]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value")
+		return nil, errors.New("no bitarray filter found for column idx value Provinciecode")
 	}
 
 	return ba, nil
+}
 
+// GetBitArrayProvincienaam for given v string see if there is
+// a bitarray created.
+func GetBitArrayProvincienaam(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := ProvincienaamIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value Provincienaam")
+	}
+
+	ba, ok := ProvincienaamItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value Provincienaam")
+	}
+
+	return ba, nil
 }
 
 func init() {
@@ -1318,12 +1524,16 @@ func init() {
 	RegisterGetters["woning_type"] = GettersWoningType
 	RegisterGroupBy["woning_type"] = GettersWoningType
 
+	RegisterBitArray["woning_type"] = GetBitArrayWoningType
+
 	//register filters for LabelscoreVoorlopig
 	RegisterFuncMap["match-labelscore_voorlopig"] = FilterLabelscoreVoorlopigMatch
 	RegisterFuncMap["contains-labelscore_voorlopig"] = FilterLabelscoreVoorlopigContains
 	RegisterFuncMap["startswith-labelscore_voorlopig"] = FilterLabelscoreVoorlopigStartsWith
 	RegisterGetters["labelscore_voorlopig"] = GettersLabelscoreVoorlopig
 	RegisterGroupBy["labelscore_voorlopig"] = GettersLabelscoreVoorlopig
+
+	RegisterBitArray["labelscore_voorlopig"] = GetBitArrayLabelscoreVoorlopig
 
 	//register filters for LabelscoreDefinitief
 	RegisterFuncMap["match-labelscore_definitief"] = FilterLabelscoreDefinitiefMatch
@@ -1332,13 +1542,16 @@ func init() {
 	RegisterGetters["labelscore_definitief"] = GettersLabelscoreDefinitief
 	RegisterGroupBy["labelscore_definitief"] = GettersLabelscoreDefinitief
 
+	RegisterBitArray["labelscore_definitief"] = GetBitArrayLabelscoreDefinitief
+
 	//register filters for Gemeentecode
 	RegisterFuncMap["match-gemeentecode"] = FilterGemeentecodeMatch
 	RegisterFuncMap["contains-gemeentecode"] = FilterGemeentecodeContains
 	RegisterFuncMap["startswith-gemeentecode"] = FilterGemeentecodeStartsWith
 	RegisterGetters["gemeentecode"] = GettersGemeentecode
 	RegisterGroupBy["gemeentecode"] = GettersGemeentecode
-	RegisterBitArray["match-gemeentecode"] = GetBitArrayGemeentecode
+
+	RegisterBitArray["gemeentecode"] = GetBitArrayGemeentecode
 
 	//register filters for Gemeentenaam
 	RegisterFuncMap["match-gemeentenaam"] = FilterGemeentenaamMatch
@@ -1347,13 +1560,16 @@ func init() {
 	RegisterGetters["gemeentenaam"] = GettersGemeentenaam
 	RegisterGroupBy["gemeentenaam"] = GettersGemeentenaam
 
+	RegisterBitArray["gemeentenaam"] = GetBitArrayGemeentenaam
+
 	//register filters for Buurtcode
 	RegisterFuncMap["match-buurtcode"] = FilterBuurtcodeMatch
 	RegisterFuncMap["contains-buurtcode"] = FilterBuurtcodeContains
 	RegisterFuncMap["startswith-buurtcode"] = FilterBuurtcodeStartsWith
 	RegisterGetters["buurtcode"] = GettersBuurtcode
 	RegisterGroupBy["buurtcode"] = GettersBuurtcode
-	RegisterBitArray["match-buurtcode"] = GetBitArrayBuurtcode
+
+	RegisterBitArray["buurtcode"] = GetBitArrayBuurtcode
 
 	//register filters for Wijkcode
 	RegisterFuncMap["match-wijkcode"] = FilterWijkcodeMatch
@@ -1361,7 +1577,8 @@ func init() {
 	RegisterFuncMap["startswith-wijkcode"] = FilterWijkcodeStartsWith
 	RegisterGetters["wijkcode"] = GettersWijkcode
 	RegisterGroupBy["wijkcode"] = GettersWijkcode
-	RegisterBitArray["match-wijkcode"] = GetBitArrayWijkcode
+
+	RegisterBitArray["wijkcode"] = GetBitArrayWijkcode
 
 	//register filters for Provinciecode
 	RegisterFuncMap["match-provinciecode"] = FilterProvinciecodeMatch
@@ -1370,12 +1587,16 @@ func init() {
 	RegisterGetters["provinciecode"] = GettersProvinciecode
 	RegisterGroupBy["provinciecode"] = GettersProvinciecode
 
+	RegisterBitArray["provinciecode"] = GetBitArrayProvinciecode
+
 	//register filters for Provincienaam
 	RegisterFuncMap["match-provincienaam"] = FilterProvincienaamMatch
 	RegisterFuncMap["contains-provincienaam"] = FilterProvincienaamContains
 	RegisterFuncMap["startswith-provincienaam"] = FilterProvincienaamStartsWith
 	RegisterGetters["provincienaam"] = GettersProvincienaam
 	RegisterGroupBy["provincienaam"] = GettersProvincienaam
+
+	RegisterBitArray["provincienaam"] = GetBitArrayProvincienaam
 
 	//register filters for Point
 	RegisterFuncMap["match-point"] = FilterPointMatch
