@@ -424,6 +424,7 @@ func sortLimit(items Items, query Query) Items {
 	}
 
 	// Note the slice built on array, slicing a slice larger then the the slice adds array items
+        // https://play.golang.org/p/GxhbBGNaXwL
 	if len(items) < query.Limit {
 		return items
 	}
