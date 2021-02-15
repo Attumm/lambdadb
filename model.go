@@ -1269,6 +1269,20 @@ func reduceCount(items Items) map[string]string {
 	return result
 }
 
+func reduceWEQ(items Items) map[string]string {
+	result := make(map[string]string)
+	weq := 0
+	for i := range items {
+		_weq, err := strconv.ParseInt(items[i].Woningequivalent, 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		weq += int(_weq)
+	}
+	result["woningenquivalent"] = strconv.Itoa(weq)
+	return result
+}
+
 type GroupedOperations struct {
 	Funcs     registerFuncType
 	GroupBy   registerGroupByFunc
@@ -1661,6 +1675,7 @@ func init() {
 
 	// register reduce functions
 	RegisterReduce["count"] = reduceCount
+	RegisterReduce["woningequivalent"] = reduceWEQ
 }
 
 type sortLookup map[string]func(int, int) bool
