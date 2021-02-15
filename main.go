@@ -69,6 +69,8 @@ func main() {
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
 	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
+
+	SETTINGS.Set("indexed", "no", "is the data made for the suffix tree index?")
 	SETTINGS.Parse()
 
 	ITEMS = make(Items, 0, 100*1000)

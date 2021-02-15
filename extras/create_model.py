@@ -1,15 +1,12 @@
 ### First version is going to assume everything is a string
 ### also known as string theory:p
 
+### column with the name "value" or "index" will be used as index
+### else the first column will be set as index, when index is enabled.
+### this can be changed later in the generated model.go file
+
 import csv
 import sys
-
-filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
-
-with open(filename) as f:
-    reader = csv.DictReader(f)
-    row = dict(next(reader))
-
 
 def create_struct(item):
     start = "type Item struct {\n"
@@ -38,6 +35,26 @@ def create_row(item):
     stop = """\n}\n}"""
     return start + "\n".join(lines) + stop
 
+
+def get_index_column(item):
+    special_columns = ["value", "index"]
+    for column in special_columns:
+        if column in item:
+            return column
+
+    # we tried, let's return the first column
+    n = iter(item.keys())
+    return next(n)
+
+
+def create_getindex(item):
+    index_column = get_index_column(item)
+    start = """
+    func (i Item) GetIndex() string {
+	return """
+    middle = f"i.{index_column.capitalize()}"
+    stop = """\n}"""
+    return start + middle + stop
 
 
 def create_filter_contains(column):
@@ -159,86 +176,97 @@ def create_sortby(row):
         }"""
     return start + "\n".join(lines) + end
 
+if __name__ == "__main__":
 
-print("package main")
-print()
+    filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
 
-print("import (")
-print('"sort"')
-print('"strconv"')
-print('"strings"')
-print(")")
-print(create_struct(row))
-print()
-print(create_columns(row))
-print()
-print(create_row(row))
-print()
-
-print("// contain filters")
-for k in row.keys():
-    print(create_filter_contains(k))
-
-print()
-print("// startswith filters")
-for k in row.keys():
-    print(create_filter_startswith(k))
-
-print()
-print("// match filters")
-for k in row.keys():
-    print(create_filter_match(k))
-
-print()
-print("// reduce functions")
-print(create_reduce(None))
-
-print()
-print("// getters")
-for k in row.keys():
-    print(create_getter(k))
-print()
+    with open(filename) as f:
+        reader = csv.DictReader(f)
+        row = dict(next(reader))
 
 
-print(create_grouped())
-print("func init() {")
-print(create_init_register())
+    print("package main")
+    print()
 
-print()
-print("// register match filters")
-for k in row.keys():
-    print(create_register_match_func(k))
+    print("import (")
+    print('"sort"')
+    print('"strconv"')
+    print('"strings"')
+    print(")")
+    print(create_struct(row))
+    print()
+    print(create_columns(row))
+    print()
+    print(create_row(row))
+    print()
+    print(create_getindex(row))
+    print()
 
-print()
-print("// register contains filters")
-for k in row.keys():
-    print(create_register_contains_func(k))
+    print("// contain filters")
+    for k in row.keys():
+        print(create_filter_contains(k))
 
-print()
-print("// register startswith filters")
-for k in row.keys():
-    print(create_register_startswith_func(k))
-print()
+    print()
+    print("// startswith filters")
+    for k in row.keys():
+        print(create_filter_startswith(k))
 
-print()
-print("// register getters ")
-for k in row.keys():
-    print(create_register_getter(k))
-print()
+    print()
+    print("// match filters")
+    for k in row.keys():
+        print(create_filter_match(k))
 
-print()
-print("// register groupby ")
-for k in row.keys():
-    print(create_register_groupby(k))
-print()
+    print()
+    print("// reduce functions")
+    print(create_reduce(None))
+
+    print()
+    print("// getters")
+    for k in row.keys():
+        print(create_getter(k))
+    print()
+
+
+    print(create_grouped())
+    print("func init() {")
+    print(create_init_register())
+
+    print()
+    print("// register match filters")
+    for k in row.keys():
+        print(create_register_match_func(k))
+
+    print()
+    print("// register contains filters")
+    for k in row.keys():
+        print(create_register_contains_func(k))
+
+    print()
+    print("// register startswith filters")
+    for k in row.keys():
+        print(create_register_startswith_func(k))
+    print()
+
+    print()
+    print("// register getters ")
+    for k in row.keys():
+        print(create_register_getter(k))
+    print()
+
+    print()
+    print("// register groupby ")
+    for k in row.keys():
+        print(create_register_groupby(k))
+    print()
 
 
 
-print()
-print("// register reduce functions")
-print(create_register_reduce(None))
+    print()
+    print("// register reduce functions")
+    print(create_register_reduce(None))
 
-print("}")
+    print("}")
 
-print(create_sortby(row))
-print()
+    print(create_sortby(row))
+    print()
+

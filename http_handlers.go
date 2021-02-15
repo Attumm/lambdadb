@@ -222,7 +222,11 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
-	makeIndex()
+
+	indexUsed := SETTINGS.Get("indexed")
+	if indexUsed == "yes" {
+		makeIndex()
+	}
 }
 
 func saveRest(w http.ResponseWriter, r *http.Request) {
