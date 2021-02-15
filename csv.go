@@ -1,12 +1,12 @@
 package main
 
 import (
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	csv "github.com/JensRantil/go-csv"
 	"github.com/cheggaaa/pb"
+	"github.com/klauspost/pgzip"
 	"io"
 	"log"
 	"os"
@@ -142,7 +142,7 @@ func importCSV(filename string, itemChan ItemsChannel,
 		defer file.Close()
 
 		bar = NewProgressBar(file)
-		fz, err := gzip.NewReader(io.TeeReader(file, bar))
+		fz, err := pgzip.NewReader(io.TeeReader(file, bar))
 
 		if err != nil {
 			return err
