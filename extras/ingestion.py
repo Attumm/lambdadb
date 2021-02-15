@@ -13,7 +13,7 @@ if __name__ == "__main__":
     produce_http = bool(sys.argv[sys.argv.index('-phttp')+1]) if '-phttp' in sys.argv else False
     filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
     buffer_size = int(sys.argv[sys.argv.index('-b')+1]) if '-b' in sys.argv else 1000000
-    http_db_host = str(sys.argv[sys.argv.index('-dbhost')+1]) if '-dbhost' in sys.argv else "http://127.0.0.1:8000/add/"
+    http_db_host = str(sys.argv[sys.argv.index('-dbhost')+1]) if '-dbhost' in sys.argv else "http://127.0.0.1:8128/add/"
 
 
     lines = []

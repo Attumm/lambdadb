@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
+        //"github.com/prometheus/client_golang/prometheus"
+        //"github.com/prometheus/client_golang/prometheus/promauto"
+        "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type filterFuncc func(*Item, string) bool
@@ -59,6 +62,7 @@ func loadcsv(itemChan ItemsChannel) {
 	makeIndex()
 }
 
+
 func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
@@ -70,8 +74,12 @@ func main() {
 
 	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
 
-	SETTINGS.Set("indexed", "no", "is the data made for the suffix tree index?")
+	SETTINGS.Set("indexed", "no", "is the data indexed, for more information read the documenation?")
+
+	SETTINGS.Set("prometheus-monitoring", "no", "add promethues monitoring endpoint")
 	SETTINGS.Parse()
+
+        //Construct yes or no to booleans in SETTINGS
 
 	ITEMS = make(Items, 0, 100*1000)
 
@@ -114,7 +122,12 @@ func main() {
 		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	}
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "readonly mode", SETTINGS.Get("readonly"), "jwt enabled: ", JWTConfig.Enabled)
+
+	if SETTINGS.Get("prometheus-monitoring") == "yes" {
+             mux.Handle("/metrics", promhttp.Handler())
+        }
+
+        msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "readonly mode: ", SETTINGS.Get("readonly") != "yes", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes") 
 	fmt.Printf(InfoColorN, msg)
 
 	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))
