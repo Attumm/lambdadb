@@ -60,7 +60,7 @@ func loadcsv(itemChan ItemsChannel) {
 }
 
 func main() {
-	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
+	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
 
@@ -114,7 +114,7 @@ func main() {
 		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
 	}
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "jwt enabled: ", JWTConfig.Enabled)
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "readonly mode", SETTINGS.Get("readonly"), "jwt enabled: ", JWTConfig.Enabled)
 	fmt.Printf(InfoColorN, msg)
 
 	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))

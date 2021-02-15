@@ -15,8 +15,8 @@ Go over steps below, And see the result in your browser.
 5. go build
 6. ./lambda --help
 7. ./lambda  --csv assets/items.csv or `python3 ingestion.py -b 1000`
-9. curl 127.0.0.1:8000/help/
-10. browser 127.0.0.1:8000/
+9. curl 127.0.0.1:8128/help/
+10. browser 127.0.0.1:8128/
 
 
-11. instructions curl 127.0.0.1:8000/help/ | python -m json.tool
+11. instructions curl 127.0.0.1:8128/help/ | python -m json.tool
