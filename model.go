@@ -111,6 +111,12 @@ var ProvincienaamTracker uint16
 var ProvincienaamIdxMap fieldIdxMap
 var Provincienaam fieldMapIdx
 
+var PandBouwjaarTracker uint16
+var PandBouwjaarIdxMap fieldIdxMap
+var PandBouwjaar fieldMapIdx
+
+var PandBouwjaarItems fieldItemsMap
+
 var GebruiksdoelenTracker uint16
 var GebruiksdoelenIdxMap fieldIdxMap
 var Gebruiksdoelen fieldMapIdx
@@ -188,6 +194,12 @@ func init() {
 	ProvincienaamIdxMap = make(fieldIdxMap)
 	Provincienaam = make(fieldMapIdx)
 
+	PandBouwjaarTracker = 0
+	PandBouwjaarIdxMap = make(fieldIdxMap)
+	PandBouwjaar = make(fieldMapIdx)
+
+	PandBouwjaarItems = make(fieldItemsMap)
+
 	GebruiksdoelenTracker = 0
 	GebruiksdoelenIdxMap = make(fieldIdxMap)
 	Gebruiksdoelen = make(fieldMapIdx)
@@ -206,7 +218,7 @@ type ItemIn struct {
 	Postcode                string `json:"postcode"`
 	Oppervlakte             string `json:"oppervlakte"`
 	Woningequivalent        string `json:"woningequivalent"`
-	Ekey                    string `json:"ekey"`
+	Adres                   string `json:"adres"`
 	WoningType              string `json:"woning_type"`
 	LabelscoreVoorlopig     string `json:"labelscore_voorlopig"`
 	LabelscoreDefinitief    string `json:"labelscore_definitief"`
@@ -221,9 +233,12 @@ type ItemIn struct {
 	Point                   string `json:"point"`
 	PandGasEanAansluitingen string `json:"pand_gas_ean_aansluitingen"`
 	GroupId2020             string `json:"group_id_2020"`
-	GasAansluitingen2020    string `json:"gas_aansluitingen_2020"`
-	Gasm32020               string `json:"gasm3_2020"`
-	Kwh2020                 string `json:"kwh_2020"`
+	P6GasAansluitingen2020  string `json:"p6_gas_aansluitingen_2020"`
+	P6Gasm32020             string `json:"p6_gasm3_2020"`
+	P6Kwh2020               string `json:"p6_kwh_2020"`
+	P6TotaalPandoppervlakM2 string `json:"p6_totaal_pandoppervlak_m2"`
+	PandBouwjaar            string `json:"pand_bouwjaar"`
+	PandGasAansluitingen    string `json:"pand_gas_aansluitingen"`
 	Gebruiksdoelen          string `json:"gebruiksdoelen"`
 }
 
@@ -234,7 +249,7 @@ type ItemOut struct {
 	Postcode                string `json:"postcode"`
 	Oppervlakte             string `json:"oppervlakte"`
 	Woningequivalent        string `json:"woningequivalent"`
-	Ekey                    string `json:"ekey"`
+	Adres                   string `json:"adres"`
 	WoningType              string `json:"woning_type"`
 	LabelscoreVoorlopig     string `json:"labelscore_voorlopig"`
 	LabelscoreDefinitief    string `json:"labelscore_definitief"`
@@ -249,9 +264,12 @@ type ItemOut struct {
 	Point                   string `json:"point"`
 	PandGasEanAansluitingen string `json:"pand_gas_ean_aansluitingen"`
 	GroupId2020             string `json:"group_id_2020"`
-	GasAansluitingen2020    string `json:"gas_aansluitingen_2020"`
-	Gasm32020               string `json:"gasm3_2020"`
-	Kwh2020                 string `json:"kwh_2020"`
+	P6GasAansluitingen2020  string `json:"p6_gas_aansluitingen_2020"`
+	P6Gasm32020             string `json:"p6_gasm3_2020"`
+	P6Kwh2020               string `json:"p6_kwh_2020"`
+	P6TotaalPandoppervlakM2 string `json:"p6_totaal_pandoppervlak_m2"`
+	PandBouwjaar            string `json:"pand_bouwjaar"`
+	PandGasAansluitingen    string `json:"pand_gas_aansluitingen"`
 	Gebruiksdoelen          string `json:"gebruiksdoelen"`
 }
 
@@ -263,7 +281,7 @@ type Item struct {
 	Postcode                string
 	Oppervlakte             string
 	Woningequivalent        string
-	Ekey                    string
+	Adres                   string
 	WoningType              uint16
 	LabelscoreVoorlopig     uint16
 	LabelscoreDefinitief    uint16
@@ -278,9 +296,12 @@ type Item struct {
 	Point                   string
 	PandGasEanAansluitingen string
 	GroupId2020             string
-	GasAansluitingen2020    string
-	Gasm32020               string
-	Kwh2020                 string
+	P6GasAansluitingen2020  string
+	P6Gasm32020             string
+	P6Kwh2020               string
+	P6TotaalPandoppervlakM2 string
+	PandBouwjaar            uint16
+	PandGasAansluitingen    string
 	Gebruiksdoelen          []uint16
 }
 
@@ -413,6 +434,17 @@ func (i ItemIn) Shrink(label int) Item {
 
 	//check if column value is already present
 	//else store new key
+	if _, ok := PandBouwjaarIdxMap[i.PandBouwjaar]; !ok {
+		// store PandBouwjaar in map at current index of tracker
+		PandBouwjaar[PandBouwjaarTracker] = i.PandBouwjaar
+		// store key - idx
+		PandBouwjaarIdxMap[i.PandBouwjaar] = PandBouwjaarTracker
+		// increase tracker
+		PandBouwjaarTracker += 1
+	}
+
+	//check if column value is already present
+	//else store new key
 	if _, ok := GebruiksdoelenIdxMap[i.Gebruiksdoelen]; !ok {
 		// store Gebruiksdoelen in map at current index of tracker
 		Gebruiksdoelen[GebruiksdoelenTracker] = i.Gebruiksdoelen
@@ -461,7 +493,7 @@ func (i ItemIn) Shrink(label int) Item {
 		i.Postcode,
 		i.Oppervlakte,
 		i.Woningequivalent,
-		i.Ekey,
+		i.Adres,
 		WoningTypeIdxMap[i.WoningType],
 		LabelscoreVoorlopigIdxMap[i.LabelscoreVoorlopig],
 		LabelscoreDefinitiefIdxMap[i.LabelscoreDefinitief],
@@ -476,9 +508,12 @@ func (i ItemIn) Shrink(label int) Item {
 		i.Point,
 		i.PandGasEanAansluitingen,
 		i.GroupId2020,
-		i.GasAansluitingen2020,
-		i.Gasm32020,
-		i.Kwh2020,
+		i.P6GasAansluitingen2020,
+		i.P6Gasm32020,
+		i.P6Kwh2020,
+		i.P6TotaalPandoppervlakM2,
+		PandBouwjaarIdxMap[i.PandBouwjaar],
+		i.PandGasAansluitingen,
 		doelen,
 	}
 }
@@ -552,6 +587,14 @@ func (i Item) StoreBitArrayColumns() {
 	}
 
 	ba.SetBit(uint64(i.Label))
+	// Column PandBouwjaar has byte arrays for
+	ba, ok = PandBouwjaarItems[i.PandBouwjaar]
+	if !ok {
+		ba = bitarray.NewSparseBitArray()
+		PandBouwjaarItems[i.PandBouwjaar] = ba
+	}
+
+	ba.SetBit(uint64(i.Label))
 
 	/*
 		// Column Buurtcode has byte arrays for
@@ -578,7 +621,7 @@ func (i Item) Serialize() ItemOut {
 		i.Postcode,
 		i.Oppervlakte,
 		i.Woningequivalent,
-		i.Ekey,
+		i.Adres,
 		WoningType[i.WoningType],
 		LabelscoreVoorlopig[i.LabelscoreVoorlopig],
 		LabelscoreDefinitief[i.LabelscoreDefinitief],
@@ -593,9 +636,12 @@ func (i Item) Serialize() ItemOut {
 		i.Point,
 		i.PandGasEanAansluitingen,
 		i.GroupId2020,
-		i.GasAansluitingen2020,
-		i.Gasm32020,
-		i.Kwh2020,
+		i.P6GasAansluitingen2020,
+		i.P6Gasm32020,
+		i.P6Kwh2020,
+		i.P6TotaalPandoppervlakM2,
+		PandBouwjaar[i.PandBouwjaar],
+		i.PandGasAansluitingen,
 		GettersGebruiksdoelen(&i),
 	}
 }
@@ -609,7 +655,7 @@ func (i ItemIn) Columns() []string {
 		"postcode",
 		"oppervlakte",
 		"woningequivalent",
-		"ekey",
+		"adres",
 		"woning_type",
 		"labelscore_voorlopig",
 		"labelscore_definitief",
@@ -624,9 +670,12 @@ func (i ItemIn) Columns() []string {
 		"point",
 		"pand_gas_ean_aansluitingen",
 		"group_id_2020",
-		"gas_aansluitingen_2020",
-		"gasm3_2020",
-		"kwh_2020",
+		"p6_gas_aansluitingen_2020",
+		"p6_gasm3_2020",
+		"p6_kwh_2020",
+		"p6_totaal_pandoppervlak_m2",
+		"pand_bouwjaar",
+		"pand_gas_aansluitingen",
 		"gebruiksdoelen",
 	}
 }
@@ -640,7 +689,7 @@ func (i ItemOut) Columns() []string {
 		"postcode",
 		"oppervlakte",
 		"woningequivalent",
-		"ekey",
+		"adres",
 		"woning_type",
 		"labelscore_voorlopig",
 		"labelscore_definitief",
@@ -655,9 +704,12 @@ func (i ItemOut) Columns() []string {
 		"point",
 		"pand_gas_ean_aansluitingen",
 		"group_id_2020",
-		"gas_aansluitingen_2020",
-		"gasm3_2020",
-		"kwh_2020",
+		"p6_gas_aansluitingen_2020",
+		"p6_gasm3_2020",
+		"p6_kwh_2020",
+		"p6_totaal_pandoppervlak_m2",
+		"pand_bouwjaar",
+		"pand_gas_aansluitingen",
 		"gebruiksdoelen",
 	}
 }
@@ -675,7 +727,7 @@ func (i Item) Row() []string {
 		i.Postcode,
 		i.Oppervlakte,
 		i.Woningequivalent,
-		i.Ekey,
+		i.Adres,
 		WoningType[i.WoningType],
 		LabelscoreVoorlopig[i.LabelscoreVoorlopig],
 		LabelscoreDefinitief[i.LabelscoreDefinitief],
@@ -690,15 +742,18 @@ func (i Item) Row() []string {
 		i.Point,
 		i.PandGasEanAansluitingen,
 		i.GroupId2020,
-		i.GasAansluitingen2020,
-		i.Gasm32020,
-		i.Kwh2020,
+		i.P6GasAansluitingen2020,
+		i.P6Gasm32020,
+		i.P6Kwh2020,
+		i.P6TotaalPandoppervlakM2,
+		PandBouwjaar[i.PandBouwjaar],
+		i.PandGasAansluitingen,
 		GettersGebruiksdoelen(&i),
 	}
 }
 
 func (i Item) GetIndex() string {
-	return GettersEkey(&i)
+	return GettersAdres(&i)
 }
 
 func (i Item) GetGeometry() string {
@@ -825,24 +880,24 @@ func GettersWoningequivalent(i *Item) string {
 	return i.Woningequivalent
 }
 
-// contain filter Ekey
-func FilterEkeyContains(i *Item, s string) bool {
-	return strings.Contains(i.Ekey, s)
+// contain filter Adres
+func FilterAdresContains(i *Item, s string) bool {
+	return strings.Contains(i.Adres, s)
 }
 
-// startswith filter Ekey
-func FilterEkeyStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Ekey, s)
+// startswith filter Adres
+func FilterAdresStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Adres, s)
 }
 
-// match filters Ekey
-func FilterEkeyMatch(i *Item, s string) bool {
-	return i.Ekey == s
+// match filters Adres
+func FilterAdresMatch(i *Item, s string) bool {
+	return i.Adres == s
 }
 
-// getter Ekey
-func GettersEkey(i *Item) string {
-	return i.Ekey
+// getter Adres
+func GettersAdres(i *Item) string {
+	return i.Adres
 }
 
 // contain filter WoningType
@@ -1125,64 +1180,124 @@ func GettersGroupId2020(i *Item) string {
 	return i.GroupId2020
 }
 
-// contain filter GasAansluitingen2020
-func FilterGasAansluitingen2020Contains(i *Item, s string) bool {
-	return strings.Contains(i.GasAansluitingen2020, s)
+// contain filter P6GasAansluitingen2020
+func FilterP6GasAansluitingen2020Contains(i *Item, s string) bool {
+	return strings.Contains(i.P6GasAansluitingen2020, s)
 }
 
-// startswith filter GasAansluitingen2020
-func FilterGasAansluitingen2020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.GasAansluitingen2020, s)
+// startswith filter P6GasAansluitingen2020
+func FilterP6GasAansluitingen2020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.P6GasAansluitingen2020, s)
 }
 
-// match filters GasAansluitingen2020
-func FilterGasAansluitingen2020Match(i *Item, s string) bool {
-	return i.GasAansluitingen2020 == s
+// match filters P6GasAansluitingen2020
+func FilterP6GasAansluitingen2020Match(i *Item, s string) bool {
+	return i.P6GasAansluitingen2020 == s
 }
 
-// getter GasAansluitingen2020
-func GettersGasAansluitingen2020(i *Item) string {
-	return i.GasAansluitingen2020
+// getter P6GasAansluitingen2020
+func GettersP6GasAansluitingen2020(i *Item) string {
+	return i.P6GasAansluitingen2020
 }
 
-// contain filter Gasm32020
-func FilterGasm32020Contains(i *Item, s string) bool {
-	return strings.Contains(i.Gasm32020, s)
+// contain filter P6Gasm32020
+func FilterP6Gasm32020Contains(i *Item, s string) bool {
+	return strings.Contains(i.P6Gasm32020, s)
 }
 
-// startswith filter Gasm32020
-func FilterGasm32020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Gasm32020, s)
+// startswith filter P6Gasm32020
+func FilterP6Gasm32020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.P6Gasm32020, s)
 }
 
-// match filters Gasm32020
-func FilterGasm32020Match(i *Item, s string) bool {
-	return i.Gasm32020 == s
+// match filters P6Gasm32020
+func FilterP6Gasm32020Match(i *Item, s string) bool {
+	return i.P6Gasm32020 == s
 }
 
-// getter Gasm32020
-func GettersGasm32020(i *Item) string {
-	return i.Gasm32020
+// getter P6Gasm32020
+func GettersP6Gasm32020(i *Item) string {
+	return i.P6Gasm32020
 }
 
-// contain filter Kwh2020
-func FilterKwh2020Contains(i *Item, s string) bool {
-	return strings.Contains(i.Kwh2020, s)
+// contain filter P6Kwh2020
+func FilterP6Kwh2020Contains(i *Item, s string) bool {
+	return strings.Contains(i.P6Kwh2020, s)
 }
 
-// startswith filter Kwh2020
-func FilterKwh2020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Kwh2020, s)
+// startswith filter P6Kwh2020
+func FilterP6Kwh2020StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.P6Kwh2020, s)
 }
 
-// match filters Kwh2020
-func FilterKwh2020Match(i *Item, s string) bool {
-	return i.Kwh2020 == s
+// match filters P6Kwh2020
+func FilterP6Kwh2020Match(i *Item, s string) bool {
+	return i.P6Kwh2020 == s
 }
 
-// getter Kwh2020
-func GettersKwh2020(i *Item) string {
-	return i.Kwh2020
+// getter P6Kwh2020
+func GettersP6Kwh2020(i *Item) string {
+	return i.P6Kwh2020
+}
+
+// contain filter P6TotaalPandoppervlakM2
+func FilterP6TotaalPandoppervlakM2Contains(i *Item, s string) bool {
+	return strings.Contains(i.P6TotaalPandoppervlakM2, s)
+}
+
+// startswith filter P6TotaalPandoppervlakM2
+func FilterP6TotaalPandoppervlakM2StartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.P6TotaalPandoppervlakM2, s)
+}
+
+// match filters P6TotaalPandoppervlakM2
+func FilterP6TotaalPandoppervlakM2Match(i *Item, s string) bool {
+	return i.P6TotaalPandoppervlakM2 == s
+}
+
+// getter P6TotaalPandoppervlakM2
+func GettersP6TotaalPandoppervlakM2(i *Item) string {
+	return i.P6TotaalPandoppervlakM2
+}
+
+// contain filter PandBouwjaar
+func FilterPandBouwjaarContains(i *Item, s string) bool {
+	return strings.Contains(PandBouwjaar[i.PandBouwjaar], s)
+}
+
+// startswith filter PandBouwjaar
+func FilterPandBouwjaarStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(PandBouwjaar[i.PandBouwjaar], s)
+}
+
+// match filters PandBouwjaar
+func FilterPandBouwjaarMatch(i *Item, s string) bool {
+	return PandBouwjaar[i.PandBouwjaar] == s
+}
+
+// getter PandBouwjaar
+func GettersPandBouwjaar(i *Item) string {
+	return PandBouwjaar[i.PandBouwjaar]
+}
+
+// contain filter PandGasAansluitingen
+func FilterPandGasAansluitingenContains(i *Item, s string) bool {
+	return strings.Contains(i.PandGasAansluitingen, s)
+}
+
+// startswith filter PandGasAansluitingen
+func FilterPandGasAansluitingenStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.PandGasAansluitingen, s)
+}
+
+// match filters PandGasAansluitingen
+func FilterPandGasAansluitingenMatch(i *Item, s string) bool {
+	return i.PandGasAansluitingen == s
+}
+
+// getter PandGasAansluitingen
+func GettersPandGasAansluitingen(i *Item) string {
+	return i.PandGasAansluitingen
 }
 
 // contain filter Gebruiksdoelen
@@ -1447,6 +1562,25 @@ func GetBitArrayProvinciecode(v string) (bitarray.BitArray, error) {
 	return ba, nil
 }
 
+// GetBitArrayPandBouwjaar for given v string see if there is
+// a bitarray created.
+func GetBitArrayPandBouwjaar(v string) (bitarray.BitArray, error) {
+
+	bpi, ok := PandBouwjaarIdxMap[v]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column value PandBouwjaar")
+	}
+
+	ba, ok := PandBouwjaarItems[bpi]
+
+	if !ok {
+		return nil, errors.New("no bitarray filter found for column idx value PandBouwjaar")
+	}
+
+	return ba, nil
+}
+
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
@@ -1461,7 +1595,7 @@ func init() {
 	// example RegisterFuncMap["search"] = FilterEkeyStartsWith
 
 	//RegisterFuncMap["value"] = 'EDITYOURSELF'
-	RegisterGetters["value"] = GettersEkey
+	RegisterGetters["value"] = GettersAdres
 
 	// register filters
 
@@ -1507,12 +1641,12 @@ func init() {
 	RegisterGetters["woningequivalent"] = GettersWoningequivalent
 	RegisterGroupBy["woningequivalent"] = GettersWoningequivalent
 
-	//register filters for Ekey
-	RegisterFuncMap["match-ekey"] = FilterEkeyMatch
-	RegisterFuncMap["contains-ekey"] = FilterEkeyContains
-	RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
-	RegisterGetters["ekey"] = GettersEkey
-	RegisterGroupBy["ekey"] = GettersEkey
+	//register filters for Adres
+	RegisterFuncMap["match-adres"] = FilterAdresMatch
+	RegisterFuncMap["contains-adres"] = FilterAdresContains
+	RegisterFuncMap["startswith-adres"] = FilterAdresStartsWith
+	RegisterGetters["adres"] = GettersAdres
+	RegisterGroupBy["adres"] = GettersAdres
 
 	//register filters for WoningType
 	RegisterFuncMap["match-woning_type"] = FilterWoningTypeMatch
@@ -1626,26 +1760,49 @@ func init() {
 	RegisterGetters["group_id_2020"] = GettersGroupId2020
 	RegisterGroupBy["group_id_2020"] = GettersGroupId2020
 
-	//register filters for GasAansluitingen2020
-	RegisterFuncMap["match-gas_aansluitingen_2020"] = FilterGasAansluitingen2020Match
-	RegisterFuncMap["contains-gas_aansluitingen_2020"] = FilterGasAansluitingen2020Contains
-	RegisterFuncMap["startswith-gas_aansluitingen_2020"] = FilterGasAansluitingen2020StartsWith
-	RegisterGetters["gas_aansluitingen_2020"] = GettersGasAansluitingen2020
-	RegisterGroupBy["gas_aansluitingen_2020"] = GettersGasAansluitingen2020
+	//register filters for P6GasAansluitingen2020
+	RegisterFuncMap["match-p6_gas_aansluitingen_2020"] = FilterP6GasAansluitingen2020Match
+	RegisterFuncMap["contains-p6_gas_aansluitingen_2020"] = FilterP6GasAansluitingen2020Contains
+	RegisterFuncMap["startswith-p6_gas_aansluitingen_2020"] = FilterP6GasAansluitingen2020StartsWith
+	RegisterGetters["p6_gas_aansluitingen_2020"] = GettersP6GasAansluitingen2020
+	RegisterGroupBy["p6_gas_aansluitingen_2020"] = GettersP6GasAansluitingen2020
 
-	//register filters for Gasm32020
-	RegisterFuncMap["match-gasm3_2020"] = FilterGasm32020Match
-	RegisterFuncMap["contains-gasm3_2020"] = FilterGasm32020Contains
-	RegisterFuncMap["startswith-gasm3_2020"] = FilterGasm32020StartsWith
-	RegisterGetters["gasm3_2020"] = GettersGasm32020
-	RegisterGroupBy["gasm3_2020"] = GettersGasm32020
+	//register filters for P6Gasm32020
+	RegisterFuncMap["match-p6_gasm3_2020"] = FilterP6Gasm32020Match
+	RegisterFuncMap["contains-p6_gasm3_2020"] = FilterP6Gasm32020Contains
+	RegisterFuncMap["startswith-p6_gasm3_2020"] = FilterP6Gasm32020StartsWith
+	RegisterGetters["p6_gasm3_2020"] = GettersP6Gasm32020
+	RegisterGroupBy["p6_gasm3_2020"] = GettersP6Gasm32020
 
-	//register filters for Kwh2020
-	RegisterFuncMap["match-kwh_2020"] = FilterKwh2020Match
-	RegisterFuncMap["contains-kwh_2020"] = FilterKwh2020Contains
-	RegisterFuncMap["startswith-kwh_2020"] = FilterKwh2020StartsWith
-	RegisterGetters["kwh_2020"] = GettersKwh2020
-	RegisterGroupBy["kwh_2020"] = GettersKwh2020
+	//register filters for P6Kwh2020
+	RegisterFuncMap["match-p6_kwh_2020"] = FilterP6Kwh2020Match
+	RegisterFuncMap["contains-p6_kwh_2020"] = FilterP6Kwh2020Contains
+	RegisterFuncMap["startswith-p6_kwh_2020"] = FilterP6Kwh2020StartsWith
+	RegisterGetters["p6_kwh_2020"] = GettersP6Kwh2020
+	RegisterGroupBy["p6_kwh_2020"] = GettersP6Kwh2020
+
+	//register filters for P6TotaalPandoppervlakM2
+	RegisterFuncMap["match-p6_totaal_pandoppervlak_m2"] = FilterP6TotaalPandoppervlakM2Match
+	RegisterFuncMap["contains-p6_totaal_pandoppervlak_m2"] = FilterP6TotaalPandoppervlakM2Contains
+	RegisterFuncMap["startswith-p6_totaal_pandoppervlak_m2"] = FilterP6TotaalPandoppervlakM2StartsWith
+	RegisterGetters["p6_totaal_pandoppervlak_m2"] = GettersP6TotaalPandoppervlakM2
+	RegisterGroupBy["p6_totaal_pandoppervlak_m2"] = GettersP6TotaalPandoppervlakM2
+
+	//register filters for PandBouwjaar
+	RegisterFuncMap["match-pand_bouwjaar"] = FilterPandBouwjaarMatch
+	RegisterFuncMap["contains-pand_bouwjaar"] = FilterPandBouwjaarContains
+	RegisterFuncMap["startswith-pand_bouwjaar"] = FilterPandBouwjaarStartsWith
+	RegisterGetters["pand_bouwjaar"] = GettersPandBouwjaar
+	RegisterGroupBy["pand_bouwjaar"] = GettersPandBouwjaar
+
+	RegisterBitArray["pand_bouwjaar"] = GetBitArrayPandBouwjaar
+
+	//register filters for PandGasAansluitingen
+	RegisterFuncMap["match-pand_gas_aansluitingen"] = FilterPandGasAansluitingenMatch
+	RegisterFuncMap["contains-pand_gas_aansluitingen"] = FilterPandGasAansluitingenContains
+	RegisterFuncMap["startswith-pand_gas_aansluitingen"] = FilterPandGasAansluitingenStartsWith
+	RegisterGetters["pand_gas_aansluitingen"] = GettersPandGasAansluitingen
+	RegisterGroupBy["pand_gas_aansluitingen"] = GettersPandGasAansluitingen
 
 	//register filters for Gebruiksdoelen
 	RegisterFuncMap["match-gebruiksdoelen"] = FilterGebruiksdoelenMatch
@@ -1702,8 +1859,8 @@ func createSort(items Items) sortLookup {
 		"woningequivalent":  func(i, j int) bool { return items[i].Woningequivalent < items[j].Woningequivalent },
 		"-woningequivalent": func(i, j int) bool { return items[i].Woningequivalent > items[j].Woningequivalent },
 
-		"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },
-		"-ekey": func(i, j int) bool { return items[i].Ekey > items[j].Ekey },
+		"adres":  func(i, j int) bool { return items[i].Adres < items[j].Adres },
+		"-adres": func(i, j int) bool { return items[i].Adres > items[j].Adres },
 
 		"woning_type":  func(i, j int) bool { return WoningType[items[i].WoningType] < WoningType[items[j].WoningType] },
 		"-woning_type": func(i, j int) bool { return WoningType[items[i].WoningType] > WoningType[items[j].WoningType] },
@@ -1763,14 +1920,23 @@ func createSort(items Items) sortLookup {
 		"group_id_2020":  func(i, j int) bool { return items[i].GroupId2020 < items[j].GroupId2020 },
 		"-group_id_2020": func(i, j int) bool { return items[i].GroupId2020 > items[j].GroupId2020 },
 
-		"gas_aansluitingen_2020":  func(i, j int) bool { return items[i].GasAansluitingen2020 < items[j].GasAansluitingen2020 },
-		"-gas_aansluitingen_2020": func(i, j int) bool { return items[i].GasAansluitingen2020 > items[j].GasAansluitingen2020 },
+		"p6_gas_aansluitingen_2020":  func(i, j int) bool { return items[i].P6GasAansluitingen2020 < items[j].P6GasAansluitingen2020 },
+		"-p6_gas_aansluitingen_2020": func(i, j int) bool { return items[i].P6GasAansluitingen2020 > items[j].P6GasAansluitingen2020 },
 
-		"gasm3_2020":  func(i, j int) bool { return items[i].Gasm32020 < items[j].Gasm32020 },
-		"-gasm3_2020": func(i, j int) bool { return items[i].Gasm32020 > items[j].Gasm32020 },
+		"p6_gasm3_2020":  func(i, j int) bool { return items[i].P6Gasm32020 < items[j].P6Gasm32020 },
+		"-p6_gasm3_2020": func(i, j int) bool { return items[i].P6Gasm32020 > items[j].P6Gasm32020 },
 
-		"kwh_2020":  func(i, j int) bool { return items[i].Kwh2020 < items[j].Kwh2020 },
-		"-kwh_2020": func(i, j int) bool { return items[i].Kwh2020 > items[j].Kwh2020 },
+		"p6_kwh_2020":  func(i, j int) bool { return items[i].P6Kwh2020 < items[j].P6Kwh2020 },
+		"-p6_kwh_2020": func(i, j int) bool { return items[i].P6Kwh2020 > items[j].P6Kwh2020 },
+
+		"p6_totaal_pandoppervlak_m2":  func(i, j int) bool { return items[i].P6TotaalPandoppervlakM2 < items[j].P6TotaalPandoppervlakM2 },
+		"-p6_totaal_pandoppervlak_m2": func(i, j int) bool { return items[i].P6TotaalPandoppervlakM2 > items[j].P6TotaalPandoppervlakM2 },
+
+		"pand_bouwjaar":  func(i, j int) bool { return PandBouwjaar[items[i].PandBouwjaar] < PandBouwjaar[items[j].PandBouwjaar] },
+		"-pand_bouwjaar": func(i, j int) bool { return PandBouwjaar[items[i].PandBouwjaar] > PandBouwjaar[items[j].PandBouwjaar] },
+
+		"pand_gas_aansluitingen":  func(i, j int) bool { return items[i].PandGasAansluitingen < items[j].PandGasAansluitingen },
+		"-pand_gas_aansluitingen": func(i, j int) bool { return items[i].PandGasAansluitingen > items[j].PandGasAansluitingen },
 
 		"gebruiksdoelen": func(i, j int) bool {
 			return GettersGebruiksdoelen(items[i]) < GettersGebruiksdoelen(items[j])
