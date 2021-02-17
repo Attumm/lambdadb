@@ -247,6 +247,9 @@ func groupByRunner(items Items, groupByParameter string) ItemsGroupedBy {
 		return grouping
 	}
 
+	lock.RLock()
+	defer lock.RUnlock()
+
 	for _, item := range items {
 		if customGrouping == nil {
 			GroupingKey := groupingFunc(item)
