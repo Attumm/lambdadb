@@ -112,9 +112,24 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 		err := jsonDecoder.Decode(&items)
 		if err != nil {
 			fmt.Println(err)
+			w.WriteHeader(500)
+			return
 		}
 		msg := fmt.Sprint("adding ", len(items))
 		fmt.Printf(WarningColorN, msg)
+
+		strictMode := SETTINGS.Get("strict-mode") == "y"
+		for n, item := range items {
+			if (*item == Item{}) {
+				fmt.Printf("unable to process item %d of batch\n", n)
+				if strictMode {
+					fmt.Printf("strict mode stopping ingestion of batch\n")
+					w.WriteHeader(406)
+					return
+				}
+			}
+
+		}
 		itemChan <- items
 		w.WriteHeader(204)
 	}
@@ -130,6 +145,7 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 }
 
 var LOOKUP map[string]Items
+var LOOKUPINDEX map[string][]int
 var INDEX *suffixarray.Index
 var STR_INDEX []byte
 
@@ -158,12 +174,23 @@ func makeIndex() {
 	})
 
 	LOOKUP = make(map[string]Items)
+	LOOKUPINDEX = make(map[string][]int)
 	kSet := make(map[string]bool)
 
-	for _, item := range ITEMS {
-		key := strings.ToLower(item.GetIndex())
-		kSet[key] = true
-		LOOKUP[key] = append(LOOKUP[key], item)
+	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
+	//for _, item := range ITEMS {
+	//	key := strings.ToLower(item.GetIndex())
+	//	kSet[key] = true
+	//	LOOKUP[key] = append(LOOKUP[key], item)
+	//}
+
+	for index, item := range ITEMS {
+		for _, v := range item.Row() {
+			v := strings.ToLower(v)
+			kSet[v] = true
+			LOOKUP[v] = append(LOOKUP[v], item)
+			LOOKUPINDEX[v] = append(LOOKUPINDEX[v], index)
+		}
 	}
 
 	//make a list of all used keys
@@ -175,8 +202,6 @@ func makeIndex() {
 	//join all keys together
 	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
 	INDEX = suffixarray.New(STR_INDEX)
-
-	fmt.Printf(WarningColorN, "sorted")
 }
 
 func writeCSV(items Items, w http.ResponseWriter) {
@@ -188,7 +213,7 @@ func writeCSV(items Items, w http.ResponseWriter) {
 }
 
 func loadRest(w http.ResponseWriter, r *http.Request) {
-	filename := "ITEMS.txt.gz"
+	filename := "./files/ITEMS.txt.gz"
 	fi, err := os.Open(filename)
 	if err != nil {
 		path, err2 := os.Getwd()
@@ -207,7 +232,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer fz.Close()
 
-	// TODO do not use ReadAll..but do it line by line
+	// TODO buffered instead of one big chunk
 	s, err := ioutil.ReadAll(fz)
 
 	if err != nil {
@@ -217,19 +242,26 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*1000)
 	json.Unmarshal(s, &ITEMS)
 
-	// empty input save the memory
+	// GC friendly
 	s = nil
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
 
-	if SETTINGS.Get("indexed") == "yes" {
+	if SETTINGS.Get("indexed") == "y" {
+		msg := fmt.Sprint("Creating index")
+		fmt.Printf(WarningColorN, msg)
 		makeIndex()
+		msg = fmt.Sprint("Index set")
+		fmt.Printf(WarningColorN, msg)
 	}
 }
 
 func saveRest(w http.ResponseWriter, r *http.Request) {
-	filename := "ITEMS.txt.gz"
+	msg := fmt.Sprintf("Saving items %d unto disk zipped", len(ITEMS))
+	fmt.Printf(WarningColorN, msg)
+
+	filename := "./files/ITEMS.txt.gz"
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)
 	itemJSON, _ := json.Marshal(ITEMS)
@@ -239,10 +271,20 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	err := ioutil.WriteFile(filename, b.Bytes(), 0666)
 	if err != nil {
 		// TODO better error handling
-		fmt.Println(err)
+		fmt.Println("unable to write file reason:", err)
 		w.WriteHeader(500)
 		return
 	}
+	fi, err := os.Stat(filename)
+	if err != nil {
+		fmt.Println("unable to read file reason:", err)
+		w.WriteHeader(500)
+		return
+	}
+	size := fi.Size()
+	msg = fmt.Sprintf("Done filesize is %d", size)
+	fmt.Printf(WarningColorN, msg)
+
 	w.WriteHeader(204)
 }
 

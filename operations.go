@@ -104,6 +104,7 @@ func parseURLParameters(r *http.Request) Query {
 
 	index := ""
 	indexL, indexGiven := urlItems["search"]
+	indexGiven = indexGiven && (SETTINGS.Get("indexed") == "y")
 	indexUsed := indexGiven && indexL[0] != ""
 	if indexUsed {
 		index = indexL[0]
@@ -293,16 +294,38 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	start := time.Now()
 	var newItems Items
 
+	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
+
+	//if query.IndexGiven && len(STR_INDEX) > 0 {
+	//	items = make(Items, 0)
+	//	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+	//	seen := make(map[string]bool)
+	//	for _, idx := range indices {
+	//		key := getStringFromIndex(STR_INDEX, idx)
+	//		if !seen[key] {
+	//			seen[key] = true
+	//			for _, item := range LOOKUP[key] {
+	//				items = append(items, item)
+	//			}
+	//		}
+
+	//	}
+	//}
 	if query.IndexGiven && len(STR_INDEX) > 0 {
 		items = make(Items, 0)
 		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
 		seen := make(map[string]bool)
+		added := make(map[int]bool)
 		for _, idx := range indices {
 			key := getStringFromIndex(STR_INDEX, idx)
 			if !seen[key] {
 				seen[key] = true
-				for _, item := range LOOKUP[key] {
-					items = append(items, item)
+				for _, index := range LOOKUPINDEX[key] {
+					if _, ok := added[index]; !ok {
+						added[index] = true
+						items = append(items, ITEMS[index])
+					}
+
 				}
 			}
 

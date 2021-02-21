@@ -7,6 +7,8 @@
 
 import csv
 import sys
+from filereader import create_reader, supported_fileformats
+
 
 def create_struct(item):
     start = "type Item struct {\n"
@@ -179,11 +181,15 @@ def create_sortby(row):
 if __name__ == "__main__":
 
     filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
+    file_format = str(sys.argv[sys.argv.index('-format')+1]) if '-format' in sys.argv else "csv"
+
+    if file_format not in supported_fileformats():
+        print(f"{file_format} not part of supported file formats {','.join(supported_fileformats())}")
+        sys.exit()
 
     with open(filename) as f:
-        reader = csv.DictReader(f)
+        reader = create_reader(f, file_format)
         row = dict(next(reader))
-
 
     print("package main")
     print()
@@ -258,7 +264,6 @@ if __name__ == "__main__":
     for k in row.keys():
         print(create_register_groupby(k))
     print()
-
 
 
     print()

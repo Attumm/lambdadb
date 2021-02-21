@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
-        //"github.com/prometheus/client_golang/prometheus"
-        //"github.com/prometheus/client_golang/prometheus/promauto"
-        "github.com/prometheus/client_golang/prometheus/promhttp"
+	//"github.com/prometheus/client_golang/prometheus"
+	//"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type filterFuncc func(*Item, string) bool
@@ -62,24 +62,24 @@ func loadcsv(itemChan ItemsChannel) {
 	makeIndex()
 }
 
-
 func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
-	SETTINGS.Set("JWTENABLED", "yes", "JWT enabled")
+	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
 
 	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
-	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
+	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb ")
 
-	SETTINGS.Set("indexed", "no", "is the data indexed, for more information read the documenation?")
+	SETTINGS.Set("indexed", "n", "is the data indexed, for more information read the documenation?")
+	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.Set("prometheus-monitoring", "no", "add promethues monitoring endpoint")
 	SETTINGS.Parse()
 
-        //Construct yes or no to booleans in SETTINGS
+	//Construct yes or no to booleans in SETTINGS
 
 	ITEMS = make(Items, 0, 100*1000)
 
@@ -112,23 +112,23 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
-	if SETTINGS.Get("readonly") != "yes" {
-		mux.HandleFunc("/add/", addRest)
-		mux.HandleFunc("/rm/", rmRest)
-		mux.HandleFunc("/save/", saveRest)
-		mux.HandleFunc("/load/", loadRest)
+	if SETTINGS.Get("mgmt") == "y" {
+		mux.HandleFunc("/mgmt/add/", addRest)
+		mux.HandleFunc("/mgmt/rm/", rmRest)
+		mux.HandleFunc("/mgmt/save/", saveRest)
+		mux.HandleFunc("/mgmt/load/", loadRest)
 
-		mux.Handle("/", http.FileServer(http.Dir("./www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./www")))
+		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
+		mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
 	}
 
+	if SETTINGS.Get("prometheus-monitoring") == "y" {
+		mux.Handle("/metrics", promhttp.Handler())
+	}
+	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 
-	if SETTINGS.Get("prometheus-monitoring") == "yes" {
-             mux.Handle("/metrics", promhttp.Handler())
-        }
-
-        msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "readonly mode: ", SETTINGS.Get("readonly") != "yes", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes") 
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes")
 	fmt.Printf(InfoColorN, msg)
 
-	log.Fatal(http.ListenAndServe(ipPort, CORS(mux)))
+	log.Fatal(http.ListenAndServe(ipPort, mux))
 }

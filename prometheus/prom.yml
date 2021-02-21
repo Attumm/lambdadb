@@ -1,0 +1,5 @@
+job_name: prometheus
+metrics_path: /metrics
+static_configs:
+  - targets:
+    - 'prometheus:9090'

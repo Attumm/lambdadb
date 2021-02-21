@@ -7,227 +7,134 @@ import (
 )
 
 type Item struct {
-	Pid                   string `json:"pid"`
-	Vid                   string `json:"vid"`
-	Numid                 string `json:"numid"`
-	Postcode              string `json:"postcode"`
-	Huisnummer            string `json:"huisnummer"`
-	Ekey                  string `json:"ekey"`
-	Woning_type           string `json:"woning_type"`
-	Labelscore_voorlopig  string `json:"labelscore_voorlopig"`
-	Labelscore_definitief string `json:"labelscore_definitief"`
-	Identificatie         string `json:"identificatie"`
-	Gemeentecode          string `json:"gemeentecode"`
-	Gemeentenaam          string `json:"gemeentenaam"`
-	Buurtcode             string `json:"buurtcode"`
-	Wijkcode              string `json:"wijkcode"`
-	Provinciecode         string `json:"provinciecode"`
-	Provincienaam         string `json:"provincienaam"`
+	Tconst         string `json:"tconst"`
+	Titletype      string `json:"titletype"`
+	Primarytitle   string `json:"primarytitle"`
+	Originaltitle  string `json:"originaltitle"`
+	Isadult        string `json:"isadult"`
+	Startyear      string `json:"startyear"`
+	Endyear        string `json:"endyear"`
+	Runtimeminutes string `json:"runtimeminutes"`
+	Genres         string `json:"genres"`
 }
 
 func (i Item) Columns() []string {
 	return []string{
-		"pid",
-		"vid",
-		"numid",
-		"postcode",
-		"huisnummer",
-		"ekey",
-		"woning_type",
-		"labelscore_voorlopig",
-		"labelscore_definitief",
-		"identificatie",
-		"gemeentecode",
-		"gemeentenaam",
-		"buurtcode",
-		"wijkcode",
-		"provinciecode",
-		"provincienaam",
+		"tconst",
+		"titletype",
+		"primarytitle",
+		"originaltitle",
+		"isadult",
+		"startyear",
+		"endyear",
+		"runtimeminutes",
+		"genres",
 	}
 }
 
 func (i Item) Row() []string {
 	return []string{
-		i.Pid,
-		i.Vid,
-		i.Numid,
-		i.Postcode,
-		i.Huisnummer,
-		i.Ekey,
-		i.Woning_type,
-		i.Labelscore_voorlopig,
-		i.Labelscore_definitief,
-		i.Identificatie,
-		i.Gemeentecode,
-		i.Gemeentenaam,
-		i.Buurtcode,
-		i.Wijkcode,
-		i.Provinciecode,
-		i.Provincienaam,
+		i.Tconst,
+		i.Titletype,
+		i.Primarytitle,
+		i.Originaltitle,
+		i.Isadult,
+		i.Startyear,
+		i.Endyear,
+		i.Runtimeminutes,
+		i.Genres,
 	}
 }
 
 func (i Item) GetIndex() string {
-	return i.Buurtcode
-}
-
-func FilterSearch(i *Item, s string) bool {
-
-	return (strings.Contains(i.Postcode, s) ||
-		strings.Contains(i.Buurtcode, s) ||
-		strings.Contains(i.Provincienaam, s) ||
-		strings.Contains(i.Gemeentenaam, s))
+	return i.Tconst
 }
 
 // contain filters
-func FilterPidContains(i *Item, s string) bool {
-	return strings.Contains(i.Pid, s)
+func FilterTconstContains(i *Item, s string) bool {
+	return strings.Contains(i.Tconst, s)
 }
-func FilterVidContains(i *Item, s string) bool {
-	return strings.Contains(i.Vid, s)
+func FilterTitletypeContains(i *Item, s string) bool {
+	return strings.Contains(i.Titletype, s)
 }
-func FilterNumidContains(i *Item, s string) bool {
-	return strings.Contains(i.Numid, s)
+func FilterPrimarytitleContains(i *Item, s string) bool {
+	return strings.Contains(i.Primarytitle, s)
 }
-func FilterPostcodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Postcode, s)
+func FilterOriginaltitleContains(i *Item, s string) bool {
+	return strings.Contains(i.Originaltitle, s)
 }
-func FilterHuisnummerContains(i *Item, s string) bool {
-	return strings.Contains(i.Huisnummer, s)
+func FilterIsadultContains(i *Item, s string) bool {
+	return strings.Contains(i.Isadult, s)
 }
-func FilterEkeyContains(i *Item, s string) bool {
-	return strings.Contains(i.Ekey, s)
+func FilterStartyearContains(i *Item, s string) bool {
+	return strings.Contains(i.Startyear, s)
 }
-func FilterWoning_typeContains(i *Item, s string) bool {
-	return strings.Contains(i.Woning_type, s)
+func FilterEndyearContains(i *Item, s string) bool {
+	return strings.Contains(i.Endyear, s)
 }
-func FilterLabelscore_voorlopigContains(i *Item, s string) bool {
-	return strings.Contains(i.Labelscore_voorlopig, s)
+func FilterRuntimeminutesContains(i *Item, s string) bool {
+	return strings.Contains(i.Runtimeminutes, s)
 }
-func FilterLabelscore_definitiefContains(i *Item, s string) bool {
-	return strings.Contains(i.Labelscore_definitief, s)
-}
-func FilterIdentificatieContains(i *Item, s string) bool {
-	return strings.Contains(i.Identificatie, s)
-}
-func FilterGemeentecodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Gemeentecode, s)
-}
-func FilterGemeentenaamContains(i *Item, s string) bool {
-	return strings.Contains(i.Gemeentenaam, s)
-}
-func FilterBuurtcodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Buurtcode, s)
-}
-func FilterWijkcodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Wijkcode, s)
-}
-func FilterProvinciecodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Provinciecode, s)
-}
-func FilterProvincienaamContains(i *Item, s string) bool {
-	return strings.Contains(i.Provincienaam, s)
+func FilterGenresContains(i *Item, s string) bool {
+	return strings.Contains(i.Genres, s)
 }
 
 // startswith filters
-func FilterPidStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Pid, s)
+func FilterTconstStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Tconst, s)
 }
-func FilterVidStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Vid, s)
+func FilterTitletypeStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Titletype, s)
 }
-func FilterNumidStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Numid, s)
+func FilterPrimarytitleStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Primarytitle, s)
 }
-func FilterPostcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Postcode, s)
+func FilterOriginaltitleStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Originaltitle, s)
 }
-func FilterHuisnummerStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Huisnummer, s)
+func FilterIsadultStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Isadult, s)
 }
-func FilterEkeyStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Ekey, s)
+func FilterStartyearStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Startyear, s)
 }
-func FilterWoning_typeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Woning_type, s)
+func FilterEndyearStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Endyear, s)
 }
-func FilterLabelscore_voorlopigStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Labelscore_voorlopig, s)
+func FilterRuntimeminutesStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Runtimeminutes, s)
 }
-func FilterLabelscore_definitiefStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Labelscore_definitief, s)
-}
-func FilterIdentificatieStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Identificatie, s)
-}
-func FilterGemeentecodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Gemeentecode, s)
-}
-func FilterGemeentenaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Gemeentenaam, s)
-}
-func FilterBuurtcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Buurtcode, s)
-}
-func FilterWijkcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Wijkcode, s)
-}
-func FilterProvinciecodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Provinciecode, s)
-}
-func FilterProvincienaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Provincienaam, s)
+func FilterGenresStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Genres, s)
 }
 
 // match filters
-func FilterPidMatch(i *Item, s string) bool {
-	return i.Pid == s
+func FilterTconstMatch(i *Item, s string) bool {
+	return i.Tconst == s
 }
-func FilterVidMatch(i *Item, s string) bool {
-	return i.Vid == s
+func FilterTitletypeMatch(i *Item, s string) bool {
+	return i.Titletype == s
 }
-func FilterNumidMatch(i *Item, s string) bool {
-	return i.Numid == s
+func FilterPrimarytitleMatch(i *Item, s string) bool {
+	return i.Primarytitle == s
 }
-func FilterPostcodeMatch(i *Item, s string) bool {
-	return i.Postcode == s
+func FilterOriginaltitleMatch(i *Item, s string) bool {
+	return i.Originaltitle == s
 }
-func FilterHuisnummerMatch(i *Item, s string) bool {
-	return i.Huisnummer == s
+func FilterIsadultMatch(i *Item, s string) bool {
+	return i.Isadult == s
 }
-func FilterEkeyMatch(i *Item, s string) bool {
-	return i.Ekey == s
+func FilterStartyearMatch(i *Item, s string) bool {
+	return i.Startyear == s
 }
-func FilterWoning_typeMatch(i *Item, s string) bool {
-	return i.Woning_type == s
+func FilterEndyearMatch(i *Item, s string) bool {
+	return i.Endyear == s
 }
-func FilterLabelscore_voorlopigMatch(i *Item, s string) bool {
-	return i.Labelscore_voorlopig == s
+func FilterRuntimeminutesMatch(i *Item, s string) bool {
+	return i.Runtimeminutes == s
 }
-func FilterLabelscore_definitiefMatch(i *Item, s string) bool {
-	return i.Labelscore_definitief == s
-}
-
-func FilterIdentificatieMatch(i *Item, s string) bool {
-	return i.Identificatie == s
-}
-func FilterGemeentecodeMatch(i *Item, s string) bool {
-	return i.Gemeentecode == s
-}
-func FilterGemeentenaamMatch(i *Item, s string) bool {
-	return i.Gemeentenaam == s
-}
-func FilterBuurtcodeMatch(i *Item, s string) bool {
-	return i.Buurtcode == s
-}
-func FilterWijkcodeMatch(i *Item, s string) bool {
-	return i.Wijkcode == s
-}
-func FilterProvinciecodeMatch(i *Item, s string) bool {
-	return i.Provinciecode == s
-}
-func FilterProvincienaamMatch(i *Item, s string) bool {
-	return i.Provincienaam == s
+func FilterGenresMatch(i *Item, s string) bool {
+	return i.Genres == s
 }
 
 // reduce functions
@@ -239,53 +146,32 @@ func reduceCount(items Items) map[string]string {
 }
 
 // getters
-func GettersPid(i *Item) string {
-	return i.Pid
+func GettersTconst(i *Item) string {
+	return i.Tconst
 }
-func GettersVid(i *Item) string {
-	return i.Vid
+func GettersTitletype(i *Item) string {
+	return i.Titletype
 }
-func GettersNumid(i *Item) string {
-	return i.Numid
+func GettersPrimarytitle(i *Item) string {
+	return i.Primarytitle
 }
-func GettersPostcode(i *Item) string {
-	return i.Postcode
+func GettersOriginaltitle(i *Item) string {
+	return i.Originaltitle
 }
-func GettersHuisnummer(i *Item) string {
-	return i.Huisnummer
+func GettersIsadult(i *Item) string {
+	return i.Isadult
 }
-func GettersEkey(i *Item) string {
-	return i.Ekey
+func GettersStartyear(i *Item) string {
+	return i.Startyear
 }
-func GettersWoning_type(i *Item) string {
-	return i.Woning_type
+func GettersEndyear(i *Item) string {
+	return i.Endyear
 }
-func GettersLabelscore_voorlopig(i *Item) string {
-	return i.Labelscore_voorlopig
+func GettersRuntimeminutes(i *Item) string {
+	return i.Runtimeminutes
 }
-func GettersLabelscore_definitief(i *Item) string {
-	return i.Labelscore_definitief
-}
-func GettersIdentificatie(i *Item) string {
-	return i.Identificatie
-}
-func GettersGemeentecode(i *Item) string {
-	return i.Gemeentecode
-}
-func GettersGemeentenaam(i *Item) string {
-	return i.Gemeentenaam
-}
-func GettersBuurtcode(i *Item) string {
-	return i.Buurtcode
-}
-func GettersWijkcode(i *Item) string {
-	return i.Wijkcode
-}
-func GettersProvinciecode(i *Item) string {
-	return i.Provinciecode
-}
-func GettersProvincienaam(i *Item) string {
-	return i.Provincienaam
+func GettersGenres(i *Item) string {
+	return i.Genres
 }
 
 type GroupedOperations struct {
@@ -309,149 +195,92 @@ func init() {
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
 
-	RegisterFuncMap["search"] = FilterSearch
-
 	// register match filters
-	RegisterFuncMap["match-pid"] = FilterPidMatch
-	RegisterFuncMap["match-vid"] = FilterVidMatch
-	RegisterFuncMap["match-numid"] = FilterNumidMatch
-	RegisterFuncMap["match-postcode"] = FilterPostcodeMatch
-	RegisterFuncMap["match-huisnummer"] = FilterHuisnummerMatch
-	RegisterFuncMap["match-ekey"] = FilterEkeyMatch
-	RegisterFuncMap["match-woning_type"] = FilterWoning_typeMatch
-	RegisterFuncMap["match-labelscore_voorlopig"] = FilterLabelscore_voorlopigMatch
-	RegisterFuncMap["match-labelscore_definitief"] = FilterLabelscore_definitiefMatch
-	RegisterFuncMap["match-identificatie"] = FilterIdentificatieMatch
-	RegisterFuncMap["match-gemeentecode"] = FilterGemeentecodeMatch
-	RegisterFuncMap["match-gemeentenaam"] = FilterGemeentenaamMatch
-	RegisterFuncMap["match-buurtcode"] = FilterBuurtcodeMatch
-	RegisterFuncMap["match-wijkcode"] = FilterWijkcodeMatch
-	RegisterFuncMap["match-provinciecode"] = FilterProvinciecodeMatch
-	RegisterFuncMap["match-provincienaam"] = FilterProvincienaamMatch
+
+	RegisterFuncMap["match-tconst"] = FilterTconstMatch
+	RegisterFuncMap["match-titletype"] = FilterTitletypeMatch
+	RegisterFuncMap["match-primarytitle"] = FilterPrimarytitleMatch
+	RegisterFuncMap["match-originaltitle"] = FilterOriginaltitleMatch
+	RegisterFuncMap["match-isadult"] = FilterIsadultMatch
+	RegisterFuncMap["match-startyear"] = FilterStartyearMatch
+	RegisterFuncMap["match-endyear"] = FilterEndyearMatch
+	RegisterFuncMap["match-runtimeminutes"] = FilterRuntimeminutesMatch
+	RegisterFuncMap["match-genres"] = FilterGenresMatch
 
 	// register contains filters
-	RegisterFuncMap["contains-pid"] = FilterPidContains
-	RegisterFuncMap["contains-vid"] = FilterVidContains
-	RegisterFuncMap["contains-numid"] = FilterNumidContains
-	RegisterFuncMap["contains-postcode"] = FilterPostcodeContains
-	RegisterFuncMap["contains-huisnummer"] = FilterHuisnummerContains
-	RegisterFuncMap["contains-ekey"] = FilterEkeyContains
-	RegisterFuncMap["contains-woning_type"] = FilterWoning_typeContains
-	RegisterFuncMap["contains-labelscore_voorlopig"] = FilterLabelscore_voorlopigContains
-	RegisterFuncMap["contains-labelscore_definitief"] = FilterLabelscore_definitiefContains
-	RegisterFuncMap["contains-identificatie"] = FilterIdentificatieContains
-	RegisterFuncMap["contains-gemeentecode"] = FilterGemeentecodeContains
-	RegisterFuncMap["contains-gemeentenaam"] = FilterGemeentenaamContains
-	RegisterFuncMap["contains-buurtcode"] = FilterBuurtcodeContains
-	RegisterFuncMap["contains-wijkcode"] = FilterWijkcodeContains
-	RegisterFuncMap["contains-provinciecode"] = FilterProvinciecodeContains
-	RegisterFuncMap["contains-provincienaam"] = FilterProvincienaamContains
+	RegisterFuncMap["contains-tconst"] = FilterTconstContains
+	RegisterFuncMap["contains-titletype"] = FilterTitletypeContains
+	RegisterFuncMap["contains-primarytitle"] = FilterPrimarytitleContains
+	RegisterFuncMap["contains-originaltitle"] = FilterOriginaltitleContains
+	RegisterFuncMap["contains-isadult"] = FilterIsadultContains
+	RegisterFuncMap["contains-startyear"] = FilterStartyearContains
+	RegisterFuncMap["contains-endyear"] = FilterEndyearContains
+	RegisterFuncMap["contains-runtimeminutes"] = FilterRuntimeminutesContains
+	RegisterFuncMap["contains-genres"] = FilterGenresContains
 
 	// register startswith filters
-	RegisterFuncMap["startswith-pid"] = FilterPidStartsWith
-	RegisterFuncMap["startswith-vid"] = FilterVidStartsWith
-	RegisterFuncMap["startswith-numid"] = FilterNumidStartsWith
-	RegisterFuncMap["startswith-postcode"] = FilterPostcodeStartsWith
-	RegisterFuncMap["startswith-huisnummer"] = FilterHuisnummerStartsWith
-	RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
-	RegisterFuncMap["startswith-woning_type"] = FilterWoning_typeStartsWith
-	RegisterFuncMap["startswith-labelscore_voorlopig"] = FilterLabelscore_voorlopigStartsWith
-	RegisterFuncMap["startswith-labelscore_definitief"] = FilterLabelscore_definitiefStartsWith
-	RegisterFuncMap["startswith-identificatie"] = FilterIdentificatieStartsWith
-	RegisterFuncMap["startswith-gemeentecode"] = FilterGemeentecodeStartsWith
-	RegisterFuncMap["startswith-gemeentenaam"] = FilterGemeentenaamStartsWith
-	RegisterFuncMap["startswith-buurtcode"] = FilterBuurtcodeStartsWith
-	RegisterFuncMap["startswith-wijkcode"] = FilterWijkcodeStartsWith
-	RegisterFuncMap["startswith-provinciecode"] = FilterProvinciecodeStartsWith
-	RegisterFuncMap["startswith-provincienaam"] = FilterProvincienaamStartsWith
+	RegisterFuncMap["startswith-tconst"] = FilterTconstStartsWith
+	RegisterFuncMap["startswith-titletype"] = FilterTitletypeStartsWith
+	RegisterFuncMap["startswith-primarytitle"] = FilterPrimarytitleStartsWith
+	RegisterFuncMap["startswith-originaltitle"] = FilterOriginaltitleStartsWith
+	RegisterFuncMap["startswith-isadult"] = FilterIsadultStartsWith
+	RegisterFuncMap["startswith-startyear"] = FilterStartyearStartsWith
+	RegisterFuncMap["startswith-endyear"] = FilterEndyearStartsWith
+	RegisterFuncMap["startswith-runtimeminutes"] = FilterRuntimeminutesStartsWith
+	RegisterFuncMap["startswith-genres"] = FilterGenresStartsWith
 
 	// register getters
-	RegisterGetters["pid"] = GettersPid
-	RegisterGetters["vid"] = GettersVid
-	RegisterGetters["numid"] = GettersNumid
-	RegisterGetters["postcode"] = GettersPostcode
-	RegisterGetters["huisnummer"] = GettersHuisnummer
-	RegisterGetters["ekey"] = GettersEkey
-	RegisterGetters["woning_type"] = GettersWoning_type
-	RegisterGetters["labelscore_voorlopig"] = GettersLabelscore_voorlopig
-	RegisterGetters["labelscore_definitief"] = GettersLabelscore_definitief
-	RegisterGetters["identificatie"] = GettersIdentificatie
-	RegisterGetters["gemeentecode"] = GettersGemeentecode
-	RegisterGetters["gemeentenaam"] = GettersGemeentenaam
-	RegisterGetters["buurtcode"] = GettersBuurtcode
-	RegisterGetters["wijkcode"] = GettersWijkcode
-	RegisterGetters["provinciecode"] = GettersProvinciecode
-	RegisterGetters["provincienaam"] = GettersProvincienaam
+	RegisterGetters["tconst"] = GettersTconst
+	RegisterGetters["titletype"] = GettersTitletype
+	RegisterGetters["primarytitle"] = GettersPrimarytitle
+	RegisterGetters["originaltitle"] = GettersOriginaltitle
+	RegisterGetters["isadult"] = GettersIsadult
+	RegisterGetters["startyear"] = GettersStartyear
+	RegisterGetters["endyear"] = GettersEndyear
+	RegisterGetters["runtimeminutes"] = GettersRuntimeminutes
+	RegisterGetters["genres"] = GettersGenres
 
 	// register groupby
-	RegisterGroupBy["pid"] = GettersPid
-	RegisterGroupBy["vid"] = GettersVid
-	RegisterGroupBy["numid"] = GettersNumid
-	RegisterGroupBy["postcode"] = GettersPostcode
-	RegisterGroupBy["huisnummer"] = GettersHuisnummer
-	RegisterGroupBy["ekey"] = GettersEkey
-	RegisterGroupBy["woning_type"] = GettersWoning_type
-	RegisterGroupBy["labelscore_voorlopig"] = GettersLabelscore_voorlopig
-	RegisterGroupBy["labelscore_definitief"] = GettersLabelscore_definitief
-	RegisterGroupBy["identificatie"] = GettersIdentificatie
-	RegisterGroupBy["gemeentecode"] = GettersGemeentecode
-	RegisterGroupBy["gemeentenaam"] = GettersGemeentenaam
-	RegisterGroupBy["buurtcode"] = GettersBuurtcode
-	RegisterGroupBy["wijkcode"] = GettersWijkcode
-	RegisterGroupBy["provinciecode"] = GettersProvinciecode
-	RegisterGroupBy["provincienaam"] = GettersProvincienaam
+	RegisterGroupBy["tconst"] = GettersTconst
+	RegisterGroupBy["titletype"] = GettersTitletype
+	RegisterGroupBy["primarytitle"] = GettersPrimarytitle
+	RegisterGroupBy["originaltitle"] = GettersOriginaltitle
+	RegisterGroupBy["isadult"] = GettersIsadult
+	RegisterGroupBy["startyear"] = GettersStartyear
+	RegisterGroupBy["endyear"] = GettersEndyear
+	RegisterGroupBy["runtimeminutes"] = GettersRuntimeminutes
+	RegisterGroupBy["genres"] = GettersGenres
 
 	// register reduce functions
 	RegisterReduce["count"] = reduceCount
 }
 func sortBy(items Items, sortingL []string) (Items, []string) {
-	sortFuncs := map[string]func(int, int) bool{"pid": func(i, j int) bool { return items[i].Pid < items[j].Pid },
-		"-pid": func(i, j int) bool { return items[i].Pid > items[j].Pid },
+	sortFuncs := map[string]func(int, int) bool{"tconst": func(i, j int) bool { return items[i].Tconst < items[j].Tconst },
+		"-tconst": func(i, j int) bool { return items[i].Tconst > items[j].Tconst },
 
-		"vid":  func(i, j int) bool { return items[i].Vid < items[j].Vid },
-		"-vid": func(i, j int) bool { return items[i].Vid > items[j].Vid },
+		"titletype":  func(i, j int) bool { return items[i].Titletype < items[j].Titletype },
+		"-titletype": func(i, j int) bool { return items[i].Titletype > items[j].Titletype },
 
-		"numid":  func(i, j int) bool { return items[i].Numid < items[j].Numid },
-		"-numid": func(i, j int) bool { return items[i].Numid > items[j].Numid },
+		"primarytitle":  func(i, j int) bool { return items[i].Primarytitle < items[j].Primarytitle },
+		"-primarytitle": func(i, j int) bool { return items[i].Primarytitle > items[j].Primarytitle },
 
-		"postcode":  func(i, j int) bool { return items[i].Postcode < items[j].Postcode },
-		"-postcode": func(i, j int) bool { return items[i].Postcode > items[j].Postcode },
+		"originaltitle":  func(i, j int) bool { return items[i].Originaltitle < items[j].Originaltitle },
+		"-originaltitle": func(i, j int) bool { return items[i].Originaltitle > items[j].Originaltitle },
 
-		"huisnummer":  func(i, j int) bool { return items[i].Huisnummer < items[j].Huisnummer },
-		"-huisnummer": func(i, j int) bool { return items[i].Huisnummer > items[j].Huisnummer },
+		"isadult":  func(i, j int) bool { return items[i].Isadult < items[j].Isadult },
+		"-isadult": func(i, j int) bool { return items[i].Isadult > items[j].Isadult },
 
-		"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },
-		"-ekey": func(i, j int) bool { return items[i].Ekey > items[j].Ekey },
+		"startyear":  func(i, j int) bool { return items[i].Startyear < items[j].Startyear },
+		"-startyear": func(i, j int) bool { return items[i].Startyear > items[j].Startyear },
 
-		"woning_type":  func(i, j int) bool { return items[i].Woning_type < items[j].Woning_type },
-		"-woning_type": func(i, j int) bool { return items[i].Woning_type > items[j].Woning_type },
+		"endyear":  func(i, j int) bool { return items[i].Endyear < items[j].Endyear },
+		"-endyear": func(i, j int) bool { return items[i].Endyear > items[j].Endyear },
 
-		"labelscore_voorlopig":  func(i, j int) bool { return items[i].Labelscore_voorlopig < items[j].Labelscore_voorlopig },
-		"-labelscore_voorlopig": func(i, j int) bool { return items[i].Labelscore_voorlopig > items[j].Labelscore_voorlopig },
+		"runtimeminutes":  func(i, j int) bool { return items[i].Runtimeminutes < items[j].Runtimeminutes },
+		"-runtimeminutes": func(i, j int) bool { return items[i].Runtimeminutes > items[j].Runtimeminutes },
 
-		"labelscore_definitief":  func(i, j int) bool { return items[i].Labelscore_definitief < items[j].Labelscore_definitief },
-		"-labelscore_definitief": func(i, j int) bool { return items[i].Labelscore_definitief > items[j].Labelscore_definitief },
-
-		"identificatie":  func(i, j int) bool { return items[i].Identificatie < items[j].Identificatie },
-		"-identificatie": func(i, j int) bool { return items[i].Identificatie > items[j].Identificatie },
-
-		"gemeentecode":  func(i, j int) bool { return items[i].Gemeentecode < items[j].Gemeentecode },
-		"-gemeentecode": func(i, j int) bool { return items[i].Gemeentecode > items[j].Gemeentecode },
-
-		"gemeentenaam":  func(i, j int) bool { return items[i].Gemeentenaam < items[j].Gemeentenaam },
-		"-gemeentenaam": func(i, j int) bool { return items[i].Gemeentenaam > items[j].Gemeentenaam },
-
-		"buurtcode":  func(i, j int) bool { return items[i].Buurtcode < items[j].Buurtcode },
-		"-buurtcode": func(i, j int) bool { return items[i].Buurtcode > items[j].Buurtcode },
-
-		"wijkcode":  func(i, j int) bool { return items[i].Wijkcode < items[j].Wijkcode },
-		"-wijkcode": func(i, j int) bool { return items[i].Wijkcode > items[j].Wijkcode },
-
-		"provinciecode":  func(i, j int) bool { return items[i].Provinciecode < items[j].Provinciecode },
-		"-provinciecode": func(i, j int) bool { return items[i].Provinciecode > items[j].Provinciecode },
-
-		"provincienaam":  func(i, j int) bool { return items[i].Provincienaam < items[j].Provincienaam },
-		"-provincienaam": func(i, j int) bool { return items[i].Provincienaam > items[j].Provincienaam },
+		"genres":  func(i, j int) bool { return items[i].Genres < items[j].Genres },
+		"-genres": func(i, j int) bool { return items[i].Genres > items[j].Genres },
 	}
 	for _, sortFuncName := range sortingL {
 		sortFunc := sortFuncs[sortFuncName]

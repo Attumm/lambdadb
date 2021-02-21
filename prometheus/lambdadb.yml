@@ -1,0 +1,5 @@
+job_name: lambdadb
+metrics_path: /metrics
+static_configs:
+  - targets:
+    - 'lambdadb:8000'
