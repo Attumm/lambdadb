@@ -137,6 +137,8 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 
 func rmRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*1000)
+	msg := fmt.Sprint("removed items from database")
+	fmt.Printf(WarningColorN, msg)
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()

@@ -28,4 +28,6 @@ WORKDIR /app
 ENV http_db_host "0.0.0.0:8000"
 ENV mgmt "y"
 ENV prometheus-monitoring "y"
+ENV indexed "y"
+ENV GOGC 65
 ENTRYPOINT ["/app/main"]

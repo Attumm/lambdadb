@@ -20,3 +20,13 @@ Go over steps below, And see the result in your browser.
 
 
 11. instructions curl 127.0.0.1:8128/help/ | python -m json.tool
+
+
+
+### Running
+
+sudo docker-compose up  --no-deps --build
+
+promql {instance="lambdadb:8000"}
+
+python3 extras/ingestion.py  -f movies_subset.tsv -format tsv -dbhost 127.0.0.1:8000
