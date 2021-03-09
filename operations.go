@@ -87,7 +87,7 @@ func (q Query) CacheKey() (string, error) {
 	for k := range RegisterBitArray {
 		_, filterFound := q.Filters[k]
 		if filterFound {
-			return "", errors.New("bitarrays no need to be cached")
+			return "", errors.New("bitarrays filters do not need to be cached")
 		}
 	}
 

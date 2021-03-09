@@ -41,7 +41,7 @@ You can start the database with only a csv.
 Go over steps below, And see the result in your browser.
 
 1. place csv file, in dir extras.
-2. `python3 create_model_v2.py`  answer the questions..
+2. `python3 create_model_.py`  answer the questions.
 3. go fmt model.go
 4. mv model.go ../
 5. go build
@@ -50,13 +50,17 @@ Go over steps below, And see the result in your browser.
 9. curl 127.0.0.1:8000/help/
 10. browser 127.0.0.1:8000/
 
-
 11. instructions curl 127.0.0.1:8000/help/ | python -m json.tool
+
+### Questions
+
 
 
 ### TODO
 
 - load data directly from a database (periodic)
+- document the `create_model.py` questions
 - use a remote source for CSV
 - use some compression faster to load than gzip
 - generate swagger API
+- Add more tests

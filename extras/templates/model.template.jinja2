@@ -102,6 +102,9 @@ type Item struct {
 
 }
 
+func (i Item) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.Serialize())
+}
 
 // Shrink create smaller Item using uint16
 func (i ItemIn) Shrink(label int) Item {

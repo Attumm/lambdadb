@@ -26,6 +26,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"sort"
@@ -338,6 +339,10 @@ type Item struct {
 	PandBouwjaar            uint16
 	PandGasAansluitingen    uint16
 	Gebruiksdoelen          []uint16
+}
+
+func (i Item) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.Serialize())
 }
 
 // Shrink create smaller Item using uint16

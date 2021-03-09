@@ -313,7 +313,7 @@ type searchResponse struct {
 	MMeta *Meta    `json:"meta"`
 }
 
-func makeResp(items Items) searchResponse {
+func outputItems(items Items) ItemsOut {
 
 	itemsout := make(ItemsOut, 0, len(items))
 
@@ -321,6 +321,13 @@ func makeResp(items Items) searchResponse {
 		orgItem := oneitem.Serialize()
 		itemsout = append(itemsout, &orgItem)
 	}
+
+	return itemsout
+}
+
+func makeResp(items Items) searchResponse {
+
+	itemsout := outputItems(items)
 
 	fields := []ShowItem{}
 	columns := ItemOut{}.Columns()
