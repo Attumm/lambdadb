@@ -145,9 +145,9 @@ func SearchGeoItems(cu s2.CellUnion) labeledItems {
 
 	cu.Normalize()
 
-	for i, c := range cu {
-		fmt.Printf("%d %s \n", i, c)
-	}
+	//for i, c := range cu {
+	//	fmt.Printf("%d %s \n", i, c)
+	//}
 
 	min := S2CELLS.Seek(cu[0].ChildBegin())
 	max := S2CELLS.Seek(cu[len(cu)-1].ChildEnd())
