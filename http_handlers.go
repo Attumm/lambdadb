@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"index/suffixarray"
 	"io/ioutil"
@@ -50,7 +49,8 @@ func hanleQueryError(err error, w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(response)
 }
 
-type GroupByResult map[string]map[string]string
+type ReduceResult map[string]string
+type GroupByResult map[string]ReduceResult
 
 var GroupByBodyCache = make(map[string]GroupByResult)
 var GroupByHeaderCache = make(map[string]HeaderData)
@@ -103,6 +103,16 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 		setHeader(items, w, query, queryTime)
 
+		// We want to count all filtered items.
+		// and we do not have a groupby
+		if query.GroupBy == "" && query.Reduce != "" {
+			reduceFunc, _ := operations.Reduce[query.Reduce]
+			result := reduceFunc(items)
+			json.NewEncoder(w).Encode(result)
+			return
+		}
+
+		// no groupby return all rows
 		if query.GroupBy == "" {
 			if query.ReturnFormat == "csv" {
 				writeCSV(items, w)
@@ -114,17 +124,13 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			return
 		}
 
+		// groupby items on column
 		groupByItems := groupByRunner(items, query.GroupBy)
 		items = nil
 
 		if query.Reduce != "" {
 			result := make(GroupByResult)
-			reduceFunc, reduceFuncFound := operations.Reduce[query.Reduce]
-			if !reduceFuncFound {
-				err = errors.New("invalid reduce parameter value")
-				hanleQueryError(err, w)
-				return
-			}
+			reduceFunc, _ := operations.Reduce[query.Reduce]
 			for key, val := range groupByItems {
 				result[key] = reduceFunc(val)
 			}
