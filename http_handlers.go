@@ -232,6 +232,11 @@ func makeIndex() {
 
 func writeCSV(items Items, w http.ResponseWriter) {
 	writer := csv.NewWriter(w)
+
+	columns := ItemOut{}.Columns()
+	writer.Write(columns)
+	writer.Flush()
+
 	for i := range items {
 		writer.Write(items[i].Row())
 		writer.Flush()
