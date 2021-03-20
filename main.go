@@ -18,7 +18,6 @@ type filterType map[string][]string
 type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
-
 //Items as Example
 type Items []*Item
 
@@ -34,8 +33,8 @@ type jwtConfig struct {
 
 type storageFunc func(Items, string) (int64, error)
 type retrieveFunc func(Items, string) (int, error)
-type storageFuncs map[string] storageFunc
-type retrieveFuncs map[string] retrieveFunc
+type storageFuncs map[string]storageFunc
+type retrieveFuncs map[string]retrieveFunc
 
 // Colors are fun, and can be used to note that this is joyfull and fun project.
 const (
@@ -53,7 +52,6 @@ const (
 )
 
 func init() {
-
 
 }
 

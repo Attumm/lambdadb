@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"log"
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
 )
 
 var STORAGEFUNCS storageFuncs
@@ -22,33 +22,31 @@ func init() {
 	STORAGEFUNCS["jsonz"] = saveAsJsonZipped
 
 	RETRIEVEFUNCS = make(retrieveFuncs)
-	RETRIEVEFUNCS["bytes"] = loadAsBytes // currently default
+	RETRIEVEFUNCS["bytes"] = loadAsBytes            // currently default
 	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed // currently default
 	RETRIEVEFUNCS["json"] = loadAsJsonZipped
 	RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
 }
 
-
 func saveAsJsonZipped(items Items, filename string) (int64, error) {
-		var b bytes.Buffer
-		writer := gzip.NewWriter(&b)
-		itemJSON, _ := json.Marshal(ITEMS)
-		writer.Write(itemJSON)
-		writer.Flush()
-		writer.Close()
-		err := ioutil.WriteFile(filename, b.Bytes(), 0666)
-		if err != nil {
-			return 0, err
-		}
-		fi, err := os.Stat(filename)
-		if err != nil {
-			return 0, err
-		}
+	var b bytes.Buffer
+	writer := gzip.NewWriter(&b)
+	itemJSON, _ := json.Marshal(ITEMS)
+	writer.Write(itemJSON)
+	writer.Flush()
+	writer.Close()
+	err := ioutil.WriteFile(filename, b.Bytes(), 0666)
+	if err != nil {
+		return 0, err
+	}
+	fi, err := os.Stat(filename)
+	if err != nil {
+		return 0, err
+	}
 
 	size := fi.Size()
 	return size, nil
 }
-
 
 func saveAsBytes(items Items, filename string) (int64, error) {
 	data := EncodeItems(items)
@@ -85,7 +83,6 @@ func EncodeItems(items Items) []byte {
 	return buf.Bytes()
 }
 
-
 func Compress(s []byte) []byte {
 	zipbuf := bytes.Buffer{}
 	zipped := gzip.NewWriter(&zipbuf)
@@ -105,7 +102,6 @@ func Decompress(s []byte) []byte {
 	return data
 }
 
-
 func DecodeToItems(s []byte) Items {
 	items := make(Items, 0, 100*1000)
 	decoder := gob.NewDecoder(bytes.NewReader(s))
@@ -123,8 +119,6 @@ func WriteToFile(s []byte, filename string) {
 	}
 	f.Write(s)
 }
-
-
 
 func ReadFromFile(filename string) []byte {
 	f, err := os.Open(filename)
@@ -153,7 +147,6 @@ func loadAsBytesCompressed(items Items, filename string) (int, error) {
 	ITEMS = items
 	return len(items), nil
 }
-
 
 func loadAsJsonZipped(items Items, filename string) (int, error) {
 	fi, err := os.Open(filename)
@@ -186,5 +179,3 @@ func loadAsJsonZipped(items Items, filename string) (int, error) {
 	s = nil
 	return len(ITEMS), nil
 }
-
-

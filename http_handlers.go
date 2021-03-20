@@ -146,6 +146,7 @@ var LOOKUP map[string]Items
 var LOOKUPINDEX map[string][]int
 var INDEX *suffixarray.Index
 var STR_INDEX []byte
+
 const FILENAME = "./files/name"
 
 func getStringFromIndex(data []byte, index int) string {
@@ -211,7 +212,6 @@ func writeCSV(items Items, w http.ResponseWriter) {
 	}
 }
 
-
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	storagename, _, retrievefunc, filename := handleInputStorage(r)
 
@@ -235,7 +235,6 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 func parseFilename(s string) string {
 	//Todo parse string to remove special chars and more then one "."
 	return s
@@ -250,7 +249,7 @@ func getExtension(s string) string {
 			b = []rune{}
 		} else {
 			b = append(b, ch)
-	}
+		}
 	}
 	return string(b)
 }
@@ -259,7 +258,7 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	urlPath := r.URL.Path
 	storagename := SETTINGS.Get("STORAGEMETHOD")
 
-	if len(urlPath) >  len("/mgmt/save/") {
+	if len(urlPath) > len("/mgmt/save/") {
 		storagename = urlPath[len("/mgmt/save/"):]
 	}
 	storagefunc, found := STORAGEFUNCS[storagename]
@@ -278,7 +277,6 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	return storagename, storagefunc, retrievefunc, filename
 }
 
-
 func saveRest(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprintf("storing items %d", len(ITEMS))
 	fmt.Printf(WarningColor, msg)
@@ -296,7 +294,7 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size / 1024 / 1025 )
+	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size/1024/1025)
 	fmt.Printf(WarningColor, msg)
 
 	w.WriteHeader(204)
