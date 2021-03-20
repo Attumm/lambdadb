@@ -235,25 +235,6 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseFilename(s string) string {
-	//Todo parse string to remove special chars and more then one "."
-	return s
-
-}
-
-func getExtension(s string) string {
-	b := []rune{}
-
-	for _, ch := range s {
-		if ch == '.' {
-			b = []rune{}
-		} else {
-			b = append(b, ch)
-		}
-	}
-	return string(b)
-}
-
 func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, string) {
 	urlPath := r.URL.Path
 	storagename := SETTINGS.Get("STORAGEMETHOD")
