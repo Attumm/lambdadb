@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"strconv"
 	"time"
 )
@@ -105,9 +106,9 @@ func parseURLParameters(r *http.Request) Query {
 	index := ""
 	indexL, indexGiven := urlItems["search"]
 	indexGiven = indexGiven && (SETTINGS.Get("indexed") == "y")
-	indexUsed := indexGiven && indexL[0] != ""
+	indexUsed := indexGiven && len(indexL[0]) > 2
 	if indexUsed {
-		index = indexL[0]
+		index = strings.ToLower(indexL[0])
 	}
 	return Query{
 		Filters:  filterMap,
