@@ -22,7 +22,7 @@ func init() {
 
 	RETRIEVEFUNCS = make(retrieveFuncs)
 	RETRIEVEFUNCS["bytes"] = loadAsBytes            // currently default
-	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed // currently default
+	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed
 	RETRIEVEFUNCS["json"] = loadAsJsonZipped
 	RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
 }
