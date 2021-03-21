@@ -1,16 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"runtime"
 	"sort"
 	"strconv"
@@ -151,6 +147,8 @@ var LOOKUPINDEX map[string][]int
 var INDEX *suffixarray.Index
 var STR_INDEX []byte
 
+const FILENAME = "./files/name"
+
 func getStringFromIndex(data []byte, index int) string {
 	var start, end int
 	for i := index - 1; i >= 0; i-- {
@@ -190,7 +188,7 @@ func makeIndex() {
 		for _, v := range item.Row() {
 			v := strings.ToLower(v)
 			kSet[v] = true
-			LOOKUP[v] = append(LOOKUP[v], item)
+			//LOOKUP[v] = append(LOOKUP[v], item)
 			LOOKUPINDEX[v] = append(LOOKUPINDEX[v], index)
 		}
 	}
@@ -215,39 +213,17 @@ func writeCSV(items Items, w http.ResponseWriter) {
 }
 
 func loadRest(w http.ResponseWriter, r *http.Request) {
-	filename := "./files/ITEMS.txt.gz"
-	fi, err := os.Open(filename)
+	storagename, _, retrievefunc, filename := handleInputStorage(r)
+
+	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
+	fmt.Printf(WarningColorN, msg)
+	itemsAdded, err := retrievefunc(ITEMS, filename)
 	if err != nil {
-		path, err2 := os.Getwd()
-		if err2 != nil {
-			log.Println(err2)
-		}
-		log.Printf("could not open %s in %s", filename, path)
+		log.Printf("could not open %s reason %s", filename, err)
 		w.Write([]byte("500 - could not load data"))
-		return
-	}
-	defer fi.Close()
-
-	fz, err := gzip.NewReader(fi)
-	if err != nil {
-		return
-	}
-	defer fz.Close()
-
-	// TODO buffered instead of one big chunk
-	s, err := ioutil.ReadAll(fz)
-
-	if err != nil {
-		return
 	}
 
-	ITEMS = make(Items, 0, 100*1000)
-	json.Unmarshal(s, &ITEMS)
-
-	// GC friendly
-	s = nil
-
-	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
+	msg = fmt.Sprint("Loaded new items in memory amount: ", itemsAdded)
 	fmt.Printf(WarningColorN, msg)
 
 	if SETTINGS.Get("indexed") == "y" {
@@ -259,33 +235,48 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func saveRest(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("Saving items %d unto disk zipped", len(ITEMS))
-	fmt.Printf(WarningColorN, msg)
+func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, string) {
+	urlPath := r.URL.Path
+	storagename := SETTINGS.Get("STORAGEMETHOD")
 
-	filename := "./files/ITEMS.txt.gz"
-	var b bytes.Buffer
-	writer := gzip.NewWriter(&b)
-	itemJSON, _ := json.Marshal(ITEMS)
-	writer.Write(itemJSON)
-	writer.Flush()
-	writer.Close()
-	err := ioutil.WriteFile(filename, b.Bytes(), 0666)
+	if len(urlPath) > len("/mgmt/save/") {
+		storagename = urlPath[len("/mgmt/save/"):]
+	}
+	storagefunc, found := STORAGEFUNCS[storagename]
+	if !found {
+		storagename := SETTINGS.Get("STORAGEMETHOD")
+		storagefunc = STORAGEFUNCS[storagename]
+	}
+
+	retrievefunc, found := RETRIEVEFUNCS[storagename]
+	if !found {
+		storagename := SETTINGS.Get("STORAGEMETHOD")
+		retrievefunc = RETRIEVEFUNCS[storagename]
+	}
+
+	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
+	return storagename, storagefunc, retrievefunc, filename
+}
+
+func saveRest(w http.ResponseWriter, r *http.Request) {
+	msg := fmt.Sprintf("storing items %d", len(ITEMS))
+	fmt.Printf(WarningColor, msg)
+
+	fmt.Println("full", r.URL.Path)
+
+	storagename, storagefunc, _, filename := handleInputStorage(r)
+	msg = fmt.Sprintf("storage method: %s filename: %s\n", storagename, filename)
+	fmt.Printf(WarningColor, msg)
+
+	size, err := storagefunc(ITEMS, filename)
 	if err != nil {
-		// TODO better error handling
 		fmt.Println("unable to write file reason:", err)
 		w.WriteHeader(500)
 		return
+
 	}
-	fi, err := os.Stat(filename)
-	if err != nil {
-		fmt.Println("unable to read file reason:", err)
-		w.WriteHeader(500)
-		return
-	}
-	size := fi.Size()
-	msg = fmt.Sprintf("Done filesize is %d", size)
-	fmt.Printf(WarningColorN, msg)
+	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size/1024/1025)
+	fmt.Printf(WarningColor, msg)
 
 	w.WriteHeader(204)
 }

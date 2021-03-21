@@ -31,6 +31,11 @@ type jwtConfig struct {
 	SharedSecret string
 }
 
+type storageFunc func(Items, string) (int64, error)
+type retrieveFunc func(Items, string) (int, error)
+type storageFuncs map[string]storageFunc
+type retrieveFuncs map[string]retrieveFunc
+
 // Colors are fun, and can be used to note that this is joyfull and fun project.
 const (
 	InfoColor    = "\033[1;34m%s\033[0m"
@@ -77,6 +82,7 @@ func main() {
 	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.Set("prometheus-monitoring", "no", "add promethues monitoring endpoint")
+	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.Parse()
 
 	//Construct yes or no to booleans in SETTINGS
