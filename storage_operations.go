@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"time"
 )
 
 var STORAGEFUNCS storageFuncs
@@ -177,4 +179,38 @@ func loadAsJsonZipped(items Items, filename string) (int, error) {
 	// GC friendly
 	s = nil
 	return len(ITEMS), nil
+}
+
+func loadAtStart(storagename string, filename string, indexed bool) {
+
+	retrievefunc, found := RETRIEVEFUNCS[storagename]
+	if !found {
+		fmt.Println("storage mehod not found, trying with bytes")
+		storagename := "bytes"
+		retrievefunc = RETRIEVEFUNCS[storagename]
+	}
+
+	filename = fmt.Sprintf("%s.%s", FILENAME, storagename)
+	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
+	fmt.Printf(WarningColorN, msg)
+
+	start := time.Now()
+	itemsAdded, err := retrievefunc(ITEMS, filename)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("could not open %s reason %s", filename, err))
+	}
+
+	diff := time.Since(start)
+	msg = fmt.Sprint("Loaded in memory amount: ", itemsAdded, " time: ", diff)
+	fmt.Printf(WarningColorN, msg)
+
+	if indexed {
+		start = time.Now()
+		msg := fmt.Sprint("Creating index")
+		fmt.Printf(WarningColorN, msg)
+		makeIndex()
+		diff = time.Since(start)
+		msg = fmt.Sprint("Index set time: ", diff)
+		fmt.Printf(WarningColorN, msg)
+	}
 }

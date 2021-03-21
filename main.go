@@ -78,13 +78,15 @@ func main() {
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
-	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb ")
+	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb")
+	SETTINGS.Set("debug", "n", "Add memory debug information during run")
 
 	SETTINGS.Set("indexed", "n", "is the data indexed, for more information read the documenation?")
 	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
-	SETTINGS.Set("prometheus-monitoring", "no", "add promethues monitoring endpoint")
+	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
 	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
+	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
 	SETTINGS.Parse()
 
 	//Construct yes or no to booleans in SETTINGS
@@ -100,6 +102,14 @@ func main() {
 		go loadcsv(itemChan)
 	}
 
+	if SETTINGS.Get("debug") == "y" {
+		go runPrintMem()
+	}
+
+	if SETTINGS.Get("LOADATSTARTUP") == "y" {
+		fmt.Println("start loading")
+		go loadAtStart(SETTINGS.Get("STORAGEMETHOD"), FILENAME, SETTINGS.Get("indexed") == "y")
+	}
 	JWTConfig := jwtConfig{
 		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),

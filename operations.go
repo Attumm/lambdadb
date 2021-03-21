@@ -321,7 +321,7 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	} else {
 		newItems = filtered(items, operations, query)
 	}
-	diff := time.Now().Sub(start)
+	diff := time.Since(start)
 	return newItems, int64(diff) / int64(1000000)
 }
 
@@ -331,7 +331,7 @@ func runTypeAheadQuery(items Items, column string, query Query, operations Group
 		items = runIndexQuery(query)
 	}
 	results := filteredEarlyExitSingle(items, column, operations, query)
-	diff := time.Now().Sub(start)
+	diff := time.Since(start)
 	return results, int64(diff) / int64(1000000)
 }
 

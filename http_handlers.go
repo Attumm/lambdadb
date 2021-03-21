@@ -81,6 +81,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			for key, val := range groupByItems {
 				result[key] = reduceFunc(val)
 			}
+			groupByItems = nil
 
 			if len(result) == 0 {
 				w.WriteHeader(404)
@@ -360,7 +361,7 @@ func corsEnabled(h http.Handler) http.Handler {
 		if r.Method == "OPTIONS" {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,POST")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Page, Page-Size, Total-Pages, query, Total-Items, Query-Duration, Content-Type, X-CSRF-Token, Authorization")
 			return
 		} else {
 			h.ServeHTTP(w, r)
@@ -409,6 +410,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 
 		response := makeResp(items)
 		json.NewEncoder(w).Encode(response)
+		items = nil
 	}
 }
 
@@ -421,6 +423,7 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		}
 		if _, ok := operations.Getters[column]; !ok {
 			w.WriteHeader(404)
+			w.Write([]byte("column is not found"))
 			return
 		}
 
