@@ -336,8 +336,13 @@ func runTypeAheadQuery(items Items, column string, query Query, operations Group
 }
 
 func runIndexQuery(query Query) Items {
+	limit := -1 // -1 is used to indicate no early exit
+	if query.EarlyExit() {
+		limit = query.Limit
+	}
+
 	items := make(Items, 0)
-	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+	indices := INDEX.Lookup([]byte(query.IndexQuery), limit)
 	seen := make(map[string]bool)
 	added := make(map[int]bool)
 	for _, idx := range indices {
