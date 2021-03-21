@@ -21,7 +21,7 @@ func init() {
 	STORAGEFUNCS["jsonz"] = saveAsJsonZipped
 
 	RETRIEVEFUNCS = make(retrieveFuncs)
-	RETRIEVEFUNCS["bytes"] = loadAsBytes            // currently default
+	RETRIEVEFUNCS["bytes"] = loadAsBytes // currently default
 	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed
 	RETRIEVEFUNCS["json"] = loadAsJsonZipped
 	RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
