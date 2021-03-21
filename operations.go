@@ -312,25 +312,8 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 
 	//	}
 	//}
-	if query.IndexGiven && len(STR_INDEX) > 0 {
-		items = make(Items, 0)
-		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-		seen := make(map[string]bool)
-		added := make(map[int]bool)
-		for _, idx := range indices {
-			key := getStringFromIndex(STR_INDEX, idx)
-			if !seen[key] {
-				seen[key] = true
-				for _, index := range LOOKUPINDEX[key] {
-					if _, ok := added[index]; !ok {
-						added[index] = true
-						items = append(items, ITEMS[index])
-					}
-
-				}
-			}
-
-		}
+	if query.IndexGiven {
+		items = runIndexQuery(query)
 	}
 
 	if query.EarlyExit() {
@@ -344,9 +327,34 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 
 func runTypeAheadQuery(items Items, column string, query Query, operations GroupedOperations) ([]string, int64) {
 	start := time.Now()
+	if query.IndexGiven {
+		items = runIndexQuery(query)
+	}
 	results := filteredEarlyExitSingle(items, column, operations, query)
 	diff := time.Now().Sub(start)
 	return results, int64(diff) / int64(1000000)
+}
+
+func runIndexQuery(query Query) Items {
+	items := make(Items, 0)
+	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+	seen := make(map[string]bool)
+	added := make(map[int]bool)
+	for _, idx := range indices {
+		key := getStringFromIndex(STR_INDEX, idx)
+		if !seen[key] {
+			seen[key] = true
+			for _, index := range LOOKUPINDEX[key] {
+				if _, ok := added[index]; !ok {
+					added[index] = true
+					items = append(items, ITEMS[index])
+				}
+
+			}
+		}
+
+	}
+	return items
 }
 
 func filtered(items Items, operations GroupedOperations, query Query) Items {
