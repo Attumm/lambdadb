@@ -351,8 +351,7 @@ func makeResp(items Items) searchResponse {
 	}
 }
 
-// CORS allow origin.
-func CORS(h http.Handler) http.Handler {
+func corsEnabled(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
@@ -367,6 +366,21 @@ func CORS(h http.Handler) http.Handler {
 			h.ServeHTTP(w, r)
 		}
 	})
+
+}
+func passThrough(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+
+	})
+}
+
+func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
+	if cors {
+		return corsEnabled
+	}
+
+	return passThrough
 }
 
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {

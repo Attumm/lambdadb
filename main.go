@@ -72,6 +72,8 @@ func main() {
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
 
+	SETTINGS.Set("CORS", "n", "CORS enabled")
+
 	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
@@ -133,8 +135,11 @@ func main() {
 	}
 	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes")
+	cors := SETTINGS.Get("CORS") == "y"
+
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
 	fmt.Printf(InfoColorN, msg)
 
-	log.Fatal(http.ListenAndServe(ipPort, mux))
+	middleware := MIDDLEWARE(cors)
+	log.Fatal(http.ListenAndServe(ipPort, middleware(mux)))
 }
