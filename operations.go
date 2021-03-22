@@ -159,18 +159,7 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	if found && parameter[0] != "" {
 		_, funcFound1 := RegisterGroupBy[parameter[0]]
 		_, funcFound2 := RegisterGroupByCustom[parameter[0]]
-		if !funcFound1 && !funcFound2 {
-			return Query{}, errors.New("invalid groupby parameter")
-		}
-		groupBy = parameter[0]
-	}
 
-	// Check and validate reduce parameter
-	parameter, found = r.Form["reduce"]
-
-	if found && parameter[0] != "" {
-		_, funcFound1 := RegisterGroupBy[parameter[0]]
-		_, funcFound2 := RegisterGroupByCustom[parameter[0]]
 		if !funcFound1 && !funcFound2 {
 			return Query{}, errors.New("invalid groupby parameter")
 		}
