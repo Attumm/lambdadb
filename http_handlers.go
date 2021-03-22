@@ -314,15 +314,8 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 		retrievefunc = RETRIEVEFUNCS[storagename]
 	}
 
-	// empty exising ITEMS
-	ITEMS = Items{}
-
 	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
 
-	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
-	fmt.Printf(WarningColorN, msg)
-	//makeIndex()
-	//BuildGeoIndex()
 	return storagename, storagefunc, retrievefunc, filename
 }
 
@@ -341,7 +334,6 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("unable to write file reason:", err)
 		w.WriteHeader(500)
 		return
-
 	}
 	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size/1024/1025)
 	fmt.Printf(WarningColor, msg)
