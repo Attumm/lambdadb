@@ -123,12 +123,12 @@ func (i Item) GeoIndex(label int) error {
 }
 
 // Simple search algo
-func SearchOverlapItems(items *labeledItems, cu s2.CellUnion) labeledItems {
+func SearchOverlapItems(items *Items, cu s2.CellUnion) Items {
 
 	s2Lock.RLock()
 	defer s2Lock.RUnlock()
 
-	newItems := labeledItems{}
+	newItems := Items{}
 
 	for k, i := range *items {
 		if cu.ContainsCellID(S2CELLMAP[k]) {
@@ -138,10 +138,10 @@ func SearchOverlapItems(items *labeledItems, cu s2.CellUnion) labeledItems {
 	return newItems
 }
 
-// Given only a cell Union return labeldItems
-func SearchGeoItems(cu s2.CellUnion) labeledItems {
+// Given only a cell Union return Items
+func SearchGeoItems(cu s2.CellUnion) Items {
 
-	newItems := labeledItems{}
+	newItems := Items{}
 
 	cu.Normalize()
 

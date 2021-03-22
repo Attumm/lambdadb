@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	//"github.com/prometheus/client_golang/prometheus"
+	//"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
@@ -64,7 +64,7 @@ func loadcsv(itemChan ItemsChannel) {
 }
 
 func main() {
-	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
+	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
 
@@ -90,8 +90,6 @@ func main() {
 	SETTINGS.Set("groupbycache", "yes", "use in memory cache")
 
 	SETTINGS.Parse()
-
-	// ITEMS = labeledItems{}
 
 	Operations = GroupedOperations{
 		Funcs:     RegisterFuncMap,

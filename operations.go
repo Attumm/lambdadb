@@ -4,14 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	// "reflect"
 	"errors"
 	"log"
 	"sort"
 
-	"log"
 	//"sort"
 	"strconv"
 	"strings"
@@ -29,15 +27,6 @@ type bitsetFuncc func(string) bitarray.BitArray
 type registerBitSetType map[string]bitsetFuncc
 
 type filterType map[string][]string
-
-func (ft filterType) CacheKey() string {
-	filterlist := []string{}
-	for k, v := range ft {
-		filterlist = append(filterlist, fmt.Sprintf("%s=%s", k, v))
-	}
-	sort.Strings(filterlist)
-	return strings.Join(filterlist, "-")
-}
 
 func (ft filterType) CacheKey() string {
 	filterlist := []string{}
@@ -121,24 +110,6 @@ func (q Query) CacheKey() (string, error) {
 
 }
 
-func decodeUrl(s string) string {
-	newS, err := url.QueryUnescape(s)
-	if err != nil {
-		return "", errors.New("bitarrays not cached")
-	}
-
-	keys := []string{
-		q.Filters.CacheKey(),
-		q.Excludes.CacheKey(),
-		q.Anys.CacheKey(),
-		q.GroupBy,
-		q.Reduce,
-		q.ReturnFormat,
-	}
-
-	return strings.Join(keys, "-"), nil
-}
-
 // parseURLParameters checks parameters and builds a query to be run.
 func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
@@ -158,9 +129,6 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		}
 	}
 
-	// we can post gejson data
-
-	urlItems := r.URL.Query()
 	// parse params and body posts // (geo)json data
 	r.ParseForm()
 
@@ -199,8 +167,6 @@ func parseURLParameters(r *http.Request) (Query, error) {
 
 	// Check and validate reduce parameter
 	parameter, found = r.Form["reduce"]
-
-	parameter, found := urlItems["groupby"]
 
 	if found && parameter[0] != "" {
 		_, funcFound1 := RegisterGroupBy[parameter[0]]
@@ -277,9 +243,6 @@ func parseURLParameters(r *http.Request) (Query, error) {
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
-
-		GroupBy: groupBy,
-		Reduce:  reduce,
 
 		GroupBy: groupBy,
 		Reduce:  reduce,
@@ -395,7 +358,7 @@ func max(a, b int) int {
 	return b
 }
 
-func filteredEarlyExit(items *labeledItems, operations GroupedOperations, query Query) Items {
+func filteredEarlyExit(items *Items, operations GroupedOperations, query Query) Items {
 
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0, len(*items)/4)
@@ -414,7 +377,7 @@ func filteredEarlyExit(items *labeledItems, operations GroupedOperations, query 
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -434,7 +397,7 @@ func filteredEarlyExit(items *labeledItems, operations GroupedOperations, query 
 	return filteredItems
 }
 
-func filteredEarlyExitSingle(items *labeledItems, column string, operations GroupedOperations, query Query) []string {
+func filteredEarlyExitSingle(items *Items, column string, operations GroupedOperations, query Query) []string {
 	registerFuncs := operations.Funcs
 	filteredItemsSet := make(map[string]bool)
 	excludes := query.Excludes
@@ -452,7 +415,7 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 	lock.RLock()
 	defer lock.RUnlock()
 
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -492,9 +455,9 @@ func filteredEarlyExitSingle(items *labeledItems, column string, operations Grou
 // for columns with not so unique values it makes sense te create bitarrays.
 // to do fast bitwise operations.
 func bitArrayFilter(
-	items *labeledItems,
+	items *Items,
 	operations GroupedOperations,
-	query Query) (labeledItems, error) {
+	query Query) (Items, error) {
 
 	balock.RLock()
 	defer balock.RUnlock()
@@ -544,7 +507,7 @@ func bitArrayFilter(
 		log.Fatal("something went wrong with bitarray..")
 	}
 
-	newItems := make(labeledItems, 0)
+	newItems := make(Items, 0)
 	labels := bitArrayResult.ToNums()
 
 	for _, l := range labels {
@@ -554,7 +517,7 @@ func bitArrayFilter(
 	return newItems, nil
 }
 
-func runQuery(items *labeledItems, query Query, operations GroupedOperations) (Items, int64) {
+func runQuery(items *Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
 	var newItems Items
 
@@ -569,7 +532,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 		}
 	}
 
-	var nextItems *labeledItems
+	var nextItems *Items
 	filteredItems, err := bitArrayFilter(items, operations, query)
 
 	if err != nil {
@@ -579,7 +542,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 	}
 
 	if query.IndexGiven && len(STR_INDEX) > 0 {
-		items = make(Items, 0)
+		items := make(Items, 0)
 		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
 		seen := make(map[string]bool)
 		for _, idx := range indices {
@@ -619,7 +582,7 @@ func runQuery(items *labeledItems, query Query, operations GroupedOperations) (I
 }
 
 func runTypeAheadQuery(
-	items *labeledItems, column string, query Query,
+	items *Items, column string, query Query,
 	operations GroupedOperations) ([]string, int64) {
 	start := time.Now()
 	results := filteredEarlyExitSingle(items, column, operations, query)
@@ -627,7 +590,7 @@ func runTypeAheadQuery(
 	return results, int64(diff) / int64(1000000)
 }
 
-func filtered(items *labeledItems, operations GroupedOperations, query Query) Items {
+func filtered(items *Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
 	filteredItems := make(Items, 0)
 	excludes := query.Excludes

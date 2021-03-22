@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
+	//"io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
@@ -168,7 +169,7 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 
 		strictMode := SETTINGS.Get("strict-mode") == "y"
 		for n, item := range items {
-			if (*item == Item{}) {
+			if (*item == ItemIn{}) {
 				fmt.Printf("unable to process item %d of batch\n", n)
 				if strictMode {
 					fmt.Printf("strict mode stopping ingestion of batch\n")
@@ -187,7 +188,7 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*1000)
 	msg := fmt.Sprint("removed items from database")
 	fmt.Printf(WarningColorN, msg)
-	ITEMS = labeledItems{}
+	ITEMS = Items{}
 
 	go func() {
 		time.Sleep(1 * time.Second)
@@ -307,12 +308,6 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 		storagefunc = STORAGEFUNCS[storagename]
 	}
 
-	// TODO do not use ReadAll..but do it line by line
-	s, err := ioutil.ReadAll(fz)
-	if err != nil {
-		return
-	}
-
 	retrievefunc, found := RETRIEVEFUNCS[storagename]
 	if !found {
 		storagename := SETTINGS.Get("STORAGEMETHOD")
@@ -320,15 +315,14 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	}
 
 	// empty exising ITEMS
-	ITEMS = labeledItems{}
-	json.Unmarshal(s, &ITEMS)
+	ITEMS = Items{}
 
 	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
 
 	msg := fmt.Sprint("Loaded new items in memory amount: ", len(ITEMS))
 	fmt.Printf(WarningColorN, msg)
 	//makeIndex()
-	BuildGeoIndex()
+	//BuildGeoIndex()
 	return storagename, storagefunc, retrievefunc, filename
 }
 

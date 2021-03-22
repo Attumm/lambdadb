@@ -5,7 +5,6 @@ import (
 )
 
 //Items
-type labeledItems []*Item
 type Items []*Item
 type ItemsIn []*ItemIn
 type ItemsOut []*ItemOut
@@ -13,11 +12,11 @@ type ItemsOut []*ItemOut
 type ItemsGroupedBy map[string]Items
 type ItemsChannel chan ItemsIn
 
-var ITEMS labeledItems
+var ITEMS Items
 var itemChan ItemsChannel
 
 func init() {
-	ITEMS = labeledItems{}
+	ITEMS = Items{}
 }
 
 func ItemChanWorker(itemChan ItemsChannel) {
