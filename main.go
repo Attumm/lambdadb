@@ -7,6 +7,7 @@ import (
 	//"github.com/prometheus/client_golang/prometheus"
 	//"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http/pprof" //	"runtime/debug" "github.com/pkg/profile")
 )
 
 type filterFuncc func(*Item, string) bool
@@ -79,13 +80,14 @@ func main() {
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
 	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb")
-	SETTINGS.Set("debug", "n", "Add memory debug information during run")
+	SETTINGS.Set("debug", "n", "Add memory debug information on the command line")
+	SETTINGS.Set("profile", "n", "Add profing api endpoint")
 
 	SETTINGS.Set("indexed", "n", "is the data indexed, for more information read the documenation?")
 	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
-	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
+	SETTINGS.Set("STORAGEMETHOD", "bytesz", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
 	SETTINGS.Parse()
 
@@ -142,6 +144,12 @@ func main() {
 
 	if SETTINGS.Get("prometheus-monitoring") == "y" {
 		mux.Handle("/metrics", promhttp.Handler())
+	}
+
+	mux.HandleFunc("/debug/profile", pprof.Profile)
+
+	if SETTINGS.Get("profile") == "y" {
+		mux.HandleFunc("/debug/profile", pprof.Profile)
 	}
 	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 

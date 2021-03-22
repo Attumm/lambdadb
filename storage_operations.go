@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"runtime"
 )
 
 var STORAGEFUNCS storageFuncs
@@ -137,7 +138,9 @@ func loadAsBytes(items Items, filename string) (int, error) {
 	d := ReadFromFile(filename)
 	items = DecodeToItems(d)
 	ITEMS = items
-	return len(items), nil
+	runtime.GC()
+	items = nil
+	return len(ITEMS), nil
 }
 
 func loadAsBytesCompressed(items Items, filename string) (int, error) {
@@ -203,6 +206,7 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 	diff := time.Since(start)
 	msg = fmt.Sprint("Loaded in memory amount: ", itemsAdded, " time: ", diff)
 	fmt.Printf(WarningColorN, msg)
+	runtime.GC()
 
 	if indexed {
 		start = time.Now()
@@ -212,5 +216,6 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 		diff = time.Since(start)
 		msg = fmt.Sprint("Index set time: ", diff)
 		fmt.Printf(WarningColorN, msg)
+		runtime.GC()
 	}
 }

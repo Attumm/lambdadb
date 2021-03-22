@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
-	"log"
 	"net/http"
 	"runtime"
 	"sort"
@@ -214,26 +213,8 @@ func writeCSV(items Items, w http.ResponseWriter) {
 }
 
 func loadRest(w http.ResponseWriter, r *http.Request) {
-	storagename, _, retrievefunc, filename := handleInputStorage(r)
-
-	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
-	fmt.Printf(WarningColorN, msg)
-	itemsAdded, err := retrievefunc(ITEMS, filename)
-	if err != nil {
-		log.Printf("could not open %s reason %s", filename, err)
-		w.Write([]byte("500 - could not load data"))
-	}
-
-	msg = fmt.Sprint("Loaded new items in memory amount: ", itemsAdded)
-	fmt.Printf(WarningColorN, msg)
-
-	if SETTINGS.Get("indexed") == "y" {
-		msg := fmt.Sprint("Creating index")
-		fmt.Printf(WarningColorN, msg)
-		makeIndex()
-		msg = fmt.Sprint("Index set")
-		fmt.Printf(WarningColorN, msg)
-	}
+	storagename, _, _, filename := handleInputStorage(r)
+	loadAtStart(storagename, filename, SETTINGS.Get("indexed") == "y")
 }
 
 func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, string) {
@@ -411,6 +392,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 		response := makeResp(items)
 		json.NewEncoder(w).Encode(response)
 		items = nil
+
 	}
 }
 
