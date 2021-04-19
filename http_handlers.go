@@ -277,7 +277,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 
 	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
 	fmt.Printf(WarningColorN, msg)
-	itemsAdded, err := retrievefunc(ITEMS, filename)
+	itemsAdded, err := retrievefunc(filename)
 	if err != nil {
 		log.Printf("could not open %s reason %s", filename, err)
 		w.Write([]byte("500 - could not load data"))
@@ -329,7 +329,7 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	msg = fmt.Sprintf("storage method: %s filename: %s\n", storagename, filename)
 	fmt.Printf(WarningColor, msg)
 
-	size, err := storagefunc(ITEMS, filename)
+	size, err := storagefunc(filename)
 	if err != nil {
 		fmt.Println("unable to write file reason:", err)
 		w.WriteHeader(500)

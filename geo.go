@@ -48,13 +48,16 @@ func (c s2CellIndex) Less(i, j int) bool { return c[i].ID < c[j].ID }
 var S2CELLS s2CellIndex
 var S2CELLMAP s2CellMap
 
+func clearGeoIndex() {
+	S2CELLS = make(s2CellIndex, 0)
+	S2CELLMAP = s2CellMap{}
+}
+
 func init() {
 	minLevel = 2
 	maxLevel = 21
 	maxCells = 450
-
-	S2CELLS = make(s2CellIndex, 0)
-	S2CELLMAP = s2CellMap{}
+	clearGeoIndex()
 }
 
 func BuildGeoIndex() {

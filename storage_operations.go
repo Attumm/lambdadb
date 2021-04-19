@@ -4,13 +4,24 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/gob"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"time"
 )
+
+type Store struct {
+	Items Items
+	Maps  ModelMaps
+}
+
+type storageFunc func(string) (int64, error)
+type retrieveFunc func(string) (int, error)
+
+type storageFuncs map[string]storageFunc
+type retrieveFuncs map[string]retrieveFunc
 
 var STORAGEFUNCS storageFuncs
 var RETRIEVEFUNCS retrieveFuncs
@@ -19,16 +30,17 @@ func init() {
 	STORAGEFUNCS = make(storageFuncs)
 	STORAGEFUNCS["bytes"] = saveAsBytes // currently default
 	STORAGEFUNCS["bytesz"] = saveAsBytesCompressed
-	STORAGEFUNCS["json"] = saveAsJsonZipped
-	STORAGEFUNCS["jsonz"] = saveAsJsonZipped
+	// STORAGEFUNCS["json"] = saveAsJsonZipped
+	// STORAGEFUNCS["jsonz"] = saveAsJsonZipped
 
 	RETRIEVEFUNCS = make(retrieveFuncs)
 	RETRIEVEFUNCS["bytes"] = loadAsBytes // currently default
 	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed
-	RETRIEVEFUNCS["json"] = loadAsJsonZipped
-	RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
+	// RETRIEVEFUNCS["json"] = loadAsJsonZipped
+	// RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
 }
 
+/*
 func saveAsJsonZipped(items Items, filename string) (int64, error) {
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)
@@ -48,9 +60,22 @@ func saveAsJsonZipped(items Items, filename string) (int64, error) {
 	size := fi.Size()
 	return size, nil
 }
+*/
 
-func saveAsBytes(items Items, filename string) (int64, error) {
-	data := EncodeItems(items)
+func makeStore() Store {
+	return Store{ITEMS, CreateMapstore()}
+}
+
+func restoreStore(store Store) {
+	ITEMS = store.Items
+	LoadMapstore(store.Maps)
+	// rebuild indexes
+	ITEMS.FillIndexes()
+}
+
+func saveAsBytes(filename string) (int64, error) {
+	store := makeStore()
+	data := EncodeItems(store)
 	WriteToFile(data, filename)
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -61,8 +86,9 @@ func saveAsBytes(items Items, filename string) (int64, error) {
 	return size, nil
 }
 
-func saveAsBytesCompressed(items Items, filename string) (int64, error) {
-	data := EncodeItems(items)
+func saveAsBytesCompressed(filename string) (int64, error) {
+	store := makeStore()
+	data := EncodeItems(store)
 	data = Compress(data)
 	WriteToFile(data, filename)
 	fi, err := os.Stat(filename)
@@ -74,10 +100,10 @@ func saveAsBytesCompressed(items Items, filename string) (int64, error) {
 	return size, nil
 }
 
-func EncodeItems(items Items) []byte {
+func EncodeItems(s Store) []byte {
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(items)
+	err := enc.Encode(s)
 	if err != nil {
 		fmt.Println("error encoding", err)
 	}
@@ -103,14 +129,14 @@ func Decompress(s []byte) []byte {
 	return data
 }
 
-func DecodeToItems(s []byte) Items {
-	items := make(Items, 0, 100*1000)
+func DecodeToStore(s []byte) Store {
+	store := Store{}
 	decoder := gob.NewDecoder(bytes.NewReader(s))
-	err := decoder.Decode(&items)
+	err := decoder.Decode(&store)
 	if err != nil {
-		fmt.Println("Unable to DecodeToItems", err)
+		fmt.Println("Unable to Decode", err)
 	}
-	return items
+	return store
 }
 
 func WriteToFile(s []byte, filename string) {
@@ -133,22 +159,22 @@ func ReadFromFile(filename string) []byte {
 	return data
 }
 
-func loadAsBytes(items Items, filename string) (int, error) {
+func loadAsBytes(filename string) (int, error) {
 	d := ReadFromFile(filename)
-	items = DecodeToItems(d)
-	ITEMS = items
-	return len(items), nil
+	store := DecodeToStore(d)
+	restoreStore(store)
+	return len(ITEMS), nil
 }
 
-func loadAsBytesCompressed(items Items, filename string) (int, error) {
+func loadAsBytesCompressed(filename string) (int, error) {
 	d := ReadFromFile(filename)
 	d = Decompress(d)
-	items = DecodeToItems(d)
-	ITEMS = make(Items, 0, 100*1000)
-	ITEMS = items
-	return len(items), nil
+	store := DecodeToStore(d)
+	restoreStore(store)
+	return len(ITEMS), nil
 }
 
+/*
 func loadAsJsonZipped(items Items, filename string) (int, error) {
 	fi, err := os.Open(filename)
 	if err != nil {
@@ -180,6 +206,7 @@ func loadAsJsonZipped(items Items, filename string) (int, error) {
 	s = nil
 	return len(ITEMS), nil
 }
+*/
 
 func loadAtStart(storagename string, filename string, indexed bool) {
 
@@ -195,7 +222,7 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 	fmt.Printf(WarningColorN, msg)
 
 	start := time.Now()
-	itemsAdded, err := retrievefunc(ITEMS, filename)
+	itemsAdded, err := retrievefunc(filename)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("could not open %s reason %s", filename, err))
 	}
@@ -204,13 +231,17 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 	msg = fmt.Sprint("Loaded in memory amount: ", itemsAdded, " time: ", diff)
 	fmt.Printf(WarningColorN, msg)
 
-	if indexed {
-		start = time.Now()
-		msg := fmt.Sprint("Creating index")
-		fmt.Printf(WarningColorN, msg)
-		makeIndex()
-		diff = time.Since(start)
-		msg = fmt.Sprint("Index set time: ", diff)
-		fmt.Printf(WarningColorN, msg)
-	}
+	ITEMS.FillIndexes()
+
+	/*
+		if indexed {
+			start = time.Now()
+			msg := fmt.Sprint("Creating index")
+			fmt.Printf(WarningColorN, msg)
+			makeIndex()
+			diff = time.Since(start)
+			msg = fmt.Sprint("Index set time: ", diff)
+			fmt.Printf(WarningColorN, msg)
+		}
+	*/
 }

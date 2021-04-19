@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"time"
 )
 
 //Items
@@ -37,4 +39,21 @@ func ItemChanWorker(itemChan ItemsChannel) {
 			}
 		}
 	}
+}
+
+func (items Items) FillIndexes() {
+
+	start := time.Now()
+
+	clearGeoIndex()
+	initBitarrays()
+
+	for i := range items {
+		ITEMS[i].StoreBitArrayColumns()
+		ITEMS[i].GeoIndex(ITEMS[i].Label)
+	}
+
+	diff := time.Since(start)
+	msg := fmt.Sprint("Index set time: ", diff)
+	fmt.Printf(WarningColorN, msg)
 }

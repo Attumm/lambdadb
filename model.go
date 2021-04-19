@@ -32,7 +32,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/Workiva/go-datastructures/bitarray"
 )
@@ -47,204 +46,8 @@ type fieldIdxMap map[string]uint16
 type fieldMapIdx map[uint16]string
 type fieldItemsMap map[uint16]bitarray.BitArray
 
-// Column maps.
-// Store for each non distinct/repeated column
-// unit16 -> string map and
-// string -> unit16 map
-// track count of distinct values
-
-var WoningTypeTracker uint16
-var WoningTypeIdxMap fieldIdxMap
-var WoningType fieldMapIdx
-
-var WoningTypeItems fieldItemsMap
-
-var LabelscoreVoorlopigTracker uint16
-var LabelscoreVoorlopigIdxMap fieldIdxMap
-var LabelscoreVoorlopig fieldMapIdx
-
-var LabelscoreVoorlopigItems fieldItemsMap
-
-var LabelscoreDefinitiefTracker uint16
-var LabelscoreDefinitiefIdxMap fieldIdxMap
-var LabelscoreDefinitief fieldMapIdx
-
-var LabelscoreDefinitiefItems fieldItemsMap
-
-var GemeentecodeTracker uint16
-var GemeentecodeIdxMap fieldIdxMap
-var Gemeentecode fieldMapIdx
-
-var GemeentecodeItems fieldItemsMap
-
-var GemeentenaamTracker uint16
-var GemeentenaamIdxMap fieldIdxMap
-var Gemeentenaam fieldMapIdx
-
-var BuurtcodeTracker uint16
-var BuurtcodeIdxMap fieldIdxMap
-var Buurtcode fieldMapIdx
-
-var BuurtcodeItems fieldItemsMap
-
-var BuurtnaamTracker uint16
-var BuurtnaamIdxMap fieldIdxMap
-var Buurtnaam fieldMapIdx
-
-var WijkcodeTracker uint16
-var WijkcodeIdxMap fieldIdxMap
-var Wijkcode fieldMapIdx
-
-var WijkcodeItems fieldItemsMap
-
-var WijknaamTracker uint16
-var WijknaamIdxMap fieldIdxMap
-var Wijknaam fieldMapIdx
-
-var ProvinciecodeTracker uint16
-var ProvinciecodeIdxMap fieldIdxMap
-var Provinciecode fieldMapIdx
-
-var ProvinciecodeItems fieldItemsMap
-
-var ProvincienaamTracker uint16
-var ProvincienaamIdxMap fieldIdxMap
-var Provincienaam fieldMapIdx
-
-var PandGasEanAansluitingenTracker uint16
-var PandGasEanAansluitingenIdxMap fieldIdxMap
-var PandGasEanAansluitingen fieldMapIdx
-
-var P6GasAansluitingen2020Tracker uint16
-var P6GasAansluitingen2020IdxMap fieldIdxMap
-var P6GasAansluitingen2020 fieldMapIdx
-
-var P6Gasm32020Tracker uint16
-var P6Gasm32020IdxMap fieldIdxMap
-var P6Gasm32020 fieldMapIdx
-
-var P6Kwh2020Tracker uint16
-var P6Kwh2020IdxMap fieldIdxMap
-var P6Kwh2020 fieldMapIdx
-
-var PandBouwjaarTracker uint16
-var PandBouwjaarIdxMap fieldIdxMap
-var PandBouwjaar fieldMapIdx
-
-var PandGasAansluitingenTracker uint16
-var PandGasAansluitingenIdxMap fieldIdxMap
-var PandGasAansluitingen fieldMapIdx
-
-var GebruiksdoelenTracker uint16
-var GebruiksdoelenIdxMap fieldIdxMap
-var Gebruiksdoelen fieldMapIdx
-
-/*
-var {columnname}Tracker uint16
-var {columnname}IdxMap fieldIdxMap
-var {columnname} fieldMapIdx
-var {columnname}Items fieldItemmap
-*/
-
-// item map lock
-var lock = sync.RWMutex{}
-
-// bitArray Lock
-var balock = sync.RWMutex{}
-
 func init() {
-
-	WoningTypeTracker = 0
-	WoningTypeIdxMap = make(fieldIdxMap)
-	WoningType = make(fieldMapIdx)
-
-	WoningTypeItems = make(fieldItemsMap)
-
-	LabelscoreVoorlopigTracker = 0
-	LabelscoreVoorlopigIdxMap = make(fieldIdxMap)
-	LabelscoreVoorlopig = make(fieldMapIdx)
-
-	LabelscoreVoorlopigItems = make(fieldItemsMap)
-
-	LabelscoreDefinitiefTracker = 0
-	LabelscoreDefinitiefIdxMap = make(fieldIdxMap)
-	LabelscoreDefinitief = make(fieldMapIdx)
-
-	LabelscoreDefinitiefItems = make(fieldItemsMap)
-
-	GemeentecodeTracker = 0
-	GemeentecodeIdxMap = make(fieldIdxMap)
-	Gemeentecode = make(fieldMapIdx)
-
-	GemeentecodeItems = make(fieldItemsMap)
-
-	GemeentenaamTracker = 0
-	GemeentenaamIdxMap = make(fieldIdxMap)
-	Gemeentenaam = make(fieldMapIdx)
-
-	BuurtcodeTracker = 0
-	BuurtcodeIdxMap = make(fieldIdxMap)
-	Buurtcode = make(fieldMapIdx)
-
-	BuurtcodeItems = make(fieldItemsMap)
-
-	BuurtnaamTracker = 0
-	BuurtnaamIdxMap = make(fieldIdxMap)
-	Buurtnaam = make(fieldMapIdx)
-
-	WijkcodeTracker = 0
-	WijkcodeIdxMap = make(fieldIdxMap)
-	Wijkcode = make(fieldMapIdx)
-
-	WijkcodeItems = make(fieldItemsMap)
-
-	WijknaamTracker = 0
-	WijknaamIdxMap = make(fieldIdxMap)
-	Wijknaam = make(fieldMapIdx)
-
-	ProvinciecodeTracker = 0
-	ProvinciecodeIdxMap = make(fieldIdxMap)
-	Provinciecode = make(fieldMapIdx)
-
-	ProvinciecodeItems = make(fieldItemsMap)
-
-	ProvincienaamTracker = 0
-	ProvincienaamIdxMap = make(fieldIdxMap)
-	Provincienaam = make(fieldMapIdx)
-
-	PandGasEanAansluitingenTracker = 0
-	PandGasEanAansluitingenIdxMap = make(fieldIdxMap)
-	PandGasEanAansluitingen = make(fieldMapIdx)
-
-	P6GasAansluitingen2020Tracker = 0
-	P6GasAansluitingen2020IdxMap = make(fieldIdxMap)
-	P6GasAansluitingen2020 = make(fieldMapIdx)
-
-	P6Gasm32020Tracker = 0
-	P6Gasm32020IdxMap = make(fieldIdxMap)
-	P6Gasm32020 = make(fieldMapIdx)
-
-	P6Kwh2020Tracker = 0
-	P6Kwh2020IdxMap = make(fieldIdxMap)
-	P6Kwh2020 = make(fieldMapIdx)
-
-	PandBouwjaarTracker = 0
-	PandBouwjaarIdxMap = make(fieldIdxMap)
-	PandBouwjaar = make(fieldMapIdx)
-
-	PandGasAansluitingenTracker = 0
-	PandGasAansluitingenIdxMap = make(fieldIdxMap)
-	PandGasAansluitingen = make(fieldMapIdx)
-
-	GebruiksdoelenTracker = 0
-	GebruiksdoelenIdxMap = make(fieldIdxMap)
-	Gebruiksdoelen = make(fieldMapIdx)
-
-	/*
-		labelscoredefinitiefTracker = 0
-		labelscoredefinitiefIdxMap = make(fieldIdxMap)
-		labelscoredefinitief = make(fieldMapIdx)
-	*/
+	setUpMaps()
 }
 
 type ItemIn struct {
@@ -616,12 +419,6 @@ func (i ItemIn) Shrink(label int) Item {
 // Store selected columns in seperate map[columnvalue]bitarray
 // for gast item lookup
 func (i Item) StoreBitArrayColumns() {
-
-	balock.Lock()
-	defer balock.Unlock()
-
-	lock.RLock()
-	defer lock.RUnlock()
 
 	var ba bitarray.BitArray
 	var ok bool
