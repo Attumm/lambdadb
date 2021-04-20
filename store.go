@@ -15,6 +15,7 @@ type ItemsGroupedBy map[string]Items
 type ItemsChannel chan ItemsIn
 
 var ITEMS Items
+
 var itemChan ItemsChannel
 
 func init() {

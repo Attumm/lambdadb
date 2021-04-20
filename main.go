@@ -30,10 +30,13 @@ const (
 	DebugColorN   = "\033[0;36m%s\033[0m\n"
 )
 
-func init() {}
+func init() {
+	itemChan = make(ItemsChannel, 1000)
+}
 
 func loadcsv(itemChan ItemsChannel) {
 	log.Print("loading given csv")
+	fmt.Println(SETTINGS.Get("delimiter"))
 	err := importCSV(SETTINGS.Get("csv"), itemChan,
 		false, true,
 		SETTINGS.Get("delimiter"),
@@ -58,7 +61,7 @@ func loadcsv(itemChan ItemsChannel) {
 	GroupByHeaderCache = make(map[string]HeaderData)
 }
 
-func main() {
+func defaultSettings() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
@@ -87,8 +90,9 @@ func main() {
 	SETTINGS.Set("channelwait", "5s", "timeout")
 
 	SETTINGS.Parse()
+}
 
-	itemChan := make(ItemsChannel, 1000)
+func main() {
 
 	go ItemChanWorker(itemChan)
 

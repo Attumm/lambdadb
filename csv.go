@@ -22,20 +22,27 @@ func containsDelimiter(col string) bool {
 
 // Parse columns from first header row or from flags
 func parseColumns(reader *csv.Reader, skipHeader bool, fields string) ([]string, error) {
+
 	var err error
 	var columns []string
+
 	if fields != "" {
 		columns = strings.Split(fields, ",")
 
 		if skipHeader {
-			reader.Read() //Force consume one row
+			reader.Read() // Force consume one row
 		}
+
 	} else {
 		columns, err = reader.Read()
 		fmt.Printf("%v columns\n%v\n", len(columns), columns)
 		if err != nil {
 			fmt.Printf("FOUND ERR\n")
 			return nil, err
+		}
+		itemIn := ItemIn{}
+		if len(columns) != len(itemIn.Columns()) {
+			panic(errors.New("columns mismatch"))
 		}
 	}
 
@@ -46,15 +53,12 @@ func parseColumns(reader *csv.Reader, skipHeader bool, fields string) ([]string,
 		}
 	}
 
-	//for i, col := range columns {
-	//	columns[i] = postgresify(col)
-	//}
-
 	return columns, nil
 }
 
 func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	delimiter string, nullDelimiter string) (error, int, int) {
+
 	success := 0
 	failed := 0
 
@@ -64,6 +68,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 		itemIn := ItemIn{}
 		columns := itemIn.Columns()
 		cols := make([]interface{}, len(columns))
+
 		record, err := reader.Read()
 
 		if err == io.EOF {
@@ -72,6 +77,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		if err != nil {
 			line := strings.Join(record, delimiter)
+
 			failed++
 
 			if ignoreErrors {
@@ -96,6 +102,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
+
 		// fill the new Item instance with values
 		if err := json.Unmarshal([]byte(b), &itemIn); err != nil {
 			line := strings.Join(record, delimiter)
@@ -114,6 +121,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 			itemChan <- items
 			items = ItemsIn{}
 		}
+
 		items = append(items, &itemIn)
 		success++
 	}
@@ -127,7 +135,8 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 func importCSV(filename string, itemChan ItemsChannel,
 	ignoreErrors bool, skipHeader bool,
-	delimiter string, nullDelimiter string) error {
+	delimiter string, nullDelimiter string,
+) error {
 
 	dialect := csv.Dialect{}
 	dialect.Delimiter, _ = utf8.DecodeRuneInString(delimiter)
@@ -157,6 +166,7 @@ func importCSV(filename string, itemChan ItemsChannel,
 	var err error
 
 	_, err = parseColumns(reader, skipHeader, "")
+
 	if err != nil {
 		log.Fatal(err)
 	}

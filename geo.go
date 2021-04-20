@@ -62,7 +62,8 @@ func init() {
 
 func BuildGeoIndex() {
 	for i, v := range ITEMS {
-		v.GeoIndex(i)
+		err := v.GeoIndex(i)
+		fmt.Println(err)
 	}
 
 	defer S2CELLS.Sort()
@@ -74,9 +75,6 @@ func (c cellIndexNode) IsEmpty() bool {
 
 // GeoIndex for each items determine S2Cell and store it.
 func (i Item) GeoIndex(label int) error {
-
-	lock.Lock()
-	defer lock.Unlock()
 
 	if i.GetGeometry() == "" {
 		return fmt.Errorf("missing wkt geometry")

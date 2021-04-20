@@ -21,21 +21,26 @@ import (
 	// "io"
 	// "net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 )
 
 /* load some data 19 records*/
 func TestMain(m *testing.M) {
 
+	defaultSettings()
+
 	SETTINGS.Set(
 		"csv", "./testdata/dataselectie_vbo_energie_20210217.head.csv.gz",
 		"test dataset")
 
-	SETTINGS.Set("channelwait", "0.001s", "timeout for channel loading")
-	itemChan := make(ItemsChannel, 1)
+	SETTINGS.Set("channelwait", "0.01s", "timeout for channel loading")
+
 	loadcsv(itemChan)
 	close(itemChan)
 	ItemChanWorker(itemChan)
+
 	// Run the test
 	m.Run()
 }
@@ -43,9 +48,11 @@ func TestMain(m *testing.M) {
 func TestCsvLoading(t *testing.T) {
 
 	fmt.Println(len(ITEMS))
+
 	size := len(ITEMS)
-	if size != 19 {
-		t.Errorf("expected 19 ITEMS got %d", size)
+
+	if size != 9 {
+		t.Errorf("expected 9 ITEMS got %d", size)
 	}
 }
 
@@ -68,5 +75,50 @@ func TestBasicHandlers(t *testing.T) {
 			t.Errorf("request to %s failed", urls[i])
 			t.Error(resp)
 		}
+	}
+}
+
+func TestGeoQuery(t *testing.T) {
+
+	BuildGeoIndex()
+
+	if len(S2CELLS) == 0 {
+		t.Error("geo indexing failed")
+	}
+
+	data := url.Values{}
+	data.Set("groupby", "postcode")
+	data.Set("reduce", "count")
+
+	geojson := fmt.Sprint(`
+{
+	"type": "Polygon",
+	"coordinates": [
+		[
+		    [4.902321, 52.428306],
+		    [4.90127, 52.427024],
+		    [4.905281, 52.426069],
+		    [4.906782, 52.426226],
+		    [4.906418, 52.427469],
+		    [4.902321, 52.428306]
+		]
+	]
+}
+	`)
+	data.Set("geojson", geojson)
+
+	params := strings.NewReader(data.Encode())
+
+	handler := setupHandler()
+	req := httptest.NewRequest("POST", "/list/", params)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.StatusCode != 201 {
+		t.Errorf("request to %s failed", req.URL)
+		t.Error(resp)
 	}
 }
