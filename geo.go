@@ -64,6 +64,8 @@ func BuildGeoIndex() {
 	for i, v := range ITEMS {
 		v.GeoIndex(i)
 	}
+
+	defer S2CELLS.Sort()
 }
 
 func (c cellIndexNode) IsEmpty() bool {

@@ -46,16 +46,16 @@ func loadcsv(itemChan ItemsChannel) {
 	// make sure channels are empty
 	// add timeout there is no garantee ItemsChannel
 	// is empty and you miss a few records
-	time.Sleep(5 * time.Second)
-	S2CELLS.Sort()
-	fmt.Println("Sorted")
+	timeout, _ := time.ParseDuration(SETTINGS.Get("channelwait"))
+	time.Sleep(timeout)
+	// S2CELLS.Sort()
+	fmt.Println("csv imported")
 
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
 
 	GroupByBodyCache = make(map[string]GroupByResult)
 	GroupByHeaderCache = make(map[string]HeaderData)
-	// makeIndex()
 }
 
 func main() {
@@ -84,15 +84,10 @@ func main() {
 
 	SETTINGS.Set("groupbycache", "yes", "use in memory cache")
 
+	SETTINGS.Set("channelwait", "5s", "timeout")
+
 	SETTINGS.Parse()
 
-	Operations = GroupedOperations{
-		Funcs:     RegisterFuncMap,
-		GroupBy:   RegisterGroupBy,
-		Getters:   RegisterGetters,
-		Reduce:    RegisterReduce,
-		BitArrays: RegisterBitArray,
-	}
 	itemChan := make(ItemsChannel, 1000)
 
 	go ItemChanWorker(itemChan)
@@ -109,18 +104,38 @@ func main() {
 		fmt.Println("start loading")
 		go loadAtStart(SETTINGS.Get("STORAGEMETHOD"), FILENAME, SETTINGS.Get("indexed") == "y")
 	}
+
+	ipPort := SETTINGS.Get("http_db_host")
+
+	mux := setupHandler()
+
+	msg := fmt.Sprint(
+		"starting server\nhost: ",
+		ipPort,
+	)
+	fmt.Printf(InfoColorN, msg)
+	log.Fatal(http.ListenAndServe(ipPort, mux))
+}
+
+func setupHandler() http.Handler {
+
 	JWTConfig := jwtConfig{
 		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
 	}
 
-	listRest := contextListRest(JWTConfig, itemChan, Operations)
-	addRest := contextAddRest(JWTConfig, itemChan, Operations)
+	Operations = GroupedOperations{
+		Funcs:     RegisterFuncMap,
+		GroupBy:   RegisterGroupBy,
+		Getters:   RegisterGetters,
+		Reduce:    RegisterReduce,
+		BitArrays: RegisterBitArray,
+	}
 
 	searchRest := contextSearchRest(JWTConfig, itemChan, Operations)
 	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
-
-	ipPort := SETTINGS.Get("http_db_host")
+	listRest := contextListRest(JWTConfig, itemChan, Operations)
+	addRest := contextAddRest(JWTConfig, itemChan, Operations)
 
 	mux := http.NewServeMux()
 
@@ -142,13 +157,20 @@ func main() {
 	if SETTINGS.Get("prometheus-monitoring") == "y" {
 		mux.Handle("/metrics", promhttp.Handler())
 	}
+
 	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 
 	cors := SETTINGS.Get("CORS") == "y"
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+	middleware := MIDDLEWARE(cors)
+
+	msg := fmt.Sprint(
+		"setup http handler:",
+		" with:", len(ITEMS), "items ",
+		"management api's: ", SETTINGS.Get("mgmt") == "y",
+		" jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+
 	fmt.Printf(InfoColorN, msg)
 
-	middleware := MIDDLEWARE(cors)
-	log.Fatal(http.ListenAndServe(ipPort, middleware(mux)))
+	return middleware(mux)
 }

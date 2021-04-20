@@ -420,6 +420,7 @@ func filteredEarlyExitSingle(items *Items, column string, operations GroupedOper
 			single := f(item)
 			filteredItemsSet[single] = true
 		} else {
+			fmt.Print(operations.Getters)
 			fmt.Println(column)
 			fmt.Println("missing getter?")
 		}
