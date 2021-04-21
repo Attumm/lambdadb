@@ -52,8 +52,6 @@ func TestMain(m *testing.M) {
 
 func TestCsvLoading(t *testing.T) {
 
-	fmt.Println(len(ITEMS))
-
 	size := len(ITEMS)
 
 	if size != 10 {
@@ -69,8 +67,8 @@ func TestBasicHandlers(t *testing.T) {
 
 	urls := []string{
 		"/list/",
-		//"/typeahead/pid/?search=1",
-		//"/help/",
+		"/typeahead/pid/?search=1",
+		"/help/",
 	}
 
 	for i := range urls {

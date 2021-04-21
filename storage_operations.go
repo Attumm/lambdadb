@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/gob"
-	// "encoding/json"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -30,21 +30,19 @@ func init() {
 	STORAGEFUNCS = make(storageFuncs)
 	STORAGEFUNCS["bytes"] = saveAsBytes // currently default
 	STORAGEFUNCS["bytesz"] = saveAsBytesCompressed
-	// STORAGEFUNCS["json"] = saveAsJsonZipped
-	// STORAGEFUNCS["jsonz"] = saveAsJsonZipped
+	STORAGEFUNCS["json"] = saveAsJsonZipped
 
 	RETRIEVEFUNCS = make(retrieveFuncs)
 	RETRIEVEFUNCS["bytes"] = loadAsBytes // currently default
 	RETRIEVEFUNCS["bytesz"] = loadAsBytesCompressed
-	// RETRIEVEFUNCS["json"] = loadAsJsonZipped
-	// RETRIEVEFUNCS["jsonz"] = loadAsJsonZipped
+	RETRIEVEFUNCS["json"] = loadAsJsonZipped
 }
 
-/*
-func saveAsJsonZipped(items Items, filename string) (int64, error) {
+func saveAsJsonZipped(filename string) (int64, error) {
+	store := makeStore()
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)
-	itemJSON, _ := json.Marshal(ITEMS)
+	itemJSON, _ := json.Marshal(store)
 	writer.Write(itemJSON)
 	writer.Flush()
 	writer.Close()
@@ -60,7 +58,6 @@ func saveAsJsonZipped(items Items, filename string) (int64, error) {
 	size := fi.Size()
 	return size, nil
 }
-*/
 
 func makeStore() Store {
 	return Store{ITEMS, CreateMapstore()}
@@ -174,8 +171,7 @@ func loadAsBytesCompressed(filename string) (int, error) {
 	return len(ITEMS), nil
 }
 
-/*
-func loadAsJsonZipped(items Items, filename string) (int, error) {
+func loadAsJsonZipped(filename string) (int, error) {
 	fi, err := os.Open(filename)
 	if err != nil {
 		_, err2 := os.Getwd()
@@ -192,21 +188,19 @@ func loadAsJsonZipped(items Items, filename string) (int, error) {
 	}
 	defer fz.Close()
 
-	// TODO buffered instead of one big chunk
 	s, err := ioutil.ReadAll(fz)
 
 	if err != nil {
 		return 0, err
 	}
 
-	ITEMS = make(Items, 0, 100*1000)
-	json.Unmarshal(s, &ITEMS)
-
+	store := makeStore()
+	json.Unmarshal(s, &store)
+	restoreStore(store)
 	// GC friendly
 	s = nil
 	return len(ITEMS), nil
 }
-*/
 
 func loadAtStart(storagename string, filename string, indexed bool) {
 
