@@ -118,17 +118,6 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	groupBy := ""
 	reduce := ""
 
-	//TODO change query to be based on input.
-
-	// parse params and body posts // (geo)json data
-	r.ParseForm()
-
-	if SETTINGS.Get("debug") == "yes" {
-		for key, value := range r.Form {
-			fmt.Printf("F %s = %s\n", key, value)
-		}
-	}
-
 	// parse params and body posts // (geo)json data
 	r.ParseForm()
 
@@ -221,8 +210,8 @@ func parseURLParameters(r *http.Request) (Query, error) {
 	if geometryGiven && geometryS[0] != "" {
 		err := json.Unmarshal([]byte(geometryS[0]), &geoinput)
 		if err != nil {
-			fmt.Println("parsing geojson error")
-			fmt.Println(err)
+			log.Println("parsing geojson error")
+			log.Println(err)
 			geometryGiven = false
 			return Query{}, errors.New("failed to parse geojson")
 		}
@@ -479,7 +468,7 @@ func bitArrayFilter(
 	if len(combinedBitArrays) > 0 {
 		bitArrayResult = combinedBitArrays[0]
 	} else {
-		log.Println("no bitarrays found")
+		log.Println("no bitarrays found / used")
 		return nil, errors.New("no bitarray found")
 	}
 
@@ -509,16 +498,15 @@ func bitArrayFilter(
 
 func runQuery(items *Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
-	var newItems Items
 
 	if query.GeometryGiven {
 		cu := CoverDefault(query.Geometry)
 		if len(cu) == 0 {
-			fmt.Println("covering cell union not created")
+			log.Println("covering cell union not created")
 		} else {
 			geoitems := SearchGeoItems(cu)
 			items = &geoitems
-			fmt.Println(len(geoitems))
+			// log.Printf("geo matched %d \n", len(geoitems))
 		}
 	}
 
@@ -544,22 +532,7 @@ func runQuery(items *Items, query Query, operations GroupedOperations) (Items, i
 		}
 	}
 
-	if query.EarlyExit() {
-		newItems = filteredEarlyExit(nextItems, operations, query)
-	} else {
-		newItems = filtered(nextItems, operations, query)
-	}
-
-	if query.GeometryGiven {
-		cu := CoverDefault(query.Geometry)
-		if len(cu) == 0 {
-			fmt.Println("covering cell union not created")
-		} else {
-			geoitems := SearchOverlapItems(items, cu)
-			items = &geoitems
-			fmt.Println(len(geoitems))
-		}
-	}
+	var newItems Items
 
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(nextItems, operations, query)
@@ -568,6 +541,9 @@ func runQuery(items *Items, query Query, operations GroupedOperations) (Items, i
 	}
 
 	diff := time.Since(start)
+
+	log.Printf("items matched %d \n", len(newItems))
+
 	return newItems, int64(diff) / int64(1000000)
 }
 
@@ -616,29 +592,20 @@ func mapIndex(items Items, indexes []int) Items {
 type HeaderData map[string]string
 
 func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
-	headerData := make(HeaderData)
-
-	if query.LimitGiven {
-		headerData["Limit"] = strconv.Itoa(query.Limit)
-	}
-
-	if query.PageGiven {
-		headerData["Page"] = strconv.Itoa(query.Page)
-		headerData["Page-Size"] = strconv.Itoa(query.PageSize)
-		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
-	}
-
-	headerData["Cache-Control"] = "public, max-age=300"
-	headerData["Total-Items"] = strconv.Itoa(len(items))
-	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
-	bytesQuery, _ := json.Marshal(query)
-	headerData["query"] = string(bytesQuery)
-
+	matched := int64(len(items))
+	headerData := getHeaderDataShared(query, queryDuration, matched)
 	return headerData
 }
 
 //getHeaderDataSlice extract from header information with data slice we want
 func getHeaderDataSlice(items []string, query Query, queryDuration int64) HeaderData {
+	matched := int64(len(items))
+	headerData := getHeaderDataShared(query, queryDuration, matched)
+	return headerData
+}
+
+func getHeaderDataShared(query Query, queryDuration int64, matched int64) HeaderData {
+
 	headerData := make(HeaderData)
 
 	if query.LimitGiven {
@@ -648,10 +615,11 @@ func getHeaderDataSlice(items []string, query Query, queryDuration int64) Header
 	if query.PageGiven {
 		headerData["Page"] = strconv.Itoa(query.Page)
 		headerData["Page-Size"] = strconv.Itoa(query.PageSize)
-		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
+		headerData["Total-Pages"] = strconv.Itoa(int(matched)/query.PageSize + 1)
 	}
 
-	headerData["Total-Items"] = strconv.Itoa(len(items))
+	headerData["Total-Items"] = strconv.FormatInt(matched, 10)
+	headerData["Cache-Control"] = "public, max-age=300"
 	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
 	bytesQuery, _ := json.Marshal(query)
 	headerData["query"] = string(bytesQuery)

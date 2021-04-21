@@ -21,6 +21,7 @@ import (
 	"github.com/go-spatial/geom"
 	"github.com/go-spatial/geom/encoding/wkt"
 	"github.com/golang/geo/s2"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -63,7 +64,9 @@ func init() {
 func BuildGeoIndex() {
 	for i, v := range ITEMS {
 		err := v.GeoIndex(i)
-		fmt.Println(err)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	defer S2CELLS.Sort()
@@ -125,48 +128,49 @@ func (i Item) GeoIndex(label int) error {
 
 }
 
+type MatchedItems map[int]bool
+
+// from map to array remove duplicate matches
+func matchesToArray(items *Items, matched MatchedItems) Items {
+	newItems := make(Items, 0)
+	for k := range matched {
+		newItems = append(newItems, (*items)[k])
+	}
+
+	return newItems
+}
+
 // Simple search algo
 func SearchOverlapItems(items *Items, cu s2.CellUnion) Items {
 
-	s2Lock.RLock()
-	defer s2Lock.RUnlock()
+	matchedItems := make(MatchedItems)
 
-	newItems := Items{}
-
-	for k, i := range *items {
-		if cu.ContainsCellID(S2CELLMAP[k]) {
-			newItems[k] = i
+	for i := range *items {
+		l := (*items)[i].Label
+		if cu.ContainsCellID(S2CELLMAP[l]) {
+			matchedItems[l] = true
 		}
 	}
-	return newItems
+
+	return matchesToArray(items, matchedItems)
 }
 
 // Given only a cell Union return Items
 func SearchGeoItems(cu s2.CellUnion) Items {
 
-	newItems := Items{}
+	matchedItems := make(map[int]bool)
 
 	cu.Normalize()
-
-	//for i, c := range cu {
-	//	fmt.Printf("%d %s \n", i, c)
-	//}
 
 	min := S2CELLS.Seek(cu[0].ChildBegin())
 	max := S2CELLS.Seek(cu[len(cu)-1].ChildEnd())
 
-	// ITEMS read lock
-	lock.RLock()
-	defer lock.RUnlock()
-
 	for _, i := range S2CELLS[min : max+1] {
 		if cu.ContainsCellID(i.ID) {
-			newItems = append(newItems, ITEMS[i.Label])
+			matchedItems[i.Label] = true
 		}
 	}
-
-	return newItems
-
+	return matchesToArray(&ITEMS, matchedItems)
 }
 
 // Seek position in index which is close to target

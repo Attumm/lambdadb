@@ -59,10 +59,10 @@ func isCached(w http.ResponseWriter, r *http.Request, query Query) bool {
 	cacheKey, err := query.CacheKey()
 
 	if err == nil && len(query.GroupBy) > 0 && len(query.Reduce) > 0 {
-		cacheLock.Lock()
+		cacheLock.RLock()
 		groupByResult, found := GroupByBodyCache[cacheKey]
 		headerCache, _ := GroupByHeaderCache[cacheKey]
-		cacheLock.Unlock()
+		cacheLock.RUnlock()
 		if found {
 			w.Header().Set("Content-Type", "application/json")
 

@@ -17,14 +17,17 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	// "io"
-	// "net/http"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 )
+
+var handler http.Handler
 
 /* load some data 19 records*/
 func TestMain(m *testing.M) {
@@ -41,6 +44,8 @@ func TestMain(m *testing.M) {
 	close(itemChan)
 	ItemChanWorker(itemChan)
 
+	handler = setupHandler()
+
 	// Run the test
 	m.Run()
 }
@@ -51,19 +56,21 @@ func TestCsvLoading(t *testing.T) {
 
 	size := len(ITEMS)
 
-	if size != 9 {
-		t.Errorf("expected 9 ITEMS got %d", size)
+	if size != 10 {
+		t.Errorf("expected 10 ITEMS got %d", size)
 	}
 }
 
 func TestBasicHandlers(t *testing.T) {
 
-	handler := setupHandler()
+	if len(ITEMS) < 10 {
+		t.Error("no items")
+	}
 
 	urls := []string{
 		"/list/",
-		"/typeahead/pid/?search=1",
-		"/help/",
+		//"/typeahead/pid/?search=1",
+		//"/help/",
 	}
 
 	for i := range urls {
@@ -78,11 +85,20 @@ func TestBasicHandlers(t *testing.T) {
 	}
 }
 
+// Test geojson queries combined with groupby and reduce.
 func TestGeoQuery(t *testing.T) {
 
 	BuildGeoIndex()
 
+	if len(ITEMS) < 10 {
+		t.Error("no items")
+	}
+
 	if len(S2CELLS) == 0 {
+		t.Error("geo indexing failed")
+	}
+
+	if len(S2CELLMAP) == 0 {
 		t.Error("geo indexing failed")
 	}
 
@@ -95,12 +111,11 @@ func TestGeoQuery(t *testing.T) {
 	"type": "Polygon",
 	"coordinates": [
 		[
-		    [4.902321, 52.428306],
-		    [4.90127, 52.427024],
-		    [4.905281, 52.426069],
-		    [4.906782, 52.426226],
-		    [4.906418, 52.427469],
-		    [4.902321, 52.428306]
+		    [4.905321, 52.377706],
+		    [4.90527, 52.377706],
+		    [4.90527, 52.377869],
+		    [4.905321, 52.377869],
+		    [4.905321, 52.377706]
 		]
 	]
 }
@@ -109,16 +124,44 @@ func TestGeoQuery(t *testing.T) {
 
 	params := strings.NewReader(data.Encode())
 
-	handler := setupHandler()
 	req := httptest.NewRequest("POST", "/list/", params)
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	w := httptest.NewRecorder()
+
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()
-	if resp.StatusCode != 201 {
-		t.Errorf("request to %s failed", req.URL)
+	if resp.StatusCode != 200 {
+		t.Errorf("geo request to %s failed statuscode", req.URL)
 		t.Error(resp)
+	}
+
+	headerQuery := resp.Header.Get("Query")
+	query := Query{}
+	json.Unmarshal([]byte(headerQuery), &query)
+
+	if query.GeometryGiven != true {
+		t.Errorf("geo request to %s failed ", req.URL)
+		t.Error(resp.Header.Get("Query"))
+		// t.Error(resp.Header.Get("GeometryGiven"))
+		t.Error(resp.Body)
+	}
+
+	if resp.Header.Get("Total-Items") != "7" {
+		t.Error("geo request count is not 7")
+	}
+
+	// parse json GroupBy response
+	defer resp.Body.Close()
+	j := GroupByResult{}
+	err := json.NewDecoder(resp.Body).Decode(&j)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if j["1011AB"]["count"] != "7" {
+		t.Error("geo request json response count is not 7")
 	}
 }
