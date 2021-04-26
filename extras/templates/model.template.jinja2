@@ -42,9 +42,7 @@ type registerReduce map[string]func(Items) map[string]string
 
 type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
 
-type fieldIdxMap map[string]uint16
-type fieldMapIdx map[uint16]string
-type fieldItemsMap map[uint16]bitarray.BitArray
+type fieldBitarrayMap map[uint32]bitarray.BitArray
 
 type IndexMap[string]int64
 

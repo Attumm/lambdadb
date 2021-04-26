@@ -48,7 +48,7 @@ cfg = {}
 
 if os.path.isfile(config):
     with open(config, 'r') as stream:
-        cfg = yaml.load(stream)['model']
+        cfg = yaml.load(stream, Loader=yaml.FullLoader)['model']
 
 
 env = Environment(
@@ -199,7 +199,7 @@ for columnName in bitarray:
 # create bitarrays with item labels for column values.
 bitArrayStores = []
 for c1, c2 in zip(bitarray, bitarray_org):
-    onerow = f'\tSetBitArray("c2", i.{c1}, i.Label)\n'
+    onerow = f'\tSetBitArray("{c2}", i.{c1}, i.Label)\n'
     bitArrayStores.append(onerow)
 
 
