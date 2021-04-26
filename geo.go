@@ -24,14 +24,14 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"sync"
+	// "sync"
 )
 
 var minLevel int
 var maxLevel int
 var maxCells int
 
-var s2Lock = sync.RWMutex{}
+// var s2Lock = sync.RWMutex{}
 
 type cellIndexNode struct {
 	ID    s2.CellID
@@ -99,8 +99,8 @@ func (i Item) GeoIndex(label int) error {
 		return fmt.Errorf("geom error")
 	}
 
-	s2Lock.Lock()
-	defer s2Lock.Unlock()
+	// s2Lock.Lock()
+	// defer s2Lock.Unlock()
 
 	y := p[0][0]
 	x := p[0][1]

@@ -54,9 +54,9 @@ func loadcsv(itemChan ItemsChannel) {
 	// S2CELLS.Sort()
 	fmt.Println("csv imported")
 
+	// Empty cache. should be made more generic
 	cacheLock.Lock()
 	defer cacheLock.Unlock()
-
 	GroupByBodyCache = make(map[string]GroupByResult)
 	GroupByHeaderCache = make(map[string]HeaderData)
 }
@@ -93,6 +93,8 @@ func defaultSettings() {
 }
 
 func main() {
+
+	defaultSettings()
 
 	go ItemChanWorker(itemChan)
 

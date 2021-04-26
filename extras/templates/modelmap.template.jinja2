@@ -1,0 +1,51 @@
+/*
+	Transforming ItemsIn -> Items -> ItemsOut
+	Where Items has column values ar integers to save memmory
+	maps are needed to restore integers back to the actual values.
+	those are generated and stored here.
+*/
+
+package main
+
+type ModelMaps struct {
+
+	{{MappedColumns}}
+
+}
+
+
+{{shrinkVars}}
+
+
+func initBitarrays() {
+
+{{initBitarrays}}
+
+}
+
+func init() {
+	setUpRepeatedColumns()
+}
+
+
+func setUpRepeatedColumns() {
+	initBitarrays()
+
+	{{initRepeatColumns}}
+
+}
+
+
+func CreateMapstore() ModelMaps {
+	return ModelMaps{
+
+	{{repeatColumnNames}}
+
+	}
+}
+
+
+func LoadMapstore(m ModelMaps) {
+
+	{{loadRepeatColumnNames}}
+}

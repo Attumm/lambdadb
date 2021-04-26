@@ -28,7 +28,6 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
@@ -41,13 +40,10 @@ type registerGettersMap map[string]func(*Item) string
 type registerReduce map[string]func(Items) map[string]string
 
 type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
-
-type fieldIdxMap map[string]uint16
-type fieldMapIdx map[uint16]string
-type fieldItemsMap map[uint16]bitarray.BitArray
+type fieldBitarrayMap map[uint32]bitarray.BitArray
 
 func init() {
-	setUpMaps()
+	setUpRepeatedColumns()
 }
 
 type ItemIn struct {
@@ -121,27 +117,27 @@ type Item struct {
 	Oppervlakte             string
 	Woningequivalent        string
 	Adres                   string
-	WoningType              uint16
-	LabelscoreVoorlopig     uint16
-	LabelscoreDefinitief    uint16
-	Gemeentecode            uint16
-	Gemeentenaam            uint16
-	Buurtcode               uint16
-	Buurtnaam               uint16
-	Wijkcode                uint16
-	Wijknaam                uint16
-	Provinciecode           uint16
-	Provincienaam           uint16
+	WoningType              uint32
+	LabelscoreVoorlopig     uint32
+	LabelscoreDefinitief    uint32
+	Gemeentecode            uint32
+	Gemeentenaam            uint32
+	Buurtcode               uint32
+	Buurtnaam               uint32
+	Wijkcode                uint32
+	Wijknaam                uint32
+	Provinciecode           uint32
+	Provincienaam           uint32
 	Point                   string
-	PandGasEanAansluitingen uint16
+	PandGasEanAansluitingen uint32
 	GroupId2020             string
-	P6GasAansluitingen2020  uint16
-	P6Gasm32020             uint16
-	P6Kwh2020               uint16
+	P6GasAansluitingen2020  uint32
+	P6Gasm32020             uint32
+	P6Kwh2020               uint32
 	P6TotaalPandoppervlakM2 string
-	PandBouwjaar            uint16
-	PandGasAansluitingen    uint16
-	Gebruiksdoelen          []uint16
+	PandBouwjaar            uint32
+	PandGasAansluitingen    uint32
+	Gebruiksdoelen          []uint32
 }
 
 func (i Item) MarshalJSON() ([]byte, error) {
@@ -151,235 +147,25 @@ func (i Item) MarshalJSON() ([]byte, error) {
 // Shrink create smaller Item using uint16
 func (i ItemIn) Shrink(label int) Item {
 
-	lock.Lock()
-	defer lock.Unlock()
+	WoningType.Store(i.WoningType)
+	LabelscoreVoorlopig.Store(i.LabelscoreVoorlopig)
+	LabelscoreDefinitief.Store(i.LabelscoreDefinitief)
+	Gemeentecode.Store(i.Gemeentecode)
+	Gemeentenaam.Store(i.Gemeentenaam)
+	Buurtcode.Store(i.Buurtcode)
+	Buurtnaam.Store(i.Buurtnaam)
+	Wijkcode.Store(i.Wijkcode)
+	Wijknaam.Store(i.Wijknaam)
+	Provinciecode.Store(i.Provinciecode)
+	Provincienaam.Store(i.Provincienaam)
+	PandGasAansluitingen.Store(i.PandGasEanAansluitingen)
+	P6GasAansluitingen2020.Store(i.P6GasAansluitingen2020)
+	P6Gasm32020.Store(i.P6Gasm32020)
+	P6Kwh2020.Store(i.P6Kwh2020)
+	PandBouwjaar.Store(i.PandBouwjaar)
+	PandGasAansluitingen.Store(i.PandGasAansluitingen)
 
-	//check if column value is already present
-	//else store new key
-	if _, ok := WoningTypeIdxMap[i.WoningType]; !ok {
-		// store WoningType in map at current index of tracker
-		WoningType[WoningTypeTracker] = i.WoningType
-		// store key - idx
-		WoningTypeIdxMap[i.WoningType] = WoningTypeTracker
-		// increase tracker
-		WoningTypeTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := LabelscoreVoorlopigIdxMap[i.LabelscoreVoorlopig]; !ok {
-		// store LabelscoreVoorlopig in map at current index of tracker
-		LabelscoreVoorlopig[LabelscoreVoorlopigTracker] = i.LabelscoreVoorlopig
-		// store key - idx
-		LabelscoreVoorlopigIdxMap[i.LabelscoreVoorlopig] = LabelscoreVoorlopigTracker
-		// increase tracker
-		LabelscoreVoorlopigTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := LabelscoreDefinitiefIdxMap[i.LabelscoreDefinitief]; !ok {
-		// store LabelscoreDefinitief in map at current index of tracker
-		LabelscoreDefinitief[LabelscoreDefinitiefTracker] = i.LabelscoreDefinitief
-		// store key - idx
-		LabelscoreDefinitiefIdxMap[i.LabelscoreDefinitief] = LabelscoreDefinitiefTracker
-		// increase tracker
-		LabelscoreDefinitiefTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := GemeentecodeIdxMap[i.Gemeentecode]; !ok {
-		// store Gemeentecode in map at current index of tracker
-		Gemeentecode[GemeentecodeTracker] = i.Gemeentecode
-		// store key - idx
-		GemeentecodeIdxMap[i.Gemeentecode] = GemeentecodeTracker
-		// increase tracker
-		GemeentecodeTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := GemeentenaamIdxMap[i.Gemeentenaam]; !ok {
-		// store Gemeentenaam in map at current index of tracker
-		Gemeentenaam[GemeentenaamTracker] = i.Gemeentenaam
-		// store key - idx
-		GemeentenaamIdxMap[i.Gemeentenaam] = GemeentenaamTracker
-		// increase tracker
-		GemeentenaamTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := BuurtcodeIdxMap[i.Buurtcode]; !ok {
-		// store Buurtcode in map at current index of tracker
-		Buurtcode[BuurtcodeTracker] = i.Buurtcode
-		// store key - idx
-		BuurtcodeIdxMap[i.Buurtcode] = BuurtcodeTracker
-		// increase tracker
-		BuurtcodeTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := BuurtnaamIdxMap[i.Buurtnaam]; !ok {
-		// store Buurtnaam in map at current index of tracker
-		Buurtnaam[BuurtnaamTracker] = i.Buurtnaam
-		// store key - idx
-		BuurtnaamIdxMap[i.Buurtnaam] = BuurtnaamTracker
-		// increase tracker
-		BuurtnaamTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := WijkcodeIdxMap[i.Wijkcode]; !ok {
-		// store Wijkcode in map at current index of tracker
-		Wijkcode[WijkcodeTracker] = i.Wijkcode
-		// store key - idx
-		WijkcodeIdxMap[i.Wijkcode] = WijkcodeTracker
-		// increase tracker
-		WijkcodeTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := WijknaamIdxMap[i.Wijknaam]; !ok {
-		// store Wijknaam in map at current index of tracker
-		Wijknaam[WijknaamTracker] = i.Wijknaam
-		// store key - idx
-		WijknaamIdxMap[i.Wijknaam] = WijknaamTracker
-		// increase tracker
-		WijknaamTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := ProvinciecodeIdxMap[i.Provinciecode]; !ok {
-		// store Provinciecode in map at current index of tracker
-		Provinciecode[ProvinciecodeTracker] = i.Provinciecode
-		// store key - idx
-		ProvinciecodeIdxMap[i.Provinciecode] = ProvinciecodeTracker
-		// increase tracker
-		ProvinciecodeTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := ProvincienaamIdxMap[i.Provincienaam]; !ok {
-		// store Provincienaam in map at current index of tracker
-		Provincienaam[ProvincienaamTracker] = i.Provincienaam
-		// store key - idx
-		ProvincienaamIdxMap[i.Provincienaam] = ProvincienaamTracker
-		// increase tracker
-		ProvincienaamTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := PandGasEanAansluitingenIdxMap[i.PandGasEanAansluitingen]; !ok {
-		// store PandGasEanAansluitingen in map at current index of tracker
-		PandGasEanAansluitingen[PandGasEanAansluitingenTracker] = i.PandGasEanAansluitingen
-		// store key - idx
-		PandGasEanAansluitingenIdxMap[i.PandGasEanAansluitingen] = PandGasEanAansluitingenTracker
-		// increase tracker
-		PandGasEanAansluitingenTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := P6GasAansluitingen2020IdxMap[i.P6GasAansluitingen2020]; !ok {
-		// store P6GasAansluitingen2020 in map at current index of tracker
-		P6GasAansluitingen2020[P6GasAansluitingen2020Tracker] = i.P6GasAansluitingen2020
-		// store key - idx
-		P6GasAansluitingen2020IdxMap[i.P6GasAansluitingen2020] = P6GasAansluitingen2020Tracker
-		// increase tracker
-		P6GasAansluitingen2020Tracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := P6Gasm32020IdxMap[i.P6Gasm32020]; !ok {
-		// store P6Gasm32020 in map at current index of tracker
-		P6Gasm32020[P6Gasm32020Tracker] = i.P6Gasm32020
-		// store key - idx
-		P6Gasm32020IdxMap[i.P6Gasm32020] = P6Gasm32020Tracker
-		// increase tracker
-		P6Gasm32020Tracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := P6Kwh2020IdxMap[i.P6Kwh2020]; !ok {
-		// store P6Kwh2020 in map at current index of tracker
-		P6Kwh2020[P6Kwh2020Tracker] = i.P6Kwh2020
-		// store key - idx
-		P6Kwh2020IdxMap[i.P6Kwh2020] = P6Kwh2020Tracker
-		// increase tracker
-		P6Kwh2020Tracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := PandBouwjaarIdxMap[i.PandBouwjaar]; !ok {
-		// store PandBouwjaar in map at current index of tracker
-		PandBouwjaar[PandBouwjaarTracker] = i.PandBouwjaar
-		// store key - idx
-		PandBouwjaarIdxMap[i.PandBouwjaar] = PandBouwjaarTracker
-		// increase tracker
-		PandBouwjaarTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := PandGasAansluitingenIdxMap[i.PandGasAansluitingen]; !ok {
-		// store PandGasAansluitingen in map at current index of tracker
-		PandGasAansluitingen[PandGasAansluitingenTracker] = i.PandGasAansluitingen
-		// store key - idx
-		PandGasAansluitingenIdxMap[i.PandGasAansluitingen] = PandGasAansluitingenTracker
-		// increase tracker
-		PandGasAansluitingenTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	if _, ok := GebruiksdoelenIdxMap[i.Gebruiksdoelen]; !ok {
-		// store Gebruiksdoelen in map at current index of tracker
-		Gebruiksdoelen[GebruiksdoelenTracker] = i.Gebruiksdoelen
-		// store key - idx
-		GebruiksdoelenIdxMap[i.Gebruiksdoelen] = GebruiksdoelenTracker
-		// increase tracker
-		GebruiksdoelenTracker += 1
-	}
-
-	//check if column value is already present
-	//else store new key
-	doelen := make([]uint16, 0)
-
-	// parsing {a, b} array values
-	// string should be at least 2 example "{}" == size 2
-	if len(i.Gebruiksdoelen) > 2 {
-
-		gebruiksdoelen, err := ParsePGArray(i.Gebruiksdoelen)
-		if err != nil {
-			log.Fatal(err, "error parsing array ")
-		}
-
-		for _, gd := range gebruiksdoelen {
-			if _, ok := GebruiksdoelenIdxMap[gd]; !ok {
-				// store Gebruiksdoelen in map at current index of tracker
-				Gebruiksdoelen[GebruiksdoelenTracker] = gd
-				// store key - idx
-				GebruiksdoelenIdxMap[gd] = GebruiksdoelenTracker
-				// increase tracker
-				GebruiksdoelenTracker += 1
-			}
-		}
-
-		for _, v := range gebruiksdoelen {
-			doelen = append(doelen, GebruiksdoelenIdxMap[v])
-		}
-	}
+	doelen := Gebruiksdoelen.StoreArray(i.Gebruiksdoelen)
 
 	return Item{
 
@@ -392,113 +178,43 @@ func (i ItemIn) Shrink(label int) Item {
 		i.Oppervlakte,
 		i.Woningequivalent,
 		i.Adres,
-		WoningTypeIdxMap[i.WoningType],
-		LabelscoreVoorlopigIdxMap[i.LabelscoreVoorlopig],
-		LabelscoreDefinitiefIdxMap[i.LabelscoreDefinitief],
-		GemeentecodeIdxMap[i.Gemeentecode],
-		GemeentenaamIdxMap[i.Gemeentenaam],
-		BuurtcodeIdxMap[i.Buurtcode],
-		BuurtnaamIdxMap[i.Buurtnaam],
-		WijkcodeIdxMap[i.Wijkcode],
-		WijknaamIdxMap[i.Wijknaam],
-		ProvinciecodeIdxMap[i.Provinciecode],
-		ProvincienaamIdxMap[i.Provincienaam],
+		WoningType.GetIndex(i.WoningType),
+		LabelscoreVoorlopig.GetIndex(i.LabelscoreVoorlopig),
+		LabelscoreDefinitief.GetIndex(i.LabelscoreDefinitief),
+		Gemeentecode.GetIndex(i.Gemeentecode),
+		Gemeentenaam.GetIndex(i.Gemeentenaam),
+		Buurtcode.GetIndex(i.Buurtcode),
+		Buurtnaam.GetIndex(i.Buurtnaam),
+		Wijkcode.GetIndex(i.Wijkcode),
+		Wijknaam.GetIndex(i.Wijknaam),
+		Provinciecode.GetIndex(i.Provinciecode),
+		Provincienaam.GetIndex(i.Provincienaam),
 		i.Point,
-		PandGasEanAansluitingenIdxMap[i.PandGasEanAansluitingen],
+		PandGasEanAansluitingen.GetIndex(i.PandGasEanAansluitingen),
 		i.GroupId2020,
-		P6GasAansluitingen2020IdxMap[i.P6GasAansluitingen2020],
-		P6Gasm32020IdxMap[i.P6Gasm32020],
-		P6Kwh2020IdxMap[i.P6Kwh2020],
+		P6GasAansluitingen2020.GetIndex(i.P6GasAansluitingen2020),
+		P6Gasm32020.GetIndex(i.P6Gasm32020),
+		P6Kwh2020.GetIndex(i.P6Kwh2020),
 		i.P6TotaalPandoppervlakM2,
-		PandBouwjaarIdxMap[i.PandBouwjaar],
-		PandGasAansluitingenIdxMap[i.PandGasAansluitingen],
+		PandBouwjaar.GetIndex(i.PandBouwjaar),
+		PandGasAansluitingen.GetIndex(i.PandGasAansluitingen),
 		doelen,
 	}
 }
 
 // Store selected columns in seperate map[columnvalue]bitarray
-// for gast item lookup
+// for fast item selection
+// BitArrays cannot be serialized
 func (i Item) StoreBitArrayColumns() {
 
-	var ba bitarray.BitArray
-	var ok bool
-
-	// Column WoningType has byte arrays for
-	ba, ok = WoningTypeItems[i.WoningType]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		WoningTypeItems[i.WoningType] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column LabelscoreVoorlopig has byte arrays for
-	ba, ok = LabelscoreVoorlopigItems[i.LabelscoreVoorlopig]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		LabelscoreVoorlopigItems[i.LabelscoreVoorlopig] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column LabelscoreDefinitief has byte arrays for
-	ba, ok = LabelscoreDefinitiefItems[i.LabelscoreDefinitief]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		LabelscoreDefinitiefItems[i.LabelscoreDefinitief] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column Gemeentecode has byte arrays for
-	ba, ok = GemeentecodeItems[i.Gemeentecode]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		GemeentecodeItems[i.Gemeentecode] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column Buurtcode has byte arrays for
-	ba, ok = BuurtcodeItems[i.Buurtcode]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		BuurtcodeItems[i.Buurtcode] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column Wijkcode has byte arrays for
-	ba, ok = WijkcodeItems[i.Wijkcode]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		WijkcodeItems[i.Wijkcode] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-	// Column Provinciecode has byte arrays for
-	ba, ok = ProvinciecodeItems[i.Provinciecode]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		ProvinciecodeItems[i.Provinciecode] = ba
-	}
-
-	ba.SetBit(uint64(i.Label))
-
-	/*
-		// Column Buurtcode has byte arrays for
-		ba, ok = BuurtcodeItems[i.Buurtcode]
-		if !ok {
-			ba = bitarray.NewSparseBitArray()
-			BuurtcodeItems[i.Buurtcode] = ba
-		}
-		ba.SetBit(uint64(i.Label))
-	*/
-
+	SetBitArray("woning_type", i.WoningType, i.Label)
+	SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
+	SetBitArray("buurtcode", i.Buurtcode, i.Label)
 }
 
 func (i Item) Serialize() ItemOut {
 
-	lock.RLock()
-	defer lock.RUnlock()
-
 	return ItemOut{
-
 		i.Pid,
 		i.Vid,
 		i.Numid,
@@ -506,26 +222,26 @@ func (i Item) Serialize() ItemOut {
 		i.Oppervlakte,
 		i.Woningequivalent,
 		i.Adres,
-		WoningType[i.WoningType],
-		LabelscoreVoorlopig[i.LabelscoreVoorlopig],
-		LabelscoreDefinitief[i.LabelscoreDefinitief],
-		Gemeentecode[i.Gemeentecode],
-		Gemeentenaam[i.Gemeentenaam],
-		Buurtcode[i.Buurtcode],
-		Buurtnaam[i.Buurtnaam],
-		Wijkcode[i.Wijkcode],
-		Wijknaam[i.Wijknaam],
-		Provinciecode[i.Provinciecode],
-		Provincienaam[i.Provincienaam],
+		WoningType.GetValue(i.WoningType),
+		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
+		LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief),
+		Gemeentecode.GetValue(i.Gemeentecode),
+		Gemeentenaam.GetValue(i.Gemeentenaam),
+		Buurtcode.GetValue(i.Buurtcode),
+		Buurtnaam.GetValue(i.Buurtnaam),
+		Wijkcode.GetValue(i.Wijkcode),
+		Wijknaam.GetValue(i.Wijknaam),
+		Provinciecode.GetValue(i.Provinciecode),
+		Provincienaam.GetValue(i.Provincienaam),
 		i.Point,
-		PandGasEanAansluitingen[i.PandGasEanAansluitingen],
+		PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen),
 		i.GroupId2020,
-		P6GasAansluitingen2020[i.P6GasAansluitingen2020],
-		P6Gasm32020[i.P6Gasm32020],
-		P6Kwh2020[i.P6Kwh2020],
+		P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020),
+		P6Gasm32020.GetValue(i.P6Gasm32020),
+		P6Kwh2020.GetValue(i.P6Kwh2020),
 		i.P6TotaalPandoppervlakM2,
-		PandBouwjaar[i.PandBouwjaar],
-		PandGasAansluitingen[i.PandGasAansluitingen],
+		PandBouwjaar.GetValue(i.PandBouwjaar),
+		PandGasAansluitingen.GetValue(i.PandGasAansluitingen),
 		GettersGebruiksdoelen(&i),
 	}
 }
@@ -600,9 +316,6 @@ func (i ItemOut) Columns() []string {
 
 func (i Item) Row() []string {
 
-	lock.RLock()
-	defer lock.RUnlock()
-
 	return []string{
 
 		i.Pid,
@@ -612,26 +325,26 @@ func (i Item) Row() []string {
 		i.Oppervlakte,
 		i.Woningequivalent,
 		i.Adres,
-		WoningType[i.WoningType],
-		LabelscoreVoorlopig[i.LabelscoreVoorlopig],
-		LabelscoreDefinitief[i.LabelscoreDefinitief],
-		Gemeentecode[i.Gemeentecode],
-		Gemeentenaam[i.Gemeentenaam],
-		Buurtcode[i.Buurtcode],
-		Buurtnaam[i.Buurtnaam],
-		Wijkcode[i.Wijkcode],
-		Wijknaam[i.Wijknaam],
-		Provinciecode[i.Provinciecode],
-		Provincienaam[i.Provincienaam],
+		WoningType.GetValue(i.WoningType),
+		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
+		LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief),
+		Gemeentecode.GetValue(i.Gemeentecode),
+		Gemeentenaam.GetValue(i.Gemeentenaam),
+		Buurtcode.GetValue(i.Buurtcode),
+		Buurtnaam.GetValue(i.Buurtnaam),
+		Wijkcode.GetValue(i.Wijkcode),
+		Wijknaam.GetValue(i.Wijknaam),
+		Provinciecode.GetValue(i.Provinciecode),
+		Provincienaam.GetValue(i.Provincienaam),
 		i.Point,
-		PandGasEanAansluitingen[i.PandGasEanAansluitingen],
+		PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen),
 		i.GroupId2020,
-		P6GasAansluitingen2020[i.P6GasAansluitingen2020],
-		P6Gasm32020[i.P6Gasm32020],
-		P6Kwh2020[i.P6Kwh2020],
+		P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020),
+		P6Gasm32020.GetValue(i.P6Gasm32020),
+		P6Kwh2020.GetValue(i.P6Kwh2020),
 		i.P6TotaalPandoppervlakM2,
-		PandBouwjaar[i.PandBouwjaar],
-		PandGasAansluitingen[i.PandGasAansluitingen],
+		PandBouwjaar.GetValue(i.PandBouwjaar),
+		PandGasAansluitingen.GetValue(i.PandGasAansluitingen),
 		GettersGebruiksdoelen(&i),
 	}
 }
@@ -786,222 +499,222 @@ func GettersAdres(i *Item) string {
 
 // contain filter WoningType
 func FilterWoningTypeContains(i *Item, s string) bool {
-	return strings.Contains(WoningType[i.WoningType], s)
+	return strings.Contains(WoningType.GetValue(i.WoningType), s)
 }
 
 // startswith filter WoningType
 func FilterWoningTypeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(WoningType[i.WoningType], s)
+	return strings.HasPrefix(WoningType.GetValue(i.WoningType), s)
 }
 
 // match filters WoningType
 func FilterWoningTypeMatch(i *Item, s string) bool {
-	return WoningType[i.WoningType] == s
+	return WoningType.GetValue(i.WoningType) == s
 }
 
 // getter WoningType
 func GettersWoningType(i *Item) string {
-	return WoningType[i.WoningType]
+	return WoningType.GetValue(i.WoningType)
 }
 
 // contain filter LabelscoreVoorlopig
 func FilterLabelscoreVoorlopigContains(i *Item, s string) bool {
-	return strings.Contains(LabelscoreVoorlopig[i.LabelscoreVoorlopig], s)
+	return strings.Contains(LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig), s)
 }
 
 // startswith filter LabelscoreVoorlopig
 func FilterLabelscoreVoorlopigStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(LabelscoreVoorlopig[i.LabelscoreVoorlopig], s)
+	return strings.HasPrefix(LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig), s)
 }
 
 // match filters LabelscoreVoorlopig
 func FilterLabelscoreVoorlopigMatch(i *Item, s string) bool {
-	return LabelscoreVoorlopig[i.LabelscoreVoorlopig] == s
+	return LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig) == s
 }
 
 // getter LabelscoreVoorlopig
 func GettersLabelscoreVoorlopig(i *Item) string {
-	return LabelscoreVoorlopig[i.LabelscoreVoorlopig]
+	return LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig)
 }
 
 // contain filter LabelscoreDefinitief
 func FilterLabelscoreDefinitiefContains(i *Item, s string) bool {
-	return strings.Contains(LabelscoreDefinitief[i.LabelscoreDefinitief], s)
+	return strings.Contains(LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief), s)
 }
 
 // startswith filter LabelscoreDefinitief
 func FilterLabelscoreDefinitiefStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(LabelscoreDefinitief[i.LabelscoreDefinitief], s)
+	return strings.HasPrefix(LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief), s)
 }
 
 // match filters LabelscoreDefinitief
 func FilterLabelscoreDefinitiefMatch(i *Item, s string) bool {
-	return LabelscoreDefinitief[i.LabelscoreDefinitief] == s
+	return LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief) == s
 }
 
 // getter LabelscoreDefinitief
 func GettersLabelscoreDefinitief(i *Item) string {
-	return LabelscoreDefinitief[i.LabelscoreDefinitief]
+	return LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief)
 }
 
 // contain filter Gemeentecode
 func FilterGemeentecodeContains(i *Item, s string) bool {
-	return strings.Contains(Gemeentecode[i.Gemeentecode], s)
+	return strings.Contains(Gemeentecode.GetValue(i.Gemeentecode), s)
 }
 
 // startswith filter Gemeentecode
 func FilterGemeentecodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Gemeentecode[i.Gemeentecode], s)
+	return strings.HasPrefix(Gemeentecode.GetValue(i.Gemeentecode), s)
 }
 
 // match filters Gemeentecode
 func FilterGemeentecodeMatch(i *Item, s string) bool {
-	return Gemeentecode[i.Gemeentecode] == s
+	return Gemeentecode.GetValue(i.Gemeentecode) == s
 }
 
 // getter Gemeentecode
 func GettersGemeentecode(i *Item) string {
-	return Gemeentecode[i.Gemeentecode]
+	return Gemeentecode.GetValue(i.Gemeentecode)
 }
 
 // contain filter Gemeentenaam
 func FilterGemeentenaamContains(i *Item, s string) bool {
-	return strings.Contains(Gemeentenaam[i.Gemeentenaam], s)
+	return strings.Contains(Gemeentenaam.GetValue(i.Gemeentenaam), s)
 }
 
 // startswith filter Gemeentenaam
 func FilterGemeentenaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Gemeentenaam[i.Gemeentenaam], s)
+	return strings.HasPrefix(Gemeentenaam.GetValue(i.Gemeentenaam), s)
 }
 
 // match filters Gemeentenaam
 func FilterGemeentenaamMatch(i *Item, s string) bool {
-	return Gemeentenaam[i.Gemeentenaam] == s
+	return Gemeentenaam.GetValue(i.Gemeentenaam) == s
 }
 
 // getter Gemeentenaam
 func GettersGemeentenaam(i *Item) string {
-	return Gemeentenaam[i.Gemeentenaam]
+	return Gemeentenaam.GetValue(i.Gemeentenaam)
 }
 
 // contain filter Buurtcode
 func FilterBuurtcodeContains(i *Item, s string) bool {
-	return strings.Contains(Buurtcode[i.Buurtcode], s)
+	return strings.Contains(Buurtcode.GetValue(i.Buurtcode), s)
 }
 
 // startswith filter Buurtcode
 func FilterBuurtcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Buurtcode[i.Buurtcode], s)
+	return strings.HasPrefix(Buurtcode.GetValue(i.Buurtcode), s)
 }
 
 // match filters Buurtcode
 func FilterBuurtcodeMatch(i *Item, s string) bool {
-	return Buurtcode[i.Buurtcode] == s
+	return Buurtcode.GetValue(i.Buurtcode) == s
 }
 
 // getter Buurtcode
 func GettersBuurtcode(i *Item) string {
-	return Buurtcode[i.Buurtcode]
+	return Buurtcode.GetValue(i.Buurtcode)
 }
 
 // contain filter Buurtnaam
 func FilterBuurtnaamContains(i *Item, s string) bool {
-	return strings.Contains(Buurtnaam[i.Buurtnaam], s)
+	return strings.Contains(Buurtnaam.GetValue(i.Buurtnaam), s)
 }
 
 // startswith filter Buurtnaam
 func FilterBuurtnaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Buurtnaam[i.Buurtnaam], s)
+	return strings.HasPrefix(Buurtnaam.GetValue(i.Buurtnaam), s)
 }
 
 // match filters Buurtnaam
 func FilterBuurtnaamMatch(i *Item, s string) bool {
-	return Buurtnaam[i.Buurtnaam] == s
+	return Buurtnaam.GetValue(i.Buurtnaam) == s
 }
 
 // getter Buurtnaam
 func GettersBuurtnaam(i *Item) string {
-	return Buurtnaam[i.Buurtnaam]
+	return Buurtnaam.GetValue(i.Buurtnaam)
 }
 
 // contain filter Wijkcode
 func FilterWijkcodeContains(i *Item, s string) bool {
-	return strings.Contains(Wijkcode[i.Wijkcode], s)
+	return strings.Contains(Wijkcode.GetValue(i.Wijkcode), s)
 }
 
 // startswith filter Wijkcode
 func FilterWijkcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Wijkcode[i.Wijkcode], s)
+	return strings.HasPrefix(Wijkcode.GetValue(i.Wijkcode), s)
 }
 
 // match filters Wijkcode
 func FilterWijkcodeMatch(i *Item, s string) bool {
-	return Wijkcode[i.Wijkcode] == s
+	return i.Wijkcode == Wijkcode.GetIndex(s)
 }
 
 // getter Wijkcode
 func GettersWijkcode(i *Item) string {
-	return Wijkcode[i.Wijkcode]
+	return Wijkcode.GetValue(i.Wijkcode)
 }
 
 // contain filter Wijknaam
 func FilterWijknaamContains(i *Item, s string) bool {
-	return strings.Contains(Wijknaam[i.Wijknaam], s)
+	return strings.Contains(Wijknaam.GetValue(i.Wijknaam), s)
 }
 
 // startswith filter Wijknaam
 func FilterWijknaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Wijknaam[i.Wijknaam], s)
+	return strings.HasPrefix(Wijknaam.GetValue(i.Wijknaam), s)
 }
 
 // match filters Wijknaam
 func FilterWijknaamMatch(i *Item, s string) bool {
-	return Wijknaam[i.Wijknaam] == s
+	return Wijknaam.GetIndex(s) == i.Wijknaam
 }
 
 // getter Wijknaam
 func GettersWijknaam(i *Item) string {
-	return Wijknaam[i.Wijknaam]
+	return Wijknaam.GetValue(i.Wijknaam)
 }
 
 // contain filter Provinciecode
 func FilterProvinciecodeContains(i *Item, s string) bool {
-	return strings.Contains(Provinciecode[i.Provinciecode], s)
+	return strings.Contains(Provinciecode.GetValue(i.Provinciecode), s)
 }
 
 // startswith filter Provinciecode
 func FilterProvinciecodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Provinciecode[i.Provinciecode], s)
+	return strings.HasPrefix(Provinciecode.GetValue(i.Provinciecode), s)
 }
 
 // match filters Provinciecode
 func FilterProvinciecodeMatch(i *Item, s string) bool {
-	return Provinciecode[i.Provinciecode] == s
+	return Provinciecode.GetValue(i.Provinciecode) == s
 }
 
 // getter Provinciecode
 func GettersProvinciecode(i *Item) string {
-	return Provinciecode[i.Provinciecode]
+	return Provinciecode.GetValue(i.Provinciecode)
 }
 
 // contain filter Provincienaam
 func FilterProvincienaamContains(i *Item, s string) bool {
-	return strings.Contains(Provincienaam[i.Provincienaam], s)
+	return strings.Contains(Provincienaam.GetValue(i.Provincienaam), s)
 }
 
 // startswith filter Provincienaam
 func FilterProvincienaamStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(Provincienaam[i.Provincienaam], s)
+	return strings.HasPrefix(Provincienaam.GetValue(i.Provincienaam), s)
 }
 
 // match filters Provincienaam
 func FilterProvincienaamMatch(i *Item, s string) bool {
-	return Provincienaam[i.Provincienaam] == s
+	return Provincienaam.GetValue(i.Provincienaam) == s
 }
 
 // getter Provincienaam
 func GettersProvincienaam(i *Item) string {
-	return Provincienaam[i.Provincienaam]
+	return Provincienaam.GetValue(i.Provincienaam)
 }
 
 // contain filter Point
@@ -1026,22 +739,22 @@ func GettersPoint(i *Item) string {
 
 // contain filter PandGasEanAansluitingen
 func FilterPandGasEanAansluitingenContains(i *Item, s string) bool {
-	return strings.Contains(PandGasEanAansluitingen[i.PandGasEanAansluitingen], s)
+	return strings.Contains(PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen), s)
 }
 
 // startswith filter PandGasEanAansluitingen
 func FilterPandGasEanAansluitingenStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(PandGasEanAansluitingen[i.PandGasEanAansluitingen], s)
+	return strings.HasPrefix(PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen), s)
 }
 
 // match filters PandGasEanAansluitingen
 func FilterPandGasEanAansluitingenMatch(i *Item, s string) bool {
-	return PandGasEanAansluitingen[i.PandGasEanAansluitingen] == s
+	return PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen) == s
 }
 
 // getter PandGasEanAansluitingen
 func GettersPandGasEanAansluitingen(i *Item) string {
-	return PandGasEanAansluitingen[i.PandGasEanAansluitingen]
+	return PandGasEanAansluitingen.GetValue(i.PandGasEanAansluitingen)
 }
 
 // contain filter GroupId2020
@@ -1066,62 +779,62 @@ func GettersGroupId2020(i *Item) string {
 
 // contain filter P6GasAansluitingen2020
 func FilterP6GasAansluitingen2020Contains(i *Item, s string) bool {
-	return strings.Contains(P6GasAansluitingen2020[i.P6GasAansluitingen2020], s)
+	return strings.Contains(P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020), s)
 }
 
 // startswith filter P6GasAansluitingen2020
 func FilterP6GasAansluitingen2020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(P6GasAansluitingen2020[i.P6GasAansluitingen2020], s)
+	return strings.HasPrefix(P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020), s)
 }
 
 // match filters P6GasAansluitingen2020
 func FilterP6GasAansluitingen2020Match(i *Item, s string) bool {
-	return P6GasAansluitingen2020[i.P6GasAansluitingen2020] == s
+	return P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020) == s
 }
 
 // getter P6GasAansluitingen2020
 func GettersP6GasAansluitingen2020(i *Item) string {
-	return P6GasAansluitingen2020[i.P6GasAansluitingen2020]
+	return P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020)
 }
 
 // contain filter P6Gasm32020
 func FilterP6Gasm32020Contains(i *Item, s string) bool {
-	return strings.Contains(P6Gasm32020[i.P6Gasm32020], s)
+	return strings.Contains(P6Gasm32020.GetValue(i.P6Gasm32020), s)
 }
 
 // startswith filter P6Gasm32020
 func FilterP6Gasm32020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(P6Gasm32020[i.P6Gasm32020], s)
+	return strings.HasPrefix(P6Gasm32020.GetValue(i.P6Gasm32020), s)
 }
 
 // match filters P6Gasm32020
 func FilterP6Gasm32020Match(i *Item, s string) bool {
-	return P6Gasm32020[i.P6Gasm32020] == s
+	return P6Gasm32020.GetValue(i.P6Gasm32020) == s
 }
 
 // getter P6Gasm32020
 func GettersP6Gasm32020(i *Item) string {
-	return P6Gasm32020[i.P6Gasm32020]
+	return P6Gasm32020.GetValue(i.P6Gasm32020)
 }
 
 // contain filter P6Kwh2020
 func FilterP6Kwh2020Contains(i *Item, s string) bool {
-	return strings.Contains(P6Kwh2020[i.P6Kwh2020], s)
+	return strings.Contains(P6Kwh2020.GetValue(i.P6Kwh2020), s)
 }
 
 // startswith filter P6Kwh2020
 func FilterP6Kwh2020StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(P6Kwh2020[i.P6Kwh2020], s)
+	return strings.HasPrefix(P6Kwh2020.GetValue(i.P6Kwh2020), s)
 }
 
 // match filters P6Kwh2020
 func FilterP6Kwh2020Match(i *Item, s string) bool {
-	return P6Kwh2020[i.P6Kwh2020] == s
+	return P6Kwh2020.GetValue(i.P6Kwh2020) == s
 }
 
 // getter P6Kwh2020
 func GettersP6Kwh2020(i *Item) string {
-	return P6Kwh2020[i.P6Kwh2020]
+	return P6Kwh2020.GetValue(i.P6Kwh2020)
 }
 
 // contain filter P6TotaalPandoppervlakM2
@@ -1146,48 +859,48 @@ func GettersP6TotaalPandoppervlakM2(i *Item) string {
 
 // contain filter PandBouwjaar
 func FilterPandBouwjaarContains(i *Item, s string) bool {
-	return strings.Contains(PandBouwjaar[i.PandBouwjaar], s)
+	return strings.Contains(PandBouwjaar.GetValue(i.PandBouwjaar), s)
 }
 
 // startswith filter PandBouwjaar
 func FilterPandBouwjaarStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(PandBouwjaar[i.PandBouwjaar], s)
+	return strings.HasPrefix(PandBouwjaar.GetValue(i.PandBouwjaar), s)
 }
 
 // match filters PandBouwjaar
 func FilterPandBouwjaarMatch(i *Item, s string) bool {
-	return PandBouwjaar[i.PandBouwjaar] == s
+	return PandBouwjaar.GetValue(i.PandBouwjaar) == s
 }
 
 // getter PandBouwjaar
 func GettersPandBouwjaar(i *Item) string {
-	return PandBouwjaar[i.PandBouwjaar]
+	return PandBouwjaar.GetValue(i.PandBouwjaar)
 }
 
 // contain filter PandGasAansluitingen
 func FilterPandGasAansluitingenContains(i *Item, s string) bool {
-	return strings.Contains(PandGasAansluitingen[i.PandGasAansluitingen], s)
+	return strings.Contains(PandGasAansluitingen.GetValue(i.PandGasAansluitingen), s)
 }
 
 // startswith filter PandGasAansluitingen
 func FilterPandGasAansluitingenStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(PandGasAansluitingen[i.PandGasAansluitingen], s)
+	return strings.HasPrefix(PandGasAansluitingen.GetValue(i.PandGasAansluitingen), s)
 }
 
 // match filters PandGasAansluitingen
 func FilterPandGasAansluitingenMatch(i *Item, s string) bool {
-	return PandGasAansluitingen[i.PandGasAansluitingen] == s
+	return PandGasAansluitingen.GetValue(i.PandGasAansluitingen) == s
 }
 
 // getter PandGasAansluitingen
 func GettersPandGasAansluitingen(i *Item) string {
-	return PandGasAansluitingen[i.PandGasAansluitingen]
+	return PandGasAansluitingen.GetValue(i.PandGasAansluitingen)
 }
 
 // contain filter Gebruiksdoelen
 func FilterGebruiksdoelenContains(i *Item, s string) bool {
 	for _, v := range i.Gebruiksdoelen {
-		vs := Gebruiksdoelen[v]
+		vs := Gebruiksdoelen.GetValue(v)
 		if strings.Contains(vs, s) {
 			return true
 		}
@@ -1198,7 +911,7 @@ func FilterGebruiksdoelenContains(i *Item, s string) bool {
 // startswith filter Gebruiksdoelen
 func FilterGebruiksdoelenStartsWith(i *Item, s string) bool {
 	for _, v := range i.Gebruiksdoelen {
-		vs := Gebruiksdoelen[v]
+		vs := Gebruiksdoelen.GetValue(v)
 		if strings.HasPrefix(vs, s) {
 			return true
 		}
@@ -1210,7 +923,7 @@ func FilterGebruiksdoelenStartsWith(i *Item, s string) bool {
 // match filters Gebruiksdoelen
 func FilterGebruiksdoelenMatch(i *Item, s string) bool {
 	for _, v := range i.Gebruiksdoelen {
-		vs := Gebruiksdoelen[v]
+		vs := Gebruiksdoelen.GetValue(v)
 		if vs == s {
 			return true
 		}
@@ -1222,7 +935,7 @@ func FilterGebruiksdoelenMatch(i *Item, s string) bool {
 func GettersGebruiksdoelen(i *Item) string {
 	doelen := make([]string, 0)
 	for _, v := range i.Gebruiksdoelen {
-		vs := Gebruiksdoelen[v]
+		vs := Gebruiksdoelen.GetValue(v)
 		doelen = append(doelen, vs)
 	}
 	return strings.Join(doelen, ", ")
@@ -1232,7 +945,7 @@ func GettersGebruiksdoelen(i *Item) string {
 func GroupByGettersGebruiksdoelen(item *Item, grouping ItemsGroupedBy) {
 
 	for i := range item.Gebruiksdoelen {
-		groupkey := Gebruiksdoelen[item.Gebruiksdoelen[i]]
+		groupkey := Gebruiksdoelen.GetValue(item.Gebruiksdoelen[i])
 		grouping[groupkey] = append(grouping[groupkey], item)
 	}
 }
@@ -1296,139 +1009,6 @@ func validateRegisters() error {
 		}
 	}
 	return nil
-}
-
-// GetBitArrayWoningType for given v string see if there is
-// a bitarray created.
-func GetBitArrayWoningType(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := WoningTypeIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value WoningType")
-	}
-
-	ba, ok := WoningTypeItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value WoningType")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayLabelscoreVoorlopig for given v string see if there is
-// a bitarray created.
-func GetBitArrayLabelscoreVoorlopig(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := LabelscoreVoorlopigIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value LabelscoreVoorlopig")
-	}
-
-	ba, ok := LabelscoreVoorlopigItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value LabelscoreVoorlopig")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayLabelscoreDefinitief for given v string see if there is
-// a bitarray created.
-func GetBitArrayLabelscoreDefinitief(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := LabelscoreDefinitiefIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value LabelscoreDefinitief")
-	}
-
-	ba, ok := LabelscoreDefinitiefItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value LabelscoreDefinitief")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayGemeentecode for given v string see if there is
-// a bitarray created.
-func GetBitArrayGemeentecode(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := GemeentecodeIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value Gemeentecode")
-	}
-
-	ba, ok := GemeentecodeItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value Gemeentecode")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayBuurtcode for given v string see if there is
-// a bitarray created.
-func GetBitArrayBuurtcode(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := BuurtcodeIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value Buurtcode")
-	}
-
-	ba, ok := BuurtcodeItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value Buurtcode")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayWijkcode for given v string see if there is
-// a bitarray created.
-func GetBitArrayWijkcode(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := WijkcodeIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value Wijkcode")
-	}
-
-	ba, ok := WijkcodeItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value Wijkcode")
-	}
-
-	return ba, nil
-}
-
-// GetBitArrayProvinciecode for given v string see if there is
-// a bitarray created.
-func GetBitArrayProvinciecode(v string) (bitarray.BitArray, error) {
-
-	bpi, ok := ProvinciecodeIdxMap[v]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column value Provinciecode")
-	}
-
-	ba, ok := ProvinciecodeItems[bpi]
-
-	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value Provinciecode")
-	}
-
-	return ba, nil
 }
 
 func init() {
@@ -1504,16 +1084,12 @@ func init() {
 	RegisterGetters["woning_type"] = GettersWoningType
 	RegisterGroupBy["woning_type"] = GettersWoningType
 
-	RegisterBitArray["woning_type"] = GetBitArrayWoningType
-
 	//register filters for LabelscoreVoorlopig
 	RegisterFuncMap["match-labelscore_voorlopig"] = FilterLabelscoreVoorlopigMatch
 	RegisterFuncMap["contains-labelscore_voorlopig"] = FilterLabelscoreVoorlopigContains
 	RegisterFuncMap["startswith-labelscore_voorlopig"] = FilterLabelscoreVoorlopigStartsWith
 	RegisterGetters["labelscore_voorlopig"] = GettersLabelscoreVoorlopig
 	RegisterGroupBy["labelscore_voorlopig"] = GettersLabelscoreVoorlopig
-
-	RegisterBitArray["labelscore_voorlopig"] = GetBitArrayLabelscoreVoorlopig
 
 	//register filters for LabelscoreDefinitief
 	RegisterFuncMap["match-labelscore_definitief"] = FilterLabelscoreDefinitiefMatch
@@ -1522,16 +1098,12 @@ func init() {
 	RegisterGetters["labelscore_definitief"] = GettersLabelscoreDefinitief
 	RegisterGroupBy["labelscore_definitief"] = GettersLabelscoreDefinitief
 
-	RegisterBitArray["labelscore_definitief"] = GetBitArrayLabelscoreDefinitief
-
 	//register filters for Gemeentecode
 	RegisterFuncMap["match-gemeentecode"] = FilterGemeentecodeMatch
 	RegisterFuncMap["contains-gemeentecode"] = FilterGemeentecodeContains
 	RegisterFuncMap["startswith-gemeentecode"] = FilterGemeentecodeStartsWith
 	RegisterGetters["gemeentecode"] = GettersGemeentecode
 	RegisterGroupBy["gemeentecode"] = GettersGemeentecode
-
-	RegisterBitArray["gemeentecode"] = GetBitArrayGemeentecode
 
 	//register filters for Gemeentenaam
 	RegisterFuncMap["match-gemeentenaam"] = FilterGemeentenaamMatch
@@ -1547,8 +1119,6 @@ func init() {
 	RegisterGetters["buurtcode"] = GettersBuurtcode
 	RegisterGroupBy["buurtcode"] = GettersBuurtcode
 
-	RegisterBitArray["buurtcode"] = GetBitArrayBuurtcode
-
 	//register filters for Buurtnaam
 	RegisterFuncMap["match-buurtnaam"] = FilterBuurtnaamMatch
 	RegisterFuncMap["contains-buurtnaam"] = FilterBuurtnaamContains
@@ -1563,8 +1133,6 @@ func init() {
 	RegisterGetters["wijkcode"] = GettersWijkcode
 	RegisterGroupBy["wijkcode"] = GettersWijkcode
 
-	RegisterBitArray["wijkcode"] = GetBitArrayWijkcode
-
 	//register filters for Wijknaam
 	RegisterFuncMap["match-wijknaam"] = FilterWijknaamMatch
 	RegisterFuncMap["contains-wijknaam"] = FilterWijknaamContains
@@ -1578,8 +1146,6 @@ func init() {
 	RegisterFuncMap["startswith-provinciecode"] = FilterProvinciecodeStartsWith
 	RegisterGetters["provinciecode"] = GettersProvinciecode
 	RegisterGroupBy["provinciecode"] = GettersProvinciecode
-
-	RegisterBitArray["provinciecode"] = GetBitArrayProvinciecode
 
 	//register filters for Provincienaam
 	RegisterFuncMap["match-provincienaam"] = FilterProvincienaamMatch
@@ -1659,6 +1225,7 @@ func init() {
 	RegisterGroupBy["gebruiksdoelen"] = GettersGebruiksdoelen
 
 	validateRegisters()
+
 	/*
 		RegisterFuncMap["match-ekey"] = FilterEkeyMatch
 		RegisterFuncMap["contains-ekey"] = FilterEkeyContains
@@ -1703,119 +1270,27 @@ func createSort(items Items) sortLookup {
 		"adres":  func(i, j int) bool { return items[i].Adres < items[j].Adres },
 		"-adres": func(i, j int) bool { return items[i].Adres > items[j].Adres },
 
-		"woning_type":  func(i, j int) bool { return WoningType[items[i].WoningType] < WoningType[items[j].WoningType] },
-		"-woning_type": func(i, j int) bool { return WoningType[items[i].WoningType] > WoningType[items[j].WoningType] },
-
-		"labelscore_voorlopig": func(i, j int) bool {
-			return LabelscoreVoorlopig[items[i].LabelscoreVoorlopig] < LabelscoreVoorlopig[items[j].LabelscoreVoorlopig]
+		"woning_type": func(i, j int) bool {
+			return WoningType.GetValue(items[i].WoningType) < WoningType.GetValue(items[j].WoningType)
 		},
-		"-labelscore_voorlopig": func(i, j int) bool {
-			return LabelscoreVoorlopig[items[i].LabelscoreVoorlopig] > LabelscoreVoorlopig[items[j].LabelscoreVoorlopig]
-		},
-
-		"labelscore_definitief": func(i, j int) bool {
-			return LabelscoreDefinitief[items[i].LabelscoreDefinitief] < LabelscoreDefinitief[items[j].LabelscoreDefinitief]
-		},
-		"-labelscore_definitief": func(i, j int) bool {
-			return LabelscoreDefinitief[items[i].LabelscoreDefinitief] > LabelscoreDefinitief[items[j].LabelscoreDefinitief]
-		},
-
-		"gemeentecode":  func(i, j int) bool { return Gemeentecode[items[i].Gemeentecode] < Gemeentecode[items[j].Gemeentecode] },
-		"-gemeentecode": func(i, j int) bool { return Gemeentecode[items[i].Gemeentecode] > Gemeentecode[items[j].Gemeentecode] },
-
-		"gemeentenaam":  func(i, j int) bool { return Gemeentenaam[items[i].Gemeentenaam] < Gemeentenaam[items[j].Gemeentenaam] },
-		"-gemeentenaam": func(i, j int) bool { return Gemeentenaam[items[i].Gemeentenaam] > Gemeentenaam[items[j].Gemeentenaam] },
-
-		"buurtcode":  func(i, j int) bool { return Buurtcode[items[i].Buurtcode] < Buurtcode[items[j].Buurtcode] },
-		"-buurtcode": func(i, j int) bool { return Buurtcode[items[i].Buurtcode] > Buurtcode[items[j].Buurtcode] },
-
-		"buurtnaam":  func(i, j int) bool { return Buurtnaam[items[i].Buurtnaam] < Buurtnaam[items[j].Buurtnaam] },
-		"-buurtnaam": func(i, j int) bool { return Buurtnaam[items[i].Buurtnaam] > Buurtnaam[items[j].Buurtnaam] },
-
-		"wijkcode":  func(i, j int) bool { return Wijkcode[items[i].Wijkcode] < Wijkcode[items[j].Wijkcode] },
-		"-wijkcode": func(i, j int) bool { return Wijkcode[items[i].Wijkcode] > Wijkcode[items[j].Wijkcode] },
-
-		"wijknaam":  func(i, j int) bool { return Wijknaam[items[i].Wijknaam] < Wijknaam[items[j].Wijknaam] },
-		"-wijknaam": func(i, j int) bool { return Wijknaam[items[i].Wijknaam] > Wijknaam[items[j].Wijknaam] },
-
-		"provinciecode": func(i, j int) bool {
-			return Provinciecode[items[i].Provinciecode] < Provinciecode[items[j].Provinciecode]
-		},
-		"-provinciecode": func(i, j int) bool {
-			return Provinciecode[items[i].Provinciecode] > Provinciecode[items[j].Provinciecode]
-		},
-
-		"provincienaam": func(i, j int) bool {
-			return Provincienaam[items[i].Provincienaam] < Provincienaam[items[j].Provincienaam]
-		},
-		"-provincienaam": func(i, j int) bool {
-			return Provincienaam[items[i].Provincienaam] > Provincienaam[items[j].Provincienaam]
+		"-woning_type": func(i, j int) bool {
+			return WoningType.GetValue(items[i].WoningType) > WoningType.GetValue(items[j].WoningType)
 		},
 
 		"point":  func(i, j int) bool { return items[i].Point < items[j].Point },
 		"-point": func(i, j int) bool { return items[i].Point > items[j].Point },
-
-		"pand_gas_ean_aansluitingen": func(i, j int) bool {
-			return PandGasEanAansluitingen[items[i].PandGasEanAansluitingen] < PandGasEanAansluitingen[items[j].PandGasEanAansluitingen]
-		},
-		"-pand_gas_ean_aansluitingen": func(i, j int) bool {
-			return PandGasEanAansluitingen[items[i].PandGasEanAansluitingen] > PandGasEanAansluitingen[items[j].PandGasEanAansluitingen]
-		},
-
-		"group_id_2020":  func(i, j int) bool { return items[i].GroupId2020 < items[j].GroupId2020 },
-		"-group_id_2020": func(i, j int) bool { return items[i].GroupId2020 > items[j].GroupId2020 },
-
-		"p6_gas_aansluitingen_2020": func(i, j int) bool {
-			return P6GasAansluitingen2020[items[i].P6GasAansluitingen2020] < P6GasAansluitingen2020[items[j].P6GasAansluitingen2020]
-		},
-		"-p6_gas_aansluitingen_2020": func(i, j int) bool {
-			return P6GasAansluitingen2020[items[i].P6GasAansluitingen2020] > P6GasAansluitingen2020[items[j].P6GasAansluitingen2020]
-		},
-
-		"p6_gasm3_2020":  func(i, j int) bool { return P6Gasm32020[items[i].P6Gasm32020] < P6Gasm32020[items[j].P6Gasm32020] },
-		"-p6_gasm3_2020": func(i, j int) bool { return P6Gasm32020[items[i].P6Gasm32020] > P6Gasm32020[items[j].P6Gasm32020] },
-
-		"p6_kwh_2020":  func(i, j int) bool { return P6Kwh2020[items[i].P6Kwh2020] < P6Kwh2020[items[j].P6Kwh2020] },
-		"-p6_kwh_2020": func(i, j int) bool { return P6Kwh2020[items[i].P6Kwh2020] > P6Kwh2020[items[j].P6Kwh2020] },
-
-		"p6_totaal_pandoppervlak_m2":  func(i, j int) bool { return items[i].P6TotaalPandoppervlakM2 < items[j].P6TotaalPandoppervlakM2 },
-		"-p6_totaal_pandoppervlak_m2": func(i, j int) bool { return items[i].P6TotaalPandoppervlakM2 > items[j].P6TotaalPandoppervlakM2 },
-
-		"pand_bouwjaar":  func(i, j int) bool { return PandBouwjaar[items[i].PandBouwjaar] < PandBouwjaar[items[j].PandBouwjaar] },
-		"-pand_bouwjaar": func(i, j int) bool { return PandBouwjaar[items[i].PandBouwjaar] > PandBouwjaar[items[j].PandBouwjaar] },
-
-		"pand_gas_aansluitingen": func(i, j int) bool {
-			return PandGasAansluitingen[items[i].PandGasAansluitingen] < PandGasAansluitingen[items[j].PandGasAansluitingen]
-		},
-		"-pand_gas_aansluitingen": func(i, j int) bool {
-			return PandGasAansluitingen[items[i].PandGasAansluitingen] > PandGasAansluitingen[items[j].PandGasAansluitingen]
-		},
-
-		"gebruiksdoelen": func(i, j int) bool {
-			return GettersGebruiksdoelen(items[i]) < GettersGebruiksdoelen(items[j])
-		},
-		"-gebruiksdoelen": func(i, j int) bool {
-			return GettersGebruiksdoelen(items[i]) > GettersGebruiksdoelen(items[j])
-		},
-
-		/*
-			"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },
-			"-ekey": func(i, j int) bool { return items[i].Ekey > items[j].Ekey },
-		*/
 	}
 	return sortFuncs
 }
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
-
-	lock.Lock()
-	defer lock.Unlock()
-
 	sortFuncs := createSort(items)
 
 	for _, sortFuncName := range sortingL {
-		sortFunc := sortFuncs[sortFuncName]
-		sort.Slice(items, sortFunc)
+		sortFunc, ok := sortFuncs[sortFuncName]
+		if ok {
+			sort.Slice(items, sortFunc)
+		}
 	}
 
 	// TODO must be nicer way

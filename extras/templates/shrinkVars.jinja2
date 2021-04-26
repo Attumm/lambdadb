@@ -1,8 +1,6 @@
 
-var {{column}}Tracker uint16
-var {{column}}IdxMap fieldIdxMap
-var {{column}} fieldMapIdx
+var {{column}} MappedColumn
 {% if bitarray %}
-var {{column}}Items fieldItemsMap
+var {{column}}Items fieldBitarrayMap
 {% endif %}
 

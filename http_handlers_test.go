@@ -65,19 +65,38 @@ func TestBasicHandlers(t *testing.T) {
 		t.Error("no items")
 	}
 
-	urls := []string{
-		"/list/",
-		"/typeahead/pid/?search=1",
-		"/help/",
+	type testCase struct {
+		url      string
+		expected string
 	}
 
-	for i := range urls {
-		req := httptest.NewRequest("GET", urls[i], nil)
+	tests := []testCase{
+		testCase{"/list/?search=1", "10"},
+		testCase{"/typeahead/gemeentecode/?search=1", "2"},
+		testCase{"/typeahead/pid/?search=1", "2"},
+		testCase{"/help/", ""},
+	}
+
+	for i := range tests {
+		req := httptest.NewRequest("GET", tests[i].url, nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 		resp := w.Result()
 		if resp.StatusCode != 200 {
-			t.Errorf("request to %s failed", urls[i])
+			t.Errorf("request to %s failed", tests[i].url)
+			t.Error(resp)
+		}
+
+		if tests[i].expected == "" {
+			continue
+		}
+
+		if resp.Header.Get("Total-Items") != tests[i].expected {
+			t.Errorf("total hits mismatch from %s %s != %s",
+				tests[i].url,
+				tests[i].expected,
+				resp.Header.Get("Total-Items"),
+			)
 			t.Error(resp)
 		}
 	}

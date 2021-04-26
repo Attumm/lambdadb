@@ -41,10 +41,9 @@ type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
 type registerFormatMap map[string]formatRespFunc
 
 type Query struct {
-	Filters   filterType
-	Excludes  filterType
-	Anys      filterType
-	BitArrays filterType
+	Filters  filterType
+	Excludes filterType
+	Anys     filterType
 
 	GroupBy string
 	Reduce  string
@@ -257,9 +256,6 @@ func groupByRunner(items Items, groupByParameter string) ItemsGroupedBy {
 		return grouping
 	}
 
-	lock.RLock()
-	defer lock.RUnlock()
-
 	for _, item := range items {
 		if customGrouping == nil {
 			GroupingKey := groupingFunc(item)
@@ -348,12 +344,10 @@ func filteredEarlyExit(items *Items, operations GroupedOperations, query Query) 
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
 	stop := end
+
 	if query.LimitGiven {
 		stop = limit
 	}
-
-	lock.RLock()
-	defer lock.RUnlock()
 
 	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
@@ -386,14 +380,13 @@ func filteredEarlyExitSingle(items *Items, column string, operations GroupedOper
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
 	stop := end
+
 	if query.LimitGiven {
 		stop = limit
 	}
 
-	lock.RLock()
-	defer lock.RUnlock()
-
 	for _, item := range *items {
+
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -418,7 +411,9 @@ func filteredEarlyExitSingle(items *Items, column string, operations GroupedOper
 			break
 		}
 	}
+
 	results := []string{}
+
 	for k := range filteredItemsSet {
 		// empty keys crashes frontend.
 		// should be fixed in frontend then below can go.
@@ -435,18 +430,11 @@ func filteredEarlyExitSingle(items *Items, column string, operations GroupedOper
 // to do fast bitwise operations.
 func bitArrayFilter(
 	items *Items,
-	operations GroupedOperations,
 	query Query) (Items, error) {
-
-	balock.RLock()
-	defer balock.RUnlock()
-
-	lock.RLock()
-	defer lock.RUnlock()
 
 	combinedBitArrays := make([]bitarray.BitArray, 0)
 
-	for k := range operations.BitArrays {
+	for k := range BitArrays {
 		parameter, foundkey := query.Filters["match-"+k]
 
 		if len(parameter) == 0 {
@@ -455,8 +443,11 @@ func bitArrayFilter(
 		if !foundkey {
 			continue
 		}
-		ba, err := operations.BitArrays[k](parameter[0])
+
+		ba, err := GetBitArray(k, parameter[0])
+
 		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 		combinedBitArrays = append(combinedBitArrays, ba)
@@ -511,7 +502,7 @@ func runQuery(items *Items, query Query, operations GroupedOperations) (Items, i
 	}
 
 	var nextItems *Items
-	filteredItems, err := bitArrayFilter(items, operations, query)
+	filteredItems, err := bitArrayFilter(items, query)
 
 	if err != nil {
 		nextItems = items
@@ -562,9 +553,6 @@ func filtered(items *Items, operations GroupedOperations, query Query) Items {
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
-
-	lock.RLock()
-	defer lock.RUnlock()
 
 	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {

@@ -46,38 +46,8 @@ type fieldIdxMap map[string]uint16
 type fieldMapIdx map[uint16]string
 type fieldItemsMap map[uint16]bitarray.BitArray
 
-// Column maps.
-// Store for each non distinct/repeated column
-// unit16 -> string map and
-// string -> unit16 map
-// track count of distinct values
+type IndexMap[string]int64
 
-{{shrinkVars}}
-
-/*
-var {columnname}Tracker uint16
-var {columnname}IdxMap fieldIdxMap
-var {columnname} fieldMapIdx
-var {columnname}Items fieldItemmap
-*/
-
-// item map lock
-var lock = sync.RWMutex{}
-
-// bitArray Lock
-var balock = sync.RWMutex{}
-
-
-func init() {
-
-	{{initRepeatColumns}}
-
-	/*
-	labelscoredefinitiefTracker = 0
-	labelscoredefinitiefIdxMap = make(fieldIdxMap)
-	labelscoredefinitief = make(fieldMapIdx)
-	*/
-}
 
 {{itemStructs}}
 
@@ -109,8 +79,8 @@ func (i Item) MarshalJSON() ([]byte, error) {
 // Shrink create smaller Item using uint16
 func (i ItemIn) Shrink(label int) Item {
 
-	lock.Lock()
-	defer lock.Unlock()
+	// Hashmap lookup for index
+	IndexMap[i.{{indexcolumn}}] = label
 
 {{shrinkItems}}
 
@@ -126,38 +96,10 @@ func (i ItemIn) Shrink(label int) Item {
 // Store selected columns in seperate map[columnvalue]bitarray
 // for gast item lookup
 func (i Item) StoreBitArrayColumns() {
-
-	balock.Lock()
-	defer balock.Unlock()
-
-	lock.RLock()
-	defer lock.RUnlock()
-
-        {% if bitArrayStores is defined %}
-	var ba bitarray.BitArray
-	var ok bool
-
 	{{ bitArrayStores }}
-
-	{% endif %}
-
-	/*
-	// Column Buurtcode has byte arrays for
-	ba, ok = BuurtcodeItems[i.Buurtcode]
-	if !ok {
-		ba = bitarray.NewSparseBitArray()
-		BuurtcodeItems[i.Buurtcode] = ba
-	}
-	ba.SetBit(uint64(i.Label))
-	*/
-
 }
 
 func (i Item) Serialize() ItemOut {
-
-	lock.RLock()
-	defer lock.RUnlock()
-
 	return ItemOut{
 
 {{expandItemFields}}
@@ -183,9 +125,6 @@ func (i ItemOut) Columns() []string {
 
 
 func (i Item) Row() []string {
-
-	lock.RLock()
-	defer lock.RUnlock()
 
 	return []string{
 
@@ -266,16 +205,12 @@ func validateRegisters() error {
 	return nil
 }
 
-{{bitArrayGetters}}
-
-
 func init() {
 
 	RegisterFuncMap = make(registerFuncType)
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
-	RegisterBitArray = make(registerBitArray)
 
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
@@ -324,9 +259,6 @@ func createSort(items Items) sortLookup {
 
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
-
-	lock.Lock()
-	defer lock.Unlock()
 
 	sortFuncs := createSort(items)
 

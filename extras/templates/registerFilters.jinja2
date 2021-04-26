@@ -5,7 +5,4 @@
 	RegisterFuncMap["startswith-{{co}}"] = Filter{{columnName}}StartsWith
 	RegisterGetters["{{co}}"] = Getters{{columnName}}
 	RegisterGroupBy["{{co}}"] = Getters{{columnName}}
-{% if bitarray %}
-	RegisterBitArray["{{co}}"] = GetBitArray{{columnName}}
-{% endif %}
 

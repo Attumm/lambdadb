@@ -22,18 +22,34 @@ python create_model.py your.csv
 
 import csv
 import sys
+import os
 
 from re import sub
 from jinja2 import Environment, FileSystemLoader
+
+import yaml
+
 
 if '-f' in sys.argv:
     filename = str(sys.argv[sys.argv.index('-f')+1])
 else:
     filename = "items.csv"
 
+if '-c' in sys.argv:
+    config = str(sys.argv[sys.argv.index('-c')+1])
+else:
+    config = "config.yaml"
+
 with open(filename) as f:
     reader = csv.DictReader(f)
     row = dict(next(reader))
+
+cfg = {}
+
+if os.path.isfile(config):
+    with open(config, 'r') as stream:
+        cfg = yaml.load(stream)['model']
+
 
 env = Environment(
     loader=FileSystemLoader('./templates'),
@@ -73,19 +89,29 @@ for k in row.keys():
 
     options = ['r', 'u', 'i', 'g', 'b']
     while True:
-        # keep asking for valid input
-        q1 = (
-            "(R)epeated value? has less then (2^16=65536) option.",
-            "(B)itarray, repeated column optimized for fast match.",
-            "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
-        )
-        action = input(f"idx:{index} is {k} {q1}")  # noqa
+
+        action = None
+
+        if cfg.get(k):
+            print(f"reading from config {k} {cfg[k]}")
+            action = cfg[k]
+        else:
+            # keep asking for valid input
+            q1 = (
+                "(R)epeated value? has less then (2^16=65536) option.",
+                "(B)itarray, repeated column optimized for fast match.",
+                "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
+            )
+            action = input(f"idx:{index} is {k} {q1}")  # noqa
+
         if action == '':
             print(f"pick one from {options}")
             continue
         if action not in options:
             continue
         break
+
+    cfg[k] = action
 
     if action == 'r':
         repeated.append(kc)
@@ -117,8 +143,15 @@ for k in row.keys():
 
 # ask for a index column
 while True:
+    index = None
     # keep asking for valid input
-    index = input(f"which column is idx? 0 - {len(allcolumns) - 1} ")
+    if cfg.get('index'):
+        index = cfg['index']
+    else:
+        index = input(f"which column is idx? 0 - {len(allcolumns) - 1} ")
+
+    cfg['index'] = index
+
     try:
         index = int(index)
 
@@ -134,24 +167,41 @@ while True:
 
     print('try again..')
 
+# save answers in config file
+with open(config, 'w') as f:
+    dict_file = {'model': cfg}
+    yaml.dump(dict_file, f)
+    print(f'saved answers in config {config}')
+
+
 # setup initial data structs for each repeated column
 initRepeatColumns = []
-initColumntemplate = env.get_template('initColumn.template.jinja2')
+repeatColumnNames = []
+loadRepeatColumnNames = []
 
-for c in repeated:
-    initRepeatColumns.append(
-        initColumntemplate.render(
-            columnName=c, bitarraymap=c in bitarray)
-    )
+for columnName in repeated:
+    initRow = f"\t {columnName} = NewReapeatedColumn()\n"
+    initRepeatColumns.append(initRow)
+
+    repeatRow = f"\t {columnName} \n"
+    repeatColumnNames.append(repeatRow)
+
+    loadRow = f"\t {columnName} = m.{columnName} \n"
+    loadRepeatColumnNames.append(loadRow)
+
+
+# setup initial data structs for each bitarray column
+initBitarrays = []
+for columnName in bitarray:
+    onerow = f"\t {columnName}Items = make(fieldItemsMap)\n"
+    initBitarrays.append(onerow)
 
 # create bitarrays with item labels for column values.
 bitArrayStores = []
-bitArrayGetters = []
-bitArrayStoreTemplate = env.get_template('storebitarray.template.jinja2')
-bitArrayGetTemplate = env.get_template('bitarrayGetter.template.jinja2')
-for r in bitarray:
-    bitArrayStores.append(bitArrayStoreTemplate.render(columnName=r))
-    bitArrayGetters.append(bitArrayGetTemplate.render(columnName=r))
+for c1, c2 in zip(bitarray, bitarray_org):
+    onerow = f'\tSetBitArray("c2", i.{c1}, i.Label)\n'
+    bitArrayStores.append(onerow)
+
 
 # create ItemFull struct fields
 columnsItemIn = []
@@ -190,10 +240,11 @@ shrinkVars = []
 shrinkItems = []
 shrinkvartemplate = env.get_template('shrinkVars.jinja2')
 shrinktemplate = env.get_template('shrinkColumn.jinja2')
+
 for c in repeated:
     shrinkVars.append(
         shrinkvartemplate.render(column=c, bitarray=c in bitarray))
-    shrinkItems.append(shrinktemplate.render(column=c))
+    shrinkItems.append(f"\t {c}.Store(i.{c})\n")
 
 
 # create the actual shrinked/expand Item fields.
@@ -207,9 +258,9 @@ for c in allcolumns:
 
     if c in repeated:
         # string to unint
-        shrinkItemFields.append(f"\t\t{c}IdxMap[i.{c}],\n")
+        shrinkItemFields.append(f"\t\t{c}.GetIndex(i.{c}),\n")
         # unint back to string
-        expandItemFields.append(f"\t\t{c}[i.{c}],\n")
+        expandItemFields.append(f"\t\t{c}.GetValue(i.{c}),\n")
     else:
         shrinkItemFields.append(f"\t\ti.{c},\n")
         expandItemFields.append(f"\t\ti.{c},\n")
@@ -280,6 +331,7 @@ for c in allcolumns:
 
 # Finally render the model.go template
 modeltemplate = env.get_template('model.template.jinja2')
+mapstemplate = env.get_template('modelmap.template.jinja2')
 
 geometryGetter = '""'
 print('GEOCOLUMNS: ' + " ".join(geocolumns))
@@ -287,11 +339,11 @@ if len(geocolumns) == 1:
     geometryGetter = f"Getters{geocolumns[0]}(&i)"
 
 output = modeltemplate.render(
-    initRepeatColumns=''.join(initRepeatColumns),
+    #initRepeatColumns=''.join(initRepeatColumns),
     columnsItemIn=''.join(columnsItemIn),
     columnsItemOut=''.join(columnsItemOut),
     columnsItem=''.join(columnsItem),
-    shrinkVars=''.join(shrinkVars),
+    # shrinkVars=''.join(shrinkVars),
     shrinkItems=''.join(shrinkItems),
     shrinkItemFields=''.join(shrinkItemFields),
     expandItemFields=''.join(expandItemFields),
@@ -304,12 +356,27 @@ output = modeltemplate.render(
     indexcolumn=allcolumns[index],
     geometryGetter=geometryGetter,
     bitArrayStores=''.join(bitArrayStores),
-    bitArrayGetters=''.join(bitArrayGetters),
 )
 
 f = open('model.go', 'w')
 f.write(output)
 f.close()
-
 print('saved in model.go')
 print('!!NOTE!! edit the default search filter')
+
+
+mapsoutput = mapstemplate.render(
+    initRepeatColumns=''.join(initRepeatColumns),
+    repeatColumnNames = ''.join(repeatColumnNames),
+    loadRepeatColumnNames = ''.join(loadRepeatColumnNames),
+    initBitarrays=''.join(initBitarrays),
+    shrinkVars=''.join(shrinkVars),
+
+)
+
+f = open('modelmaps.go', 'w')
+f.write(mapsoutput)
+f.close()
+print('model hashmaps  saved in modelmaps.go')
+
+

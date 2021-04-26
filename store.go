@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -18,14 +19,17 @@ var ITEMS Items
 
 var itemChan ItemsChannel
 
+// single item map lock when updating new items
+var lock = sync.RWMutex{}
+
 func init() {
 	ITEMS = Items{}
 }
 
 func ItemChanWorker(itemChan ItemsChannel) {
 	label := 0
-
 	for items := range itemChan {
+		lock.Lock()
 		for _, itm := range items {
 			if itm != nil {
 				smallItem := itm.Shrink(label)
@@ -39,6 +43,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 				label++
 			}
 		}
+		lock.Unlock()
 	}
 }
 
@@ -46,8 +51,11 @@ func (items Items) FillIndexes() {
 
 	start := time.Now()
 
+	lock.Lock()
+	defer lock.Unlock()
+
 	clearGeoIndex()
-	initBitarrays()
+	clearBitArrays()
 
 	for i := range items {
 		ITEMS[i].StoreBitArrayColumns()

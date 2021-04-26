@@ -227,15 +227,15 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 
 	ITEMS.FillIndexes()
 
-	/*
-		if indexed {
-			start = time.Now()
-			msg := fmt.Sprint("Creating index")
-			fmt.Printf(WarningColorN, msg)
-			makeIndex()
-			diff = time.Since(start)
-			msg = fmt.Sprint("Index set time: ", diff)
-			fmt.Printf(WarningColorN, msg)
-		}
+	/* should be added to FillIndexes
+	if indexed {
+		start = time.Now()
+		msg := fmt.Sprint("Creating index")
+		fmt.Printf(WarningColorN, msg)
+		makeIndex()
+		diff = time.Since(start)
+		msg = fmt.Sprint("Index set time: ", diff)
+		fmt.Printf(WarningColorN, msg)
+	}
 	*/
 }

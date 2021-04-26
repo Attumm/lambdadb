@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
-	//"io/ioutil"
+	// "io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
@@ -425,6 +425,11 @@ func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
 		return corsEnabled
 	}
 
+	// make sure items are not being modified during request
+	// otherwise wait..
+	lock.RLock()
+	defer lock.RUnlock()
+
 	return passThrough
 }
 
@@ -478,6 +483,7 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]
 		}
+
 		/*
 			if _, ok := operations.Getters[column]; !ok {
 				w.WriteHeader(404)
