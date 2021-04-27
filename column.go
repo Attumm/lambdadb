@@ -10,9 +10,13 @@ import (
 type fieldIdxMap map[string]uint32
 type IdxFieldMap map[uint32]string
 
+/*
+MappedColumn store fields in Idx
+*/
+
 type MappedColumn struct {
-	Idx        fieldIdxMap
-	Field      IdxFieldMap
+	Idx        fieldIdxMap // stores field to int values
+	Field      IdxFieldMap // stores int to field values to recover actual fields
 	IdxTracker uint32
 }
 
