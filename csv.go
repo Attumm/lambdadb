@@ -151,14 +151,20 @@ func importCSV(filename string, itemChan ItemsChannel,
 		defer file.Close()
 
 		bar = NewProgressBar(file)
-		fz, err := pgzip.NewReader(io.TeeReader(file, bar))
 
-		if err != nil {
-			return err
+		if strings.HasSuffix(filename, ".gz") {
+			fz, err := pgzip.NewReader(io.TeeReader(file, bar))
+
+			if err != nil {
+				return err
+			}
+			defer fz.Close()
+			reader = csv.NewDialectReader(fz, dialect)
+		} else {
+			fz := io.TeeReader(file, bar)
+			reader = csv.NewDialectReader(fz, dialect)
 		}
-		defer fz.Close()
 
-		reader = csv.NewDialectReader(fz, dialect)
 	} else {
 		reader = csv.NewDialectReader(os.Stdin, dialect)
 	}

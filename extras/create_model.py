@@ -9,7 +9,7 @@ and functions of rows in your data.
 
 - Repeated option to store repeated
   values in a map and each individual items
-  only stores uint16 reference to map key.
+  only stores uint32 reference to map key.
 
 - BitArray option which is like Repeated
   value but also creates a map[key]bitmap for all
@@ -178,23 +178,21 @@ with open(config, 'w') as f:
 initRepeatColumns = []
 repeatColumnNames = []
 loadRepeatColumnNames = []
+mappedColumns = []
 
-for columnName in repeated:
-    initRow = f"\t {columnName} = NewReapeatedColumn()\n"
+for columnName, c2 in zip(repeated, repeated_org):
+    initRow = f'\t {columnName} = NewReapeatedColumn("{c2}")\n'
     initRepeatColumns.append(initRow)
 
-    repeatRow = f"\t {columnName} \n"
+    repeatRow = f"\t {columnName}, \n"
     repeatColumnNames.append(repeatRow)
 
     loadRow = f"\t {columnName} = m.{columnName} \n"
     loadRepeatColumnNames.append(loadRow)
 
+    mappedColumnsRow = f"\t {columnName} MappedColumn \n"
+    mappedColumns.append(mappedColumnsRow)
 
-# setup initial data structs for each bitarray column
-initBitarrays = []
-for columnName in bitarray:
-    onerow = f"\t {columnName}Items = make(fieldItemsMap)\n"
-    initBitarrays.append(onerow)
 
 # create bitarrays with item labels for column values.
 bitArrayStores = []
@@ -205,20 +203,19 @@ for c1, c2 in zip(bitarray, bitarray_org):
 
 # create ItemFull struct fields
 columnsItemIn = []
-jsonColumn = env.get_template('itemFullColumn.jinja2')
+
 for c1, c2 in zip(allcolumns, allcolumns_org):
-    onerow = jsonColumn.render(c1=c1, c2=c2)
+    onerow = f'\t {c1}	string `json:"{c2}"`\n'
     columnsItemIn.append(onerow)
 
 # create ItemFull struct fields
 columnsItemOut = []
-jsonColumn = env.get_template('itemFullColumn.jinja2')
 for c1, c2 in zip(allcolumns, allcolumns_org):
 
     if c1 in ignored:
         continue
 
-    onerow = jsonColumn.render(c1=c1, c2=c2)
+    onerow = f'\t {c1}	string `json:"{c2}"`\n'
     columnsItemOut.append(onerow)
 
 # create Item struct fields
@@ -230,20 +227,18 @@ for c1, c2 in zip(allcolumns, allcolumns_org):
 
     onerow = f"\t{c1}  string\n"
     if c1 in repeated:
-        onerow = f"\t{c1}    uint16\n"
+        onerow = f"\t{c1}    uint32\n"
     columnsItem.append(onerow)
 
 
 # create Shrink code for repeated fields
-# where we map uint16 to a string value.
+# where we map uint32 to a string value.
 shrinkVars = []
 shrinkItems = []
-shrinkvartemplate = env.get_template('shrinkVars.jinja2')
-shrinktemplate = env.get_template('shrinkColumn.jinja2')
 
 for c in repeated:
-    shrinkVars.append(
-        shrinkvartemplate.render(column=c, bitarray=c in bitarray))
+    mappedcolumn = f"var {c} MappedColumn\n"
+    shrinkVars.append(mappedcolumn)
     shrinkItems.append(f"\t {c}.Store(i.{c})\n")
 
 
@@ -291,7 +286,7 @@ for c in allcolumns:
 
     lookup = f"i.{c}"
     if c in repeated:
-        lookup = f"{c}[i.{c}]"
+        lookup = f"{c}.GetValue(i.{c})"
 
     txt = filtertemplate.render(column=c, lookup=lookup)
     columnFilters.append(txt)
@@ -317,8 +312,8 @@ for c, co in zip(allcolumns, allcolumns_org):
     c2 = f"items[i].{c} > items[j].{c}"
 
     if c in repeated:
-        c1 = f"{c}[items[i].{c}] < {c}[items[j].{c}]"
-        c2 = f"{c}[items[i].{c}] > {c}[items[j].{c}]"
+        c1 = f"{c}.GetValue(items[i].{c}) < {c}.GetValue(items[j].{c})"
+        c2 = f"{c}.GetValue(items[i].{c}) > {c}.GetValue(items[j].{c})"
 
     txt = sortTemplate.render(co=co, c1=c1, c2=c2)
     sortColumns.append(txt)
@@ -339,11 +334,9 @@ if len(geocolumns) == 1:
     geometryGetter = f"Getters{geocolumns[0]}(&i)"
 
 output = modeltemplate.render(
-    #initRepeatColumns=''.join(initRepeatColumns),
     columnsItemIn=''.join(columnsItemIn),
     columnsItemOut=''.join(columnsItemOut),
     columnsItem=''.join(columnsItem),
-    # shrinkVars=''.join(shrinkVars),
     shrinkItems=''.join(shrinkItems),
     shrinkItemFields=''.join(shrinkItemFields),
     expandItemFields=''.join(expandItemFields),
@@ -367,16 +360,17 @@ print('!!NOTE!! edit the default search filter')
 
 mapsoutput = mapstemplate.render(
     initRepeatColumns=''.join(initRepeatColumns),
-    repeatColumnNames = ''.join(repeatColumnNames),
-    loadRepeatColumnNames = ''.join(loadRepeatColumnNames),
-    initBitarrays=''.join(initBitarrays),
+    repeatColumnNames=''.join(repeatColumnNames),
+    loadRepeatColumnNames=''.join(loadRepeatColumnNames),
+    mappedColumns=''.join(mappedColumns),
     shrinkVars=''.join(shrinkVars),
-
 )
 
-f = open('modelmaps.go', 'w')
+f = open('model_maps.go', 'w')
 f.write(mapsoutput)
 f.close()
-print('model hashmaps  saved in modelmaps.go')
+print('model hashmaps  saved in model_maps.go')
 
+os.system("go fmt model.go")
+os.system("go fmt model_maps.go")
 

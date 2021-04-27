@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/Workiva/go-datastructures/bitarray"
 	"log"
+	"strings"
 )
 
 type fieldIdxMap map[string]uint32
@@ -70,6 +71,16 @@ func (m *MappedColumn) StoreArray(field string) []uint32 {
 
 func (m *MappedColumn) GetValue(idx uint32) string {
 	return m.Field[idx]
+}
+
+func (m *MappedColumn) GetArrayValue(idxs []uint32) string {
+
+	result := make([]string, 0)
+	for _, v := range idxs {
+		vs := m.GetValue(v)
+		result = append(result, vs)
+	}
+	return strings.Join(result, ", ")
 }
 
 func (m *MappedColumn) GetIndex(s string) uint32 {

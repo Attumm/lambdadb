@@ -4,11 +4,15 @@
 	maps are needed to restore integers back to the actual values.
 	those are generated and stored here.
 */
+
 package main
 
-import ()
-
 type ModelMaps struct {
+	Pid                     MappedColumn
+	Vid                     MappedColumn
+	Postcode                MappedColumn
+	Oppervlakte             MappedColumn
+	Woningequivalent        MappedColumn
 	WoningType              MappedColumn
 	LabelscoreVoorlopig     MappedColumn
 	LabelscoreDefinitief    MappedColumn
@@ -24,33 +28,35 @@ type ModelMaps struct {
 	P6GasAansluitingen2020  MappedColumn
 	P6Gasm32020             MappedColumn
 	P6Kwh2020               MappedColumn
+	P6TotaalPandoppervlakM2 MappedColumn
 	PandBouwjaar            MappedColumn
 	PandGasAansluitingen    MappedColumn
 	Gebruiksdoelen          MappedColumn
 }
 
-var modelmaps2 map[string]MappedColumn
-
-// Column maps.
-// Store for each non distinct/repeated column
-
 var BitArrays map[string]fieldBitarrayMap
 
+var Pid MappedColumn
+var Vid MappedColumn
+var Postcode MappedColumn
+var Oppervlakte MappedColumn
+var Woningequivalent MappedColumn
 var WoningType MappedColumn
 var LabelscoreVoorlopig MappedColumn
-var Gemeentecode MappedColumn
 var LabelscoreDefinitief MappedColumn
+var Gemeentecode MappedColumn
 var Gemeentenaam MappedColumn
 var Buurtcode MappedColumn
 var Buurtnaam MappedColumn
-var Provinciecode MappedColumn
 var Wijkcode MappedColumn
 var Wijknaam MappedColumn
+var Provinciecode MappedColumn
 var Provincienaam MappedColumn
 var PandGasEanAansluitingen MappedColumn
 var P6GasAansluitingen2020 MappedColumn
 var P6Gasm32020 MappedColumn
 var P6Kwh2020 MappedColumn
+var P6TotaalPandoppervlakM2 MappedColumn
 var PandBouwjaar MappedColumn
 var PandGasAansluitingen MappedColumn
 var Gebruiksdoelen MappedColumn
@@ -61,9 +67,15 @@ func clearBitArrays() {
 
 func init() {
 	clearBitArrays()
+	setUpRepeatedColumns()
 }
 
 func setUpRepeatedColumns() {
+	Pid = NewReapeatedColumn("pid")
+	Vid = NewReapeatedColumn("vid")
+	Postcode = NewReapeatedColumn("postcode")
+	Oppervlakte = NewReapeatedColumn("oppervlakte")
+	Woningequivalent = NewReapeatedColumn("woningequivalent")
 	WoningType = NewReapeatedColumn("woning_type")
 	LabelscoreVoorlopig = NewReapeatedColumn("labelscore_voorlopig")
 	LabelscoreDefinitief = NewReapeatedColumn("labelscore_definitief")
@@ -79,13 +91,20 @@ func setUpRepeatedColumns() {
 	P6GasAansluitingen2020 = NewReapeatedColumn("p6_gas_aansluitingen_2020")
 	P6Gasm32020 = NewReapeatedColumn("p6_gasm3_2020")
 	P6Kwh2020 = NewReapeatedColumn("p6_kwh_2020")
+	P6TotaalPandoppervlakM2 = NewReapeatedColumn("p6_totaal_pandoppervlak_m2")
 	PandBouwjaar = NewReapeatedColumn("pand_bouwjaar")
 	PandGasAansluitingen = NewReapeatedColumn("pand_gas_aansluitingen")
 	Gebruiksdoelen = NewReapeatedColumn("gebruiksdoelen")
+
 }
 
 func CreateMapstore() ModelMaps {
 	return ModelMaps{
+		Pid,
+		Vid,
+		Postcode,
+		Oppervlakte,
+		Woningequivalent,
 		WoningType,
 		LabelscoreVoorlopig,
 		LabelscoreDefinitief,
@@ -101,6 +120,7 @@ func CreateMapstore() ModelMaps {
 		P6GasAansluitingen2020,
 		P6Gasm32020,
 		P6Kwh2020,
+		P6TotaalPandoppervlakM2,
 		PandBouwjaar,
 		PandGasAansluitingen,
 		Gebruiksdoelen,
@@ -108,6 +128,12 @@ func CreateMapstore() ModelMaps {
 }
 
 func LoadMapstore(m ModelMaps) {
+
+	Pid = m.Pid
+	Vid = m.Vid
+	Postcode = m.Postcode
+	Oppervlakte = m.Oppervlakte
+	Woningequivalent = m.Woningequivalent
 	WoningType = m.WoningType
 	LabelscoreVoorlopig = m.LabelscoreVoorlopig
 	LabelscoreDefinitief = m.LabelscoreDefinitief
@@ -123,7 +149,9 @@ func LoadMapstore(m ModelMaps) {
 	P6GasAansluitingen2020 = m.P6GasAansluitingen2020
 	P6Gasm32020 = m.P6Gasm32020
 	P6Kwh2020 = m.P6Kwh2020
+	P6TotaalPandoppervlakM2 = m.P6TotaalPandoppervlakM2
 	PandBouwjaar = m.PandBouwjaar
 	PandGasAansluitingen = m.PandGasAansluitingen
 	Gebruiksdoelen = m.Gebruiksdoelen
+
 }

@@ -42,10 +42,6 @@ type registerReduce map[string]func(Items) map[string]string
 type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
 type fieldBitarrayMap map[uint32]bitarray.BitArray
 
-func init() {
-	setUpRepeatedColumns()
-}
-
 type ItemIn struct {
 	Pid                     string `json:"pid"`
 	Vid                     string `json:"vid"`
@@ -110,12 +106,12 @@ type ItemOut struct {
 
 type Item struct {
 	Label                   int // internal index in ITEMS
-	Pid                     string
-	Vid                     string
+	Pid                     uint32
+	Vid                     uint32
 	Numid                   string
-	Postcode                string
-	Oppervlakte             string
-	Woningequivalent        string
+	Postcode                uint32
+	Oppervlakte             uint32
+	Woningequivalent        uint32
 	Adres                   string
 	WoningType              uint32
 	LabelscoreVoorlopig     uint32
@@ -134,7 +130,7 @@ type Item struct {
 	P6GasAansluitingen2020  uint32
 	P6Gasm32020             uint32
 	P6Kwh2020               uint32
-	P6TotaalPandoppervlakM2 string
+	P6TotaalPandoppervlakM2 uint32
 	PandBouwjaar            uint32
 	PandGasAansluitingen    uint32
 	Gebruiksdoelen          []uint32
@@ -144,9 +140,14 @@ func (i Item) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.Serialize())
 }
 
-// Shrink create smaller Item using uint16
+// Shrink create smaller Item using uint32
 func (i ItemIn) Shrink(label int) Item {
 
+	Pid.Store(i.Pid)
+	Vid.Store(i.Vid)
+	Postcode.Store(i.Postcode)
+	Oppervlakte.Store(i.Oppervlakte)
+	Woningequivalent.Store(i.Woningequivalent)
 	WoningType.Store(i.WoningType)
 	LabelscoreVoorlopig.Store(i.LabelscoreVoorlopig)
 	LabelscoreDefinitief.Store(i.LabelscoreDefinitief)
@@ -158,10 +159,11 @@ func (i ItemIn) Shrink(label int) Item {
 	Wijknaam.Store(i.Wijknaam)
 	Provinciecode.Store(i.Provinciecode)
 	Provincienaam.Store(i.Provincienaam)
-	PandGasAansluitingen.Store(i.PandGasEanAansluitingen)
+	PandGasEanAansluitingen.Store(i.PandGasEanAansluitingen)
 	P6GasAansluitingen2020.Store(i.P6GasAansluitingen2020)
 	P6Gasm32020.Store(i.P6Gasm32020)
 	P6Kwh2020.Store(i.P6Kwh2020)
+	P6TotaalPandoppervlakM2.Store(i.P6TotaalPandoppervlakM2)
 	PandBouwjaar.Store(i.PandBouwjaar)
 	PandGasAansluitingen.Store(i.PandGasAansluitingen)
 
@@ -171,12 +173,12 @@ func (i ItemIn) Shrink(label int) Item {
 
 		label,
 
-		i.Pid,
-		i.Vid,
+		Pid.GetIndex(i.Pid),
+		Vid.GetIndex(i.Vid),
 		i.Numid,
-		i.Postcode,
-		i.Oppervlakte,
-		i.Woningequivalent,
+		Postcode.GetIndex(i.Postcode),
+		Oppervlakte.GetIndex(i.Oppervlakte),
+		Woningequivalent.GetIndex(i.Woningequivalent),
 		i.Adres,
 		WoningType.GetIndex(i.WoningType),
 		LabelscoreVoorlopig.GetIndex(i.LabelscoreVoorlopig),
@@ -195,7 +197,7 @@ func (i ItemIn) Shrink(label int) Item {
 		P6GasAansluitingen2020.GetIndex(i.P6GasAansluitingen2020),
 		P6Gasm32020.GetIndex(i.P6Gasm32020),
 		P6Kwh2020.GetIndex(i.P6Kwh2020),
-		i.P6TotaalPandoppervlakM2,
+		P6TotaalPandoppervlakM2.GetIndex(i.P6TotaalPandoppervlakM2),
 		PandBouwjaar.GetIndex(i.PandBouwjaar),
 		PandGasAansluitingen.GetIndex(i.PandGasAansluitingen),
 		doelen,
@@ -204,23 +206,27 @@ func (i ItemIn) Shrink(label int) Item {
 
 // Store selected columns in seperate map[columnvalue]bitarray
 // for fast item selection
-// BitArrays cannot be serialized
 func (i Item) StoreBitArrayColumns() {
-
+	SetBitArray("pid", i.Pid, i.Label)
 	SetBitArray("woning_type", i.WoningType, i.Label)
 	SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
+	SetBitArray("labelscore_definitief", i.LabelscoreDefinitief, i.Label)
+	SetBitArray("gemeentecode", i.Gemeentecode, i.Label)
 	SetBitArray("buurtcode", i.Buurtcode, i.Label)
+	SetBitArray("wijkcode", i.Wijkcode, i.Label)
+	SetBitArray("provinciecode", i.Provinciecode, i.Label)
+
 }
 
 func (i Item) Serialize() ItemOut {
-
 	return ItemOut{
-		i.Pid,
-		i.Vid,
+
+		Pid.GetValue(i.Pid),
+		Vid.GetValue(i.Vid),
 		i.Numid,
-		i.Postcode,
-		i.Oppervlakte,
-		i.Woningequivalent,
+		Postcode.GetValue(i.Postcode),
+		Oppervlakte.GetValue(i.Oppervlakte),
+		Woningequivalent.GetValue(i.Woningequivalent),
 		i.Adres,
 		WoningType.GetValue(i.WoningType),
 		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
@@ -239,10 +245,10 @@ func (i Item) Serialize() ItemOut {
 		P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020),
 		P6Gasm32020.GetValue(i.P6Gasm32020),
 		P6Kwh2020.GetValue(i.P6Kwh2020),
-		i.P6TotaalPandoppervlakM2,
+		P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2),
 		PandBouwjaar.GetValue(i.PandBouwjaar),
 		PandGasAansluitingen.GetValue(i.PandGasAansluitingen),
-		GettersGebruiksdoelen(&i),
+		Gebruiksdoelen.GetArrayValue(i.Gebruiksdoelen),
 	}
 }
 
@@ -318,12 +324,12 @@ func (i Item) Row() []string {
 
 	return []string{
 
-		i.Pid,
-		i.Vid,
+		Pid.GetValue(i.Pid),
+		Vid.GetValue(i.Vid),
 		i.Numid,
-		i.Postcode,
-		i.Oppervlakte,
-		i.Woningequivalent,
+		Postcode.GetValue(i.Postcode),
+		Oppervlakte.GetValue(i.Oppervlakte),
+		Woningequivalent.GetValue(i.Woningequivalent),
 		i.Adres,
 		WoningType.GetValue(i.WoningType),
 		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
@@ -342,15 +348,15 @@ func (i Item) Row() []string {
 		P6GasAansluitingen2020.GetValue(i.P6GasAansluitingen2020),
 		P6Gasm32020.GetValue(i.P6Gasm32020),
 		P6Kwh2020.GetValue(i.P6Kwh2020),
-		i.P6TotaalPandoppervlakM2,
+		P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2),
 		PandBouwjaar.GetValue(i.PandBouwjaar),
 		PandGasAansluitingen.GetValue(i.PandGasAansluitingen),
-		GettersGebruiksdoelen(&i),
+		Gebruiksdoelen.GetArrayValue(i.Gebruiksdoelen),
 	}
 }
 
 func (i Item) GetIndex() string {
-	return GettersAdres(&i)
+	return GettersPid(&i)
 }
 
 func (i Item) GetGeometry() string {
@@ -359,42 +365,42 @@ func (i Item) GetGeometry() string {
 
 // contain filter Pid
 func FilterPidContains(i *Item, s string) bool {
-	return strings.Contains(i.Pid, s)
+	return strings.Contains(Pid.GetValue(i.Pid), s)
 }
 
 // startswith filter Pid
 func FilterPidStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Pid, s)
+	return strings.HasPrefix(Pid.GetValue(i.Pid), s)
 }
 
 // match filters Pid
 func FilterPidMatch(i *Item, s string) bool {
-	return i.Pid == s
+	return Pid.GetValue(i.Pid) == s
 }
 
 // getter Pid
 func GettersPid(i *Item) string {
-	return i.Pid
+	return Pid.GetValue(i.Pid)
 }
 
 // contain filter Vid
 func FilterVidContains(i *Item, s string) bool {
-	return strings.Contains(i.Vid, s)
+	return strings.Contains(Vid.GetValue(i.Vid), s)
 }
 
 // startswith filter Vid
 func FilterVidStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Vid, s)
+	return strings.HasPrefix(Vid.GetValue(i.Vid), s)
 }
 
 // match filters Vid
 func FilterVidMatch(i *Item, s string) bool {
-	return i.Vid == s
+	return Vid.GetValue(i.Vid) == s
 }
 
 // getter Vid
 func GettersVid(i *Item) string {
-	return i.Vid
+	return Vid.GetValue(i.Vid)
 }
 
 // contain filter Numid
@@ -419,62 +425,62 @@ func GettersNumid(i *Item) string {
 
 // contain filter Postcode
 func FilterPostcodeContains(i *Item, s string) bool {
-	return strings.Contains(i.Postcode, s)
+	return strings.Contains(Postcode.GetValue(i.Postcode), s)
 }
 
 // startswith filter Postcode
 func FilterPostcodeStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Postcode, s)
+	return strings.HasPrefix(Postcode.GetValue(i.Postcode), s)
 }
 
 // match filters Postcode
 func FilterPostcodeMatch(i *Item, s string) bool {
-	return i.Postcode == s
+	return Postcode.GetValue(i.Postcode) == s
 }
 
 // getter Postcode
 func GettersPostcode(i *Item) string {
-	return i.Postcode
+	return Postcode.GetValue(i.Postcode)
 }
 
 // contain filter Oppervlakte
 func FilterOppervlakteContains(i *Item, s string) bool {
-	return strings.Contains(i.Oppervlakte, s)
+	return strings.Contains(Oppervlakte.GetValue(i.Oppervlakte), s)
 }
 
 // startswith filter Oppervlakte
 func FilterOppervlakteStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Oppervlakte, s)
+	return strings.HasPrefix(Oppervlakte.GetValue(i.Oppervlakte), s)
 }
 
 // match filters Oppervlakte
 func FilterOppervlakteMatch(i *Item, s string) bool {
-	return i.Oppervlakte == s
+	return Oppervlakte.GetValue(i.Oppervlakte) == s
 }
 
 // getter Oppervlakte
 func GettersOppervlakte(i *Item) string {
-	return i.Oppervlakte
+	return Oppervlakte.GetValue(i.Oppervlakte)
 }
 
 // contain filter Woningequivalent
 func FilterWoningequivalentContains(i *Item, s string) bool {
-	return strings.Contains(i.Woningequivalent, s)
+	return strings.Contains(Woningequivalent.GetValue(i.Woningequivalent), s)
 }
 
 // startswith filter Woningequivalent
 func FilterWoningequivalentStartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.Woningequivalent, s)
+	return strings.HasPrefix(Woningequivalent.GetValue(i.Woningequivalent), s)
 }
 
 // match filters Woningequivalent
 func FilterWoningequivalentMatch(i *Item, s string) bool {
-	return i.Woningequivalent == s
+	return Woningequivalent.GetValue(i.Woningequivalent) == s
 }
 
 // getter Woningequivalent
 func GettersWoningequivalent(i *Item) string {
-	return i.Woningequivalent
+	return Woningequivalent.GetValue(i.Woningequivalent)
 }
 
 // contain filter Adres
@@ -649,7 +655,7 @@ func FilterWijkcodeStartsWith(i *Item, s string) bool {
 
 // match filters Wijkcode
 func FilterWijkcodeMatch(i *Item, s string) bool {
-	return i.Wijkcode == Wijkcode.GetIndex(s)
+	return Wijkcode.GetValue(i.Wijkcode) == s
 }
 
 // getter Wijkcode
@@ -669,7 +675,7 @@ func FilterWijknaamStartsWith(i *Item, s string) bool {
 
 // match filters Wijknaam
 func FilterWijknaamMatch(i *Item, s string) bool {
-	return Wijknaam.GetIndex(s) == i.Wijknaam
+	return Wijknaam.GetValue(i.Wijknaam) == s
 }
 
 // getter Wijknaam
@@ -839,22 +845,22 @@ func GettersP6Kwh2020(i *Item) string {
 
 // contain filter P6TotaalPandoppervlakM2
 func FilterP6TotaalPandoppervlakM2Contains(i *Item, s string) bool {
-	return strings.Contains(i.P6TotaalPandoppervlakM2, s)
+	return strings.Contains(P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2), s)
 }
 
 // startswith filter P6TotaalPandoppervlakM2
 func FilterP6TotaalPandoppervlakM2StartsWith(i *Item, s string) bool {
-	return strings.HasPrefix(i.P6TotaalPandoppervlakM2, s)
+	return strings.HasPrefix(P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2), s)
 }
 
 // match filters P6TotaalPandoppervlakM2
 func FilterP6TotaalPandoppervlakM2Match(i *Item, s string) bool {
-	return i.P6TotaalPandoppervlakM2 == s
+	return P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2) == s
 }
 
 // getter P6TotaalPandoppervlakM2
 func GettersP6TotaalPandoppervlakM2(i *Item) string {
-	return i.P6TotaalPandoppervlakM2
+	return P6TotaalPandoppervlakM2.GetValue(i.P6TotaalPandoppervlakM2)
 }
 
 // contain filter PandBouwjaar
@@ -933,12 +939,7 @@ func FilterGebruiksdoelenMatch(i *Item, s string) bool {
 
 // getter Gebruiksdoelen
 func GettersGebruiksdoelen(i *Item) string {
-	doelen := make([]string, 0)
-	for _, v := range i.Gebruiksdoelen {
-		vs := Gebruiksdoelen.GetValue(v)
-		doelen = append(doelen, vs)
-	}
-	return strings.Join(doelen, ", ")
+	return Gebruiksdoelen.GetArrayValue(i.Gebruiksdoelen)
 }
 
 // getter Gebruiksdoelen
@@ -1017,7 +1018,6 @@ func init() {
 	RegisterGroupBy = make(registerGroupByFunc)
 	RegisterGetters = make(registerGettersMap)
 	RegisterReduce = make(registerReduce)
-	RegisterBitArray = make(registerBitArray)
 
 	// register search filter.
 	//RegisterFuncMap["search"] = 'EDITYOURSELF'
@@ -1249,23 +1249,35 @@ func createSort(items Items) sortLookup {
 
 	sortFuncs := sortLookup{
 
-		"pid":  func(i, j int) bool { return items[i].Pid < items[j].Pid },
-		"-pid": func(i, j int) bool { return items[i].Pid > items[j].Pid },
+		"pid":  func(i, j int) bool { return Pid.GetValue(items[i].Pid) < Pid.GetValue(items[j].Pid) },
+		"-pid": func(i, j int) bool { return Pid.GetValue(items[i].Pid) > Pid.GetValue(items[j].Pid) },
 
-		"vid":  func(i, j int) bool { return items[i].Vid < items[j].Vid },
-		"-vid": func(i, j int) bool { return items[i].Vid > items[j].Vid },
+		"vid":  func(i, j int) bool { return Vid.GetValue(items[i].Vid) < Vid.GetValue(items[j].Vid) },
+		"-vid": func(i, j int) bool { return Vid.GetValue(items[i].Vid) > Vid.GetValue(items[j].Vid) },
 
 		"numid":  func(i, j int) bool { return items[i].Numid < items[j].Numid },
 		"-numid": func(i, j int) bool { return items[i].Numid > items[j].Numid },
 
-		"postcode":  func(i, j int) bool { return items[i].Postcode < items[j].Postcode },
-		"-postcode": func(i, j int) bool { return items[i].Postcode > items[j].Postcode },
+		"postcode": func(i, j int) bool {
+			return Postcode.GetValue(items[i].Postcode) < Postcode.GetValue(items[j].Postcode)
+		},
+		"-postcode": func(i, j int) bool {
+			return Postcode.GetValue(items[i].Postcode) > Postcode.GetValue(items[j].Postcode)
+		},
 
-		"oppervlakte":  func(i, j int) bool { return items[i].Oppervlakte < items[j].Oppervlakte },
-		"-oppervlakte": func(i, j int) bool { return items[i].Oppervlakte > items[j].Oppervlakte },
+		"oppervlakte": func(i, j int) bool {
+			return Oppervlakte.GetValue(items[i].Oppervlakte) < Oppervlakte.GetValue(items[j].Oppervlakte)
+		},
+		"-oppervlakte": func(i, j int) bool {
+			return Oppervlakte.GetValue(items[i].Oppervlakte) > Oppervlakte.GetValue(items[j].Oppervlakte)
+		},
 
-		"woningequivalent":  func(i, j int) bool { return items[i].Woningequivalent < items[j].Woningequivalent },
-		"-woningequivalent": func(i, j int) bool { return items[i].Woningequivalent > items[j].Woningequivalent },
+		"woningequivalent": func(i, j int) bool {
+			return Woningequivalent.GetValue(items[i].Woningequivalent) < Woningequivalent.GetValue(items[j].Woningequivalent)
+		},
+		"-woningequivalent": func(i, j int) bool {
+			return Woningequivalent.GetValue(items[i].Woningequivalent) > Woningequivalent.GetValue(items[j].Woningequivalent)
+		},
 
 		"adres":  func(i, j int) bool { return items[i].Adres < items[j].Adres },
 		"-adres": func(i, j int) bool { return items[i].Adres > items[j].Adres },
@@ -1277,8 +1289,137 @@ func createSort(items Items) sortLookup {
 			return WoningType.GetValue(items[i].WoningType) > WoningType.GetValue(items[j].WoningType)
 		},
 
+		"labelscore_voorlopig": func(i, j int) bool {
+			return LabelscoreVoorlopig.GetValue(items[i].LabelscoreVoorlopig) < LabelscoreVoorlopig.GetValue(items[j].LabelscoreVoorlopig)
+		},
+		"-labelscore_voorlopig": func(i, j int) bool {
+			return LabelscoreVoorlopig.GetValue(items[i].LabelscoreVoorlopig) > LabelscoreVoorlopig.GetValue(items[j].LabelscoreVoorlopig)
+		},
+
+		"labelscore_definitief": func(i, j int) bool {
+			return LabelscoreDefinitief.GetValue(items[i].LabelscoreDefinitief) < LabelscoreDefinitief.GetValue(items[j].LabelscoreDefinitief)
+		},
+		"-labelscore_definitief": func(i, j int) bool {
+			return LabelscoreDefinitief.GetValue(items[i].LabelscoreDefinitief) > LabelscoreDefinitief.GetValue(items[j].LabelscoreDefinitief)
+		},
+
+		"gemeentecode": func(i, j int) bool {
+			return Gemeentecode.GetValue(items[i].Gemeentecode) < Gemeentecode.GetValue(items[j].Gemeentecode)
+		},
+		"-gemeentecode": func(i, j int) bool {
+			return Gemeentecode.GetValue(items[i].Gemeentecode) > Gemeentecode.GetValue(items[j].Gemeentecode)
+		},
+
+		"gemeentenaam": func(i, j int) bool {
+			return Gemeentenaam.GetValue(items[i].Gemeentenaam) < Gemeentenaam.GetValue(items[j].Gemeentenaam)
+		},
+		"-gemeentenaam": func(i, j int) bool {
+			return Gemeentenaam.GetValue(items[i].Gemeentenaam) > Gemeentenaam.GetValue(items[j].Gemeentenaam)
+		},
+
+		"buurtcode": func(i, j int) bool {
+			return Buurtcode.GetValue(items[i].Buurtcode) < Buurtcode.GetValue(items[j].Buurtcode)
+		},
+		"-buurtcode": func(i, j int) bool {
+			return Buurtcode.GetValue(items[i].Buurtcode) > Buurtcode.GetValue(items[j].Buurtcode)
+		},
+
+		"buurtnaam": func(i, j int) bool {
+			return Buurtnaam.GetValue(items[i].Buurtnaam) < Buurtnaam.GetValue(items[j].Buurtnaam)
+		},
+		"-buurtnaam": func(i, j int) bool {
+			return Buurtnaam.GetValue(items[i].Buurtnaam) > Buurtnaam.GetValue(items[j].Buurtnaam)
+		},
+
+		"wijkcode": func(i, j int) bool {
+			return Wijkcode.GetValue(items[i].Wijkcode) < Wijkcode.GetValue(items[j].Wijkcode)
+		},
+		"-wijkcode": func(i, j int) bool {
+			return Wijkcode.GetValue(items[i].Wijkcode) > Wijkcode.GetValue(items[j].Wijkcode)
+		},
+
+		"wijknaam": func(i, j int) bool {
+			return Wijknaam.GetValue(items[i].Wijknaam) < Wijknaam.GetValue(items[j].Wijknaam)
+		},
+		"-wijknaam": func(i, j int) bool {
+			return Wijknaam.GetValue(items[i].Wijknaam) > Wijknaam.GetValue(items[j].Wijknaam)
+		},
+
+		"provinciecode": func(i, j int) bool {
+			return Provinciecode.GetValue(items[i].Provinciecode) < Provinciecode.GetValue(items[j].Provinciecode)
+		},
+		"-provinciecode": func(i, j int) bool {
+			return Provinciecode.GetValue(items[i].Provinciecode) > Provinciecode.GetValue(items[j].Provinciecode)
+		},
+
+		"provincienaam": func(i, j int) bool {
+			return Provincienaam.GetValue(items[i].Provincienaam) < Provincienaam.GetValue(items[j].Provincienaam)
+		},
+		"-provincienaam": func(i, j int) bool {
+			return Provincienaam.GetValue(items[i].Provincienaam) > Provincienaam.GetValue(items[j].Provincienaam)
+		},
+
 		"point":  func(i, j int) bool { return items[i].Point < items[j].Point },
 		"-point": func(i, j int) bool { return items[i].Point > items[j].Point },
+
+		"pand_gas_ean_aansluitingen": func(i, j int) bool {
+			return PandGasEanAansluitingen.GetValue(items[i].PandGasEanAansluitingen) < PandGasEanAansluitingen.GetValue(items[j].PandGasEanAansluitingen)
+		},
+		"-pand_gas_ean_aansluitingen": func(i, j int) bool {
+			return PandGasEanAansluitingen.GetValue(items[i].PandGasEanAansluitingen) > PandGasEanAansluitingen.GetValue(items[j].PandGasEanAansluitingen)
+		},
+
+		"group_id_2020":  func(i, j int) bool { return items[i].GroupId2020 < items[j].GroupId2020 },
+		"-group_id_2020": func(i, j int) bool { return items[i].GroupId2020 > items[j].GroupId2020 },
+
+		"p6_gas_aansluitingen_2020": func(i, j int) bool {
+			return P6GasAansluitingen2020.GetValue(items[i].P6GasAansluitingen2020) < P6GasAansluitingen2020.GetValue(items[j].P6GasAansluitingen2020)
+		},
+		"-p6_gas_aansluitingen_2020": func(i, j int) bool {
+			return P6GasAansluitingen2020.GetValue(items[i].P6GasAansluitingen2020) > P6GasAansluitingen2020.GetValue(items[j].P6GasAansluitingen2020)
+		},
+
+		"p6_gasm3_2020": func(i, j int) bool {
+			return P6Gasm32020.GetValue(items[i].P6Gasm32020) < P6Gasm32020.GetValue(items[j].P6Gasm32020)
+		},
+		"-p6_gasm3_2020": func(i, j int) bool {
+			return P6Gasm32020.GetValue(items[i].P6Gasm32020) > P6Gasm32020.GetValue(items[j].P6Gasm32020)
+		},
+
+		"p6_kwh_2020": func(i, j int) bool {
+			return P6Kwh2020.GetValue(items[i].P6Kwh2020) < P6Kwh2020.GetValue(items[j].P6Kwh2020)
+		},
+		"-p6_kwh_2020": func(i, j int) bool {
+			return P6Kwh2020.GetValue(items[i].P6Kwh2020) > P6Kwh2020.GetValue(items[j].P6Kwh2020)
+		},
+
+		"p6_totaal_pandoppervlak_m2": func(i, j int) bool {
+			return P6TotaalPandoppervlakM2.GetValue(items[i].P6TotaalPandoppervlakM2) < P6TotaalPandoppervlakM2.GetValue(items[j].P6TotaalPandoppervlakM2)
+		},
+		"-p6_totaal_pandoppervlak_m2": func(i, j int) bool {
+			return P6TotaalPandoppervlakM2.GetValue(items[i].P6TotaalPandoppervlakM2) > P6TotaalPandoppervlakM2.GetValue(items[j].P6TotaalPandoppervlakM2)
+		},
+
+		"pand_bouwjaar": func(i, j int) bool {
+			return PandBouwjaar.GetValue(items[i].PandBouwjaar) < PandBouwjaar.GetValue(items[j].PandBouwjaar)
+		},
+		"-pand_bouwjaar": func(i, j int) bool {
+			return PandBouwjaar.GetValue(items[i].PandBouwjaar) > PandBouwjaar.GetValue(items[j].PandBouwjaar)
+		},
+
+		"pand_gas_aansluitingen": func(i, j int) bool {
+			return PandGasAansluitingen.GetValue(items[i].PandGasAansluitingen) < PandGasAansluitingen.GetValue(items[j].PandGasAansluitingen)
+		},
+		"-pand_gas_aansluitingen": func(i, j int) bool {
+			return PandGasAansluitingen.GetValue(items[i].PandGasAansluitingen) > PandGasAansluitingen.GetValue(items[j].PandGasAansluitingen)
+		},
+
+		"gebruiksdoelen": func(i, j int) bool {
+			return Gebruiksdoelen.GetArrayValue(items[i].Gebruiksdoelen) < Gebruiksdoelen.GetArrayValue(items[j].Gebruiksdoelen)
+		},
+		"-gebruiksdoelen": func(i, j int) bool {
+			return Gebruiksdoelen.GetArrayValue(items[i].Gebruiksdoelen) > Gebruiksdoelen.GetArrayValue(items[j].Gebruiksdoelen)
+		},
 	}
 	return sortFuncs
 }

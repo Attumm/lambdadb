@@ -9,43 +9,39 @@ package main
 
 type ModelMaps struct {
 
-	{{MappedColumns}}
+{{mappedColumns}}
 
 }
 
+var BitArrays map[string]fieldBitarrayMap
 
 {{shrinkVars}}
 
 
-func initBitarrays() {
-
-{{initBitarrays}}
-
+func clearBitArrays() {
+	BitArrays = make(map[string]fieldBitarrayMap)
 }
 
 func init() {
+	clearBitArrays()
 	setUpRepeatedColumns()
 }
 
 
 func setUpRepeatedColumns() {
-	initBitarrays()
-
-	{{initRepeatColumns}}
-
+{{initRepeatColumns}}
 }
 
 
 func CreateMapstore() ModelMaps {
 	return ModelMaps{
-
-	{{repeatColumnNames}}
-
+{{repeatColumnNames}}
 	}
 }
 
 
 func LoadMapstore(m ModelMaps) {
 
-	{{loadRepeatColumnNames}}
+{{loadRepeatColumnNames}}
+
 }

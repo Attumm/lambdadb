@@ -26,11 +26,10 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"errors"
 
 	"github.com/Workiva/go-datastructures/bitarray"
@@ -41,11 +40,7 @@ type registerGettersMap map[string]func(*Item) string
 type registerReduce map[string]func(Items) map[string]string
 
 type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
-
 type fieldBitarrayMap map[uint32]bitarray.BitArray
-
-type IndexMap[string]int64
-
 
 {{itemStructs}}
 
@@ -74,11 +69,8 @@ func (i Item) MarshalJSON() ([]byte, error) {
 	return json.Marshal(i.Serialize())
 }
 
-// Shrink create smaller Item using uint16
+// Shrink create smaller Item using uint32
 func (i ItemIn) Shrink(label int) Item {
-
-	// Hashmap lookup for index
-	IndexMap[i.{{indexcolumn}}] = label
 
 {{shrinkItems}}
 
@@ -92,7 +84,7 @@ func (i ItemIn) Shrink(label int) Item {
 }
 
 // Store selected columns in seperate map[columnvalue]bitarray
-// for gast item lookup
+// for fast item selection
 func (i Item) StoreBitArrayColumns() {
 	{{ bitArrayStores }}
 }
@@ -244,25 +236,20 @@ type sortLookup map[string]func(int, int) bool
 func createSort(items Items) sortLookup {
 
 	sortFuncs := sortLookup{
-
 		{{sortColumns}}
-
-		/*
-		"ekey":  func(i, j int) bool { return items[i].Ekey < items[j].Ekey },
-		"-ekey": func(i, j int) bool { return items[i].Ekey > items[j].Ekey },
-		*/
 	}
 	return sortFuncs
 }
 
 
 func sortBy(items Items, sortingL []string) (Items, []string) {
-
 	sortFuncs := createSort(items)
 
 	for _, sortFuncName := range sortingL {
-		sortFunc := sortFuncs[sortFuncName]
-		sort.Slice(items, sortFunc)
+		sortFunc, ok := sortFuncs[sortFuncName]
+		if ok {
+			sort.Slice(items, sortFunc)
+		}
 	}
 
 	// TODO must be nicer way

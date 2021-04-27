@@ -10,21 +10,21 @@ model:
   labelscore_definitief: b
   labelscore_voorlopig: b
   numid: u
-  oppervlakte: u
-  p6_gas_aansluitingen_2020: u
-  p6_gasm3_2020: u
-  p6_kwh_2020: u
-  p6_totaal_pandoppervlak_m2: u
-  pand_bouwjaar: u
-  pand_gas_aansluitingen: u
-  pand_gas_ean_aansluitingen: u
-  pid: u
+  oppervlakte: r
+  p6_gas_aansluitingen_2020: r
+  p6_gasm3_2020: r
+  p6_kwh_2020: r
+  p6_totaal_pandoppervlak_m2: r
+  pand_bouwjaar: r
+  pand_gas_aansluitingen: r
+  pand_gas_ean_aansluitingen: r
+  pid: b
   point: g
-  postcode: u
+  postcode: r
   provinciecode: b
   provincienaam: r
-  vid: u
+  vid: r
   wijkcode: b
   wijknaam: r
   woning_type: b
-  woningequivalent: u
+  woningequivalent: r
