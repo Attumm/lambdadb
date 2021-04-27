@@ -72,7 +72,7 @@ python3 extras/ingestion.py  -f movies_subset.tsv -format tsv -dbhost 127.0.0.1:
 
 - load data directly from a database (periodic)
 - document the `create_model.py` questions
-- use a remote source for CSV
-- use some compression faster to load than gzip
+- use a remote data source
+- use some more efficient storage method (done)
 - generate swagger API
 - Add more tests
