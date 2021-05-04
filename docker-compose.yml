@@ -4,6 +4,7 @@ services:
     build: .
     ports:
       - 8000:8000
+
   prometheus:
     image: prom/prometheus:v2.21.0
     ports:

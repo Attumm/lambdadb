@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"index/suffixarray"
+	// "io/ioutil"
 	"log"
 	"net/http"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,7 +29,6 @@ func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64)
 		w.Header().Set("Content-Disposition", "attachment; filename=\"items.csv\"")
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	} else {
-
 		w.Header().Set("Content-Type", "application/json")
 	}
 
@@ -38,11 +39,57 @@ func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64)
 	}
 }
 
+func hanleQueryError(err error, w http.ResponseWriter) {
+	response := make(map[string]string)
+	w.WriteHeader(500)
+	response["error"] = err.Error()
+	json.NewEncoder(w).Encode(response)
+}
+
+type ReduceResult map[string]string
+type GroupByResult map[string]ReduceResult
+
+var GroupByBodyCache = make(map[string]GroupByResult)
+var GroupByHeaderCache = make(map[string]HeaderData)
+
+var cacheLock = sync.RWMutex{}
+
+// isCached try to find repsonse in cache (groupby only)
+func isCached(w http.ResponseWriter, r *http.Request, query Query) bool {
+	cacheKey, err := query.CacheKey()
+
+	if err == nil && len(query.GroupBy) > 0 && len(query.Reduce) > 0 {
+		cacheLock.RLock()
+		groupByResult, found := GroupByBodyCache[cacheKey]
+		headerCache, _ := GroupByHeaderCache[cacheKey]
+		cacheLock.RUnlock()
+		if found {
+			w.Header().Set("Content-Type", "application/json")
+
+			for key, val := range headerCache {
+				w.Header().Set(key, val)
+			}
+			w.Header().Set("used-cache", "yes")
+			json.NewEncoder(w).Encode(groupByResult)
+			return found
+		}
+	}
+	return false
+}
+
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
 
-		items, queryTime := runQuery(ITEMS, query, operations)
+		if isCached(w, r, query) {
+			return
+		}
+
+		items, queryTime := runQuery(&ITEMS, query, operations)
 
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
@@ -53,9 +100,17 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 
 		setHeader(items, w, query, queryTime)
 
-		groupByS, groupByFound := r.URL.Query()["groupby"]
+		// We want to count all filtered items.
+		// and we do not have a groupby
+		if query.GroupBy == "" && query.Reduce != "" {
+			reduceFunc, _ := operations.Reduce[query.Reduce]
+			result := reduceFunc(items)
+			json.NewEncoder(w).Encode(result)
+			return
+		}
 
-		if !groupByFound {
+		// no groupby return all rows
+		if query.GroupBy == "" {
 			if query.ReturnFormat == "csv" {
 				writeCSV(items, w)
 			} else {
@@ -66,29 +121,32 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 			return
 		}
 
-		groupByItems := groupByRunner(items, groupByS[0])
+		// groupby items on column
+		groupByItems := groupByRunner(items, query.GroupBy)
 		items = nil
 
-		reduceName, reduceFound := r.URL.Query()["reduce"]
-
-		if reduceFound {
-			result := make(map[string]map[string]string)
-			reduceFunc, reduceFuncFound := operations.Reduce[reduceName[0]]
-			if !reduceFuncFound {
-				json.NewEncoder(w).Encode(result)
-				return
-			}
+		if query.Reduce != "" {
+			result := make(GroupByResult)
+			reduceFunc, _ := operations.Reduce[query.Reduce]
 			for key, val := range groupByItems {
 				result[key] = reduceFunc(val)
 			}
 			groupByItems = nil
 
 			if len(result) == 0 {
-				w.WriteHeader(404)
 				return
 			}
 
+			// Cache group-by reduce repsonse
+			cacheLock.Lock()
+			cacheKey, _ := query.CacheKey()
+			GroupByBodyCache[cacheKey] = result
+			headerData := getHeaderData(items, query, queryTime)
+			GroupByHeaderCache[cacheKey] = headerData
+			cacheLock.Unlock()
+
 			json.NewEncoder(w).Encode(result)
+
 			return
 		}
 
@@ -96,16 +154,10 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 	}
 }
 
-func ItemChanWorker(itemChan ItemsChannel) {
-	for items := range itemChan {
-		ITEMS = append(ITEMS, items...)
-	}
-}
-
 func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jsonDecoder := json.NewDecoder(r.Body)
-		var items Items
+		var items ItemsIn
 		err := jsonDecoder.Decode(&items)
 		if err != nil {
 			fmt.Println(err)
@@ -117,7 +169,7 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 
 		strictMode := SETTINGS.Get("strict-mode") == "y"
 		for n, item := range items {
-			if (*item == Item{}) {
+			if (*item == ItemIn{}) {
 				fmt.Printf("unable to process item %d of batch\n", n)
 				if strictMode {
 					fmt.Printf("strict mode stopping ingestion of batch\n")
@@ -136,6 +188,8 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 	ITEMS = make(Items, 0, 100*1000)
 	msg := fmt.Sprint("removed items from database")
 	fmt.Printf(WarningColorN, msg)
+	ITEMS = Items{}
+
 	go func() {
 		time.Sleep(1 * time.Second)
 		runtime.GC()
@@ -207,6 +261,11 @@ func makeIndex() {
 
 func writeCSV(items Items, w http.ResponseWriter) {
 	writer := csv.NewWriter(w)
+
+	columns := ItemOut{}.Columns()
+	writer.Write(columns)
+	writer.Flush()
+
 	for i := range items {
 		writer.Write(items[i].Row())
 		writer.Flush()
@@ -216,9 +275,14 @@ func writeCSV(items Items, w http.ResponseWriter) {
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	storagename, _, retrievefunc, filename := handleInputStorage(r)
 
+	start := time.Now()
 	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
 	fmt.Printf(WarningColorN, msg)
-	itemsAdded, err := retrievefunc(ITEMS, filename)
+	itemsAdded, err := retrievefunc(filename)
+	diff := time.Since(start)
+	msg = fmt.Sprint("loading time: ", diff)
+	fmt.Printf(WarningColorN, msg)
+
 	if err != nil {
 		log.Printf("could not open %s reason %s", filename, err)
 		w.Write([]byte("500 - could not load data"))
@@ -256,6 +320,7 @@ func handleInputStorage(r *http.Request) (string, storageFunc, retrieveFunc, str
 	}
 
 	filename := fmt.Sprintf("%s.%s", FILENAME, storagename)
+
 	return storagename, storagefunc, retrievefunc, filename
 }
 
@@ -269,12 +334,11 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 	msg = fmt.Sprintf("storage method: %s filename: %s\n", storagename, filename)
 	fmt.Printf(WarningColor, msg)
 
-	size, err := storagefunc(ITEMS, filename)
+	size, err := storagefunc(filename)
 	if err != nil {
 		fmt.Println("unable to write file reason:", err)
 		w.WriteHeader(500)
 		return
-
 	}
 	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size/1024/1025)
 	fmt.Printf(WarningColor, msg)
@@ -291,37 +355,6 @@ func validColumn(column string, columns []string) bool {
 	return false
 }
 
-// Other wise also known in mathematics as set but in http name it would be confused with the verb set.
-//func UniqueValuesInColumn(w http.ResponseWriter, r *http.Request) {
-//	column := r.URL.Path[1:]
-//	response := make(map[string]string)
-//	if len(ITEMS) == 0 {
-//		response["message"] = fmt.Sprint("invalid input: ", column)
-//		w.WriteHeader(400)
-//		json.NewEncoder(w).Encode(response)
-//		return
-//
-//	}
-//	validColumns := ITEMS[0].Columns()
-//
-//	if !validColumn(column, validColumns) {
-//		w.WriteHeader(400)
-//
-//		response["message"] = fmt.Sprint("invalid input: ", column)
-//		response["input"] = column
-//		response["valid input"] = strings.Join(validColumns, ", ")
-//		json.NewEncoder(w).Encode(response)
-//		return
-//	}
-//	set := make(map[string]bool)
-//	for item := range ITEMS {
-//		r := reflect.ValueOf(item)
-//		value := reflect.Indirect(r).FieldByName(column)
-//		valu
-//		set[value.Str()] = true
-//	}
-//
-//}
 type ShowItem struct {
 	IsShow bool   `json:"isShow"`
 	Label  string `json:"label"`
@@ -334,20 +367,36 @@ type Meta struct {
 }
 
 type searchResponse struct {
-	Count int   `json:"count"`
-	Data  Items `json:"data"`
-	MMeta *Meta `json:"meta"`
+	Count int      `json:"count"`
+	Data  ItemsOut `json:"data"`
+	MMeta *Meta    `json:"meta"`
+}
+
+func outputItems(items Items) ItemsOut {
+
+	itemsout := make(ItemsOut, 0, len(items))
+
+	for _, oneitem := range items {
+		orgItem := oneitem.Serialize()
+		itemsout = append(itemsout, &orgItem)
+	}
+
+	return itemsout
 }
 
 func makeResp(items Items) searchResponse {
+
+	itemsout := outputItems(items)
+
 	fields := []ShowItem{}
-	for _, column := range items[0].Columns() {
+	columns := ItemOut{}.Columns()
+	for _, column := range columns {
 		fields = append(fields, ShowItem{IsShow: true, Name: column, Label: column})
 	}
 
 	return searchResponse{
 		Count: len(items),
-		Data:  items,
+		Data:  itemsout,
 		MMeta: &Meta{Fields: fields, View: "table"},
 	}
 }
@@ -381,18 +430,30 @@ func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
 		return corsEnabled
 	}
 
+	// make sure items are not being modified during request
+	// otherwise wait..
+	lock.RLock()
+	defer lock.RUnlock()
+
 	return passThrough
 }
 
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
 
-		items, queryTime := runQuery(ITEMS, query, operations)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
+
+		items, queryTime := runQuery(&ITEMS, query, operations)
+
 		if len(items) == 0 {
 			w.WriteHeader(404)
 			return
 		}
+
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
@@ -402,6 +463,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+
 		for key, val := range headerData {
 			w.Header().Set(key, val)
 		}
@@ -416,18 +478,26 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 
 func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, err := parseURLParameters(r)
+		if err != nil {
+			hanleQueryError(err, w)
+			return
+		}
+
 		column := r.URL.Path[len("/typeahead/"):]
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]
 		}
-		if _, ok := operations.Getters[column]; !ok {
-			w.WriteHeader(404)
-			w.Write([]byte("column is not found"))
-			return
-		}
 
-		results, queryTime := runTypeAheadQuery(ITEMS, column, query, operations)
+		/*
+			if _, ok := operations.Getters[column]; !ok {
+				w.WriteHeader(404)
+				w.Write([]byte("wrong column name"))
+				return
+			}
+		*/
+
+		results, queryTime := runTypeAheadQuery(&ITEMS, column, query, operations)
 		if len(results) == 0 {
 			w.WriteHeader(404)
 			return
@@ -442,8 +512,8 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 		}
 
 		w.WriteHeader(http.StatusOK)
-
 		json.NewEncoder(w).Encode(results)
+		results = nil
 	}
 }
 
@@ -477,7 +547,12 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		registerReduces = append(registerReduces, k)
 	}
 
-	_, registeredSortings := sortBy(ITEMS, []string{})
+	newItems := make(Items, 10)
+	for i := 0; i < 10; i++ {
+		newItems = append(newItems, ITEMS[i])
+	}
+
+	_, registeredSortings := sortBy(newItems, []string{})
 
 	sort.Strings(registeredFilters)
 	sort.Strings(registeredExcludes)
@@ -513,6 +588,5 @@ func helpRest(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("typeahead use the name of the column in this case IP: http://%s/typeahead/ip/?starts-with=127&limit=15", host),
 	}
 	w.WriteHeader(http.StatusOK)
-
 	json.NewEncoder(w).Encode(response)
 }
