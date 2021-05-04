@@ -17,7 +17,13 @@ func TestBytesSaving(t *testing.T) {
 func TestBytes(t *testing.T) {
 
 	saveAsBytes("testdata/testbytes")
+
+	RegisteredColumns = make(ColumnRegister)
 	ITEMS = Items{}
+
+	clearBitArrays()
+	clearGeoIndex()
+
 	loadAsBytes("testdata/testbytes")
 
 	if len(ITEMS) != 10 {
@@ -29,6 +35,18 @@ func TestBytes(t *testing.T) {
 	loadAsBytes("testdata/testbytesz")
 	if len(ITEMS) != 10 {
 		t.Error("bytes compressed save / load failed")
+	}
+
+	if len(BitArrays) == 0 {
+		t.Error("bitarrays are not restored")
+	}
+
+	if len(S2CELLS) == 0 {
+		t.Error("geoindex is not restored")
+	}
+
+	if len(RegisteredColumns) == 0 {
+		t.Error("colom register is not restored")
 	}
 
 }

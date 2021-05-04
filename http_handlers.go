@@ -275,9 +275,14 @@ func writeCSV(items Items, w http.ResponseWriter) {
 func loadRest(w http.ResponseWriter, r *http.Request) {
 	storagename, _, retrievefunc, filename := handleInputStorage(r)
 
+	start := time.Now()
 	msg := fmt.Sprintf("retrieving with: %s, with filename: %s", storagename, filename)
 	fmt.Printf(WarningColorN, msg)
 	itemsAdded, err := retrievefunc(filename)
+	diff := time.Since(start)
+	msg = fmt.Sprint("loading time: ", diff)
+	fmt.Printf(WarningColorN, msg)
+
 	if err != nil {
 		log.Printf("could not open %s reason %s", filename, err)
 		w.Write([]byte("500 - could not load data"))

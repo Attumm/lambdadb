@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Workiva/go-datastructures/bitarray"
 	"log"
 	"strings"
@@ -18,14 +19,15 @@ type MappedColumn struct {
 	Idx        fieldIdxMap // stores field to int values
 	Field      IdxFieldMap // stores int to field values to recover actual fields
 	IdxTracker uint32
+	Name       string
 }
 
 type ColumnRegister map[string]MappedColumn
 
-var RepeatedColumns ColumnRegister
+var RegisteredColumns ColumnRegister
 
 func init() {
-	RepeatedColumns = make(ColumnRegister)
+	RegisteredColumns = make(ColumnRegister)
 }
 
 func NewReapeatedColumn(column string) MappedColumn {
@@ -33,8 +35,9 @@ func NewReapeatedColumn(column string) MappedColumn {
 		make(fieldIdxMap),
 		make(IdxFieldMap),
 		0,
+		column,
 	}
-	RepeatedColumns[column] = m
+	RegisteredColumns[column] = m
 	return m
 }
 
@@ -91,7 +94,7 @@ func (m *MappedColumn) GetIndex(s string) uint32 {
 	return m.Idx[s]
 }
 
-// SetBitArray WIP
+// SetBitArray
 func SetBitArray(column string, i uint32, label int) {
 
 	var ba bitarray.BitArray
@@ -99,6 +102,7 @@ func SetBitArray(column string, i uint32, label int) {
 
 	// check if map of bitmaps is present for column
 	var map_ba fieldBitarrayMap
+
 	if _, ok = BitArrays[column]; !ok {
 		map_ba := make(fieldBitarrayMap)
 		BitArrays[column] = map_ba
@@ -108,6 +112,7 @@ func SetBitArray(column string, i uint32, label int) {
 
 	// check for existing bitarray for i value
 	ba, ok = map_ba[i]
+
 	if !ok {
 		ba = bitarray.NewSparseBitArray()
 		map_ba[i] = ba
@@ -121,19 +126,22 @@ func GetBitArray(column, value string) (bitarray.BitArray, error) {
 	var ok bool
 
 	if _, ok = BitArrays[column]; !ok {
-		return nil, errors.New("no bitarray filter found for column " + column)
+		return nil, errors.New("no bitarray filter found for " + column)
 	}
 
-	bpi, ok := RepeatedColumns[column].Idx[value]
+	// convert string value to actual indexed int.
+	i, ok := RegisteredColumns[column].Idx[value]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column value WoningType")
+		msg := fmt.Sprintf("no indexed int value found for %s %s", column, value)
+		return nil, errors.New(msg)
 	}
 
-	ba, ok := BitArrays[column][bpi]
+	ba, ok := BitArrays[column][i]
 
 	if !ok {
-		return nil, errors.New("no bitarray filter found for column idx value WoningType")
+		msg := fmt.Sprintf("no bitarray found for %s %s %d", column, value, i)
+		return nil, errors.New(msg)
 	}
 
 	return ba, nil

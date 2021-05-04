@@ -225,8 +225,6 @@ func loadAtStart(storagename string, filename string, indexed bool) {
 	msg = fmt.Sprint("Loaded in memory amount: ", itemsAdded, " time: ", diff)
 	fmt.Printf(WarningColorN, msg)
 
-	ITEMS.FillIndexes()
-
 	/* should be added to FillIndexes
 	if indexed {
 		start = time.Now()

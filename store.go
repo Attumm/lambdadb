@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -35,7 +36,6 @@ func ItemChanWorker(itemChan ItemsChannel) {
 				smallItem := itm.Shrink(label)
 				smallItem.StoreBitArrayColumns()
 				ITEMS = append(ITEMS, &smallItem)
-				// ITEMS[label] = &smallItem
 				if ITEMS[label] != &smallItem {
 					log.Fatal("storing item index off")
 				}
@@ -47,7 +47,7 @@ func ItemChanWorker(itemChan ItemsChannel) {
 	}
 }
 
-func (items Items) FillIndexes() {
+func (items *Items) FillIndexes() {
 
 	start := time.Now()
 
@@ -57,7 +57,7 @@ func (items Items) FillIndexes() {
 	clearGeoIndex()
 	clearBitArrays()
 
-	for i := range items {
+	for i := range *items {
 		ITEMS[i].StoreBitArrayColumns()
 		ITEMS[i].GeoIndex(ITEMS[i].Label)
 	}
@@ -65,4 +65,6 @@ func (items Items) FillIndexes() {
 	diff := time.Since(start)
 	msg := fmt.Sprint("Index set time: ", diff)
 	fmt.Printf(WarningColorN, msg)
+	// run garbadge collection
+	runtime.GC()
 }

@@ -154,4 +154,29 @@ func LoadMapstore(m ModelMaps) {
 	PandGasAansluitingen = m.PandGasAansluitingen
 	Gebruiksdoelen = m.Gebruiksdoelen
 
+	// register the columns
+	RegisteredColumns[Pid.Name] = Pid
+	RegisteredColumns[Vid.Name] = Vid
+	RegisteredColumns[Postcode.Name] = Postcode
+	RegisteredColumns[Oppervlakte.Name] = Oppervlakte
+	RegisteredColumns[Woningequivalent.Name] = Woningequivalent
+	RegisteredColumns[WoningType.Name] = WoningType
+	RegisteredColumns[LabelscoreVoorlopig.Name] = LabelscoreVoorlopig
+	RegisteredColumns[LabelscoreDefinitief.Name] = LabelscoreDefinitief
+	RegisteredColumns[Gemeentecode.Name] = Gemeentecode
+	RegisteredColumns[Gemeentenaam.Name] = Gemeentenaam
+	RegisteredColumns[Buurtcode.Name] = Buurtcode
+	RegisteredColumns[Buurtnaam.Name] = Buurtnaam
+	RegisteredColumns[Wijkcode.Name] = Wijkcode
+	RegisteredColumns[Wijknaam.Name] = Wijknaam
+	RegisteredColumns[Provinciecode.Name] = Provinciecode
+	RegisteredColumns[Provincienaam.Name] = Provincienaam
+	RegisteredColumns[PandGasEanAansluitingen.Name] = PandGasEanAansluitingen
+	RegisteredColumns[P6GasAansluitingen2020.Name] = P6GasAansluitingen2020
+	RegisteredColumns[P6Gasm32020.Name] = P6Gasm32020
+	RegisteredColumns[P6Kwh2020.Name] = P6Kwh2020
+	RegisteredColumns[P6TotaalPandoppervlakM2.Name] = P6TotaalPandoppervlakM2
+	RegisteredColumns[PandBouwjaar.Name] = PandBouwjaar
+	RegisteredColumns[PandGasAansluitingen.Name] = PandGasAansluitingen
+	RegisteredColumns[Gebruiksdoelen.Name] = Gebruiksdoelen
 }

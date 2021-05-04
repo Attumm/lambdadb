@@ -206,11 +206,12 @@ func (i ItemIn) Shrink(label int) Item {
 
 // Store selected columns in seperate map[columnvalue]bitarray
 // for fast item selection
-func (i Item) StoreBitArrayColumns() {
+func (i *Item) StoreBitArrayColumns() {
+
 	SetBitArray("pid", i.Pid, i.Label)
 	SetBitArray("woning_type", i.WoningType, i.Label)
-	SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
-	SetBitArray("labelscore_definitief", i.LabelscoreDefinitief, i.Label)
+	// SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
+	// SetBitArray("labelscore_definitief", i.LabelscoreDefinitief, i.Label)
 	SetBitArray("gemeentecode", i.Gemeentecode, i.Label)
 	SetBitArray("buurtcode", i.Buurtcode, i.Label)
 	SetBitArray("wijkcode", i.Wijkcode, i.Label)

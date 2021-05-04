@@ -115,9 +115,9 @@ func (i Item) GeoIndex(label int) error {
 	center := s2.PointFromLatLng(ll)
 	cell := s2.CellFromPoint(center)
 
-	cnode := cellIndexNode{ID: cell.ID(), Label: label}
+	cnode := cellIndexNode{ID: cell.ID(), Label: i.Label}
 	S2CELLS = append(S2CELLS, cnode)
-	S2CELLMAP[label] = cell.ID()
+	S2CELLMAP[i.Label] = cell.ID()
 
 	// Update index while loading data so queries already work
 	if label%100000 == 0 {

@@ -425,9 +425,9 @@ func filteredEarlyExitSingle(items *Items, column string, operations GroupedOper
 	return results
 }
 
-// bit Array Filter.
+// BitArray Filter.
 // for columns with not so unique values it makes sense te create bitarrays.
-// to do fast bitwise operations.
+// to enable fast bitwise selection operations.
 func bitArrayFilter(
 	items *Items,
 	query Query) (Items, error) {
@@ -440,6 +440,7 @@ func bitArrayFilter(
 		if len(parameter) == 0 {
 			continue
 		}
+
 		if !foundkey {
 			continue
 		}
