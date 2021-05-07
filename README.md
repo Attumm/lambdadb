@@ -8,20 +8,28 @@ Creating and registering of the functionality that is needed.
 ### Steps
 You can start the database with only a csv.
 Go over steps below, And see the result in your browser.
-1. place csv file, in dir extras.
-2. `python3 create_model.py > ../model.go`
-3. cd ../
-4. go fmt
-5. go build
-6. ./lambda --help
-7. ./lambda  --csv assets/items.csv or `python3 ingestion.py -b 1000`
-9. curl 127.0.0.1:8128/help/
-10. browser 127.0.0.1:8128/
+1. `python3 extras/create_model.py -f <path_to_file> ../model.go`
+2. go fmt
+3. go build
+4. ./lambda_db --help
+5. python3 extras/ingestion.py -f  <path_to_file>
+6. curl 127.0.0.1:8128/help/
+7. browser http://127.0.0.1:8128/
+8. examples curl 127.0.0.1:8128/help/ | python3 -m json.tool
 
-
-11. instructions curl 127.0.0.1:8128/help/ | python -m json.tool
-
-
+### Create Snapshot
+http://127.0.0.1:8128/mgmt/save
+ 
+### Load Snapshot
+http://127.0.0.1:8128/mgmt/load
+ 
+### Use index
+Currently the index is on all the columns.
+To run the index start lambdadb with indexed.
+Create a snapshot of the current data compressed.
+1. `http://127.0.0.1:8128/mgmt/save/bytesz`
+2. `./lambda_db -indexed`
+3. `http://127.0.0.1:8128/mgmt/load/bytesz`
 
 ### Running
 
