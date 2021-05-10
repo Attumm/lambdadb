@@ -2,39 +2,18 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http" //	"runtime/debug" "github.com/pkg/profile")
 	//"github.com/prometheus/client_golang/prometheus"
 	//"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"log"
+	"net/http" //	"runtime/debug" "github.com/pkg/profile")
+	"time"
 )
-
-type filterFuncc func(*Item, string) bool
-type registerFuncType map[string]filterFuncc
-type registerGroupByFunc map[string]func(*Item) string
-type registerGettersMap map[string]func(*Item) string
-type registerReduce map[string]func(Items) map[string]string
-type filterType map[string][]string
-type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
-type registerFormatMap map[string]formatRespFunc
-
-//Items as Example
-type Items []*Item
-
-type ItemsGroupedBy map[string]Items
-type ItemsChannel chan Items
-
-var ITEMS Items
 
 type jwtConfig struct {
 	Enabled      bool
 	SharedSecret string
 }
-
-type storageFunc func(Items, string) (int64, error)
-type retrieveFunc func(Items, string) (int, error)
-type storageFuncs map[string]storageFunc
-type retrieveFuncs map[string]retrieveFunc
 
 // Colors are fun, and can be used to note that this is joyfull and fun project.
 const (
@@ -52,27 +31,42 @@ const (
 )
 
 func init() {
-
+	itemChan = make(ItemsChannel, 1000)
 }
 
 func loadcsv(itemChan ItemsChannel) {
 	log.Print("loading given csv")
+	fmt.Println(SETTINGS.Get("delimiter"))
 	err := importCSV(SETTINGS.Get("csv"), itemChan,
-		true, true,
+		false, true,
 		SETTINGS.Get("delimiter"),
 		SETTINGS.Get("null-delimiter"))
+
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
-	makeIndex()
+
+	// make sure channels are empty
+	// add timeout there is no garantee ItemsChannel
+	// is empty and you miss a few records
+	timeout, _ := time.ParseDuration(SETTINGS.Get("channelwait"))
+	time.Sleep(timeout)
+	// S2CELLS.Sort()
+	fmt.Println("csv imported")
+
+	// Empty cache. should be made more generic
+	cacheLock.Lock()
+	defer cacheLock.Unlock()
+	GroupByBodyCache = make(map[string]GroupByResult)
+	GroupByHeaderCache = make(map[string]HeaderData)
 }
 
-func main() {
-	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
+func defaultSettings() {
+	SETTINGS.Set("http_db_host", "0.0.0.0:8000", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
 
-	SETTINGS.Set("CORS", "n", "CORS enabled")
+	SETTINGS.Set("CORS", "y", "CORS enabled")
 
 	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
@@ -85,16 +79,22 @@ func main() {
 	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
-	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
+	SETTINGS.Set("STORAGEMETHOD", "bytesz", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
+
+	SETTINGS.Set("readonly", "yes", "only allow read only funcions")
+	SETTINGS.Set("debug", "no", "print memory usage")
+
+	SETTINGS.Set("groupbycache", "yes", "use in memory cache")
+
+	SETTINGS.Set("channelwait", "5s", "timeout")
+
 	SETTINGS.Parse()
+}
 
-	//Construct yes or no to booleans in SETTINGS
+func main() {
 
-	ITEMS = make(Items, 0, 100*1000)
-
-	Operations = GroupedOperations{Funcs: RegisterFuncMap, GroupBy: RegisterGroupBy, Getters: RegisterGetters, Reduce: RegisterReduce}
-	itemChan := make(ItemsChannel, 1000)
+	defaultSettings()
 
 	go ItemChanWorker(itemChan)
 
@@ -110,18 +110,38 @@ func main() {
 		fmt.Println("start loading")
 		go loadAtStart(SETTINGS.Get("STORAGEMETHOD"), FILENAME, SETTINGS.Get("indexed") == "y")
 	}
+
+	ipPort := SETTINGS.Get("http_db_host")
+
+	mux := setupHandler()
+
+	msg := fmt.Sprint(
+		"starting server\nhost: ",
+		ipPort,
+	)
+	fmt.Printf(InfoColorN, msg)
+	log.Fatal(http.ListenAndServe(ipPort, mux))
+}
+
+func setupHandler() http.Handler {
+
 	JWTConfig := jwtConfig{
 		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
 	}
 
-	listRest := contextListRest(JWTConfig, itemChan, Operations)
-	addRest := contextAddRest(JWTConfig, itemChan, Operations)
+	Operations = GroupedOperations{
+		Funcs:     RegisterFuncMap,
+		GroupBy:   RegisterGroupBy,
+		Getters:   RegisterGetters,
+		Reduce:    RegisterReduce,
+		BitArrays: RegisterBitArray,
+	}
 
 	searchRest := contextSearchRest(JWTConfig, itemChan, Operations)
 	typeAheadRest := contextTypeAheadRest(JWTConfig, itemChan, Operations)
-
-	ipPort := SETTINGS.Get("http_db_host")
+	listRest := contextListRest(JWTConfig, itemChan, Operations)
+	addRest := contextAddRest(JWTConfig, itemChan, Operations)
 
 	mux := http.NewServeMux()
 
@@ -130,26 +150,33 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
+	mux.Handle("/", http.FileServer(http.Dir("./files/www")))
+	mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
+
 	if SETTINGS.Get("mgmt") == "y" {
 		mux.HandleFunc("/mgmt/add/", addRest)
 		mux.HandleFunc("/mgmt/rm/", rmRest)
 		mux.HandleFunc("/mgmt/save/", saveRest)
 		mux.HandleFunc("/mgmt/load/", loadRest)
-
-		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
 	}
 
 	if SETTINGS.Get("prometheus-monitoring") == "y" {
 		mux.Handle("/metrics", promhttp.Handler())
 	}
+
 	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 
 	cors := SETTINGS.Get("CORS") == "y"
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+	middleware := MIDDLEWARE(cors)
+
+	msg := fmt.Sprint(
+		"setup http handler:",
+		" with:", len(ITEMS), "items ",
+		"management api's: ", SETTINGS.Get("mgmt") == "y",
+		" jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+
 	fmt.Printf(InfoColorN, msg)
 
-	middleware := MIDDLEWARE(cors)
-	log.Fatal(http.ListenAndServe(ipPort, middleware(mux)))
+	return middleware(mux)
 }

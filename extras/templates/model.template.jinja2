@@ -1,0 +1,262 @@
+/*
+	model.go define the 'items' to store.
+	All columns with getters and setters are defined here.
+
+	ItemIn, represent rows from the Input data
+	Item, the compact item stored in memmory
+	ItemOut, defines how and which fields are exported out
+	of the API. It is possible to ignore input columns
+
+	Repeated values are stored in maps with int numbers
+	as keys.  Optionally bitarrays are created for reapeated
+	column values to do fast bit-wise filtering.
+
+	A S2 geo index in created for lat, lon values.
+
+	Unique values are stored as-is.
+
+	The generated codes leaves room to create custom
+	index functions yourself to create an API with an
+	< 1 ms response time for your specific needs.
+
+	This codebase solves: I need to have an API on this
+	tabular dataset fast!
+*/
+
+package main
+
+import (
+	"encoding/json"
+	"sort"
+	"strconv"
+	"strings"
+	"errors"
+
+	"github.com/Workiva/go-datastructures/bitarray"
+)
+
+type registerGroupByFunc map[string]func(*Item) string
+type registerGettersMap map[string]func(*Item) string
+type registerReduce map[string]func(Items) map[string]string
+
+type registerBitArray map[string]func(s string) (bitarray.BitArray, error)
+type fieldBitarrayMap map[uint32]bitarray.BitArray
+
+{{itemStructs}}
+
+
+type ItemIn struct {
+
+{{columnsItemIn}}
+
+}
+
+type ItemOut struct {
+
+{{columnsItemOut}}
+
+}
+
+
+type Item struct {
+
+	Label                int  // internal index in ITEMS
+{{columnsItem}}
+
+}
+
+func (i Item) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.Serialize())
+}
+
+// Shrink create smaller Item using uint32
+func (i ItemIn) Shrink(label int) Item {
+
+{{shrinkItems}}
+
+	return Item{
+
+		label,
+
+{{shrinkItemFields}}
+
+	}
+}
+
+// Store selected columns in seperate map[columnvalue]bitarray
+// for fast item selection
+func (i *Item) StoreBitArrayColumns() {
+	{{ bitArrayStores }}
+}
+
+func (i Item) Serialize() ItemOut {
+	return ItemOut{
+
+{{expandItemFields}}
+
+	}
+}
+
+func (i ItemIn) Columns() []string {
+	return []string{
+
+{{inColumns}}
+
+	}
+}
+
+func (i ItemOut) Columns() []string {
+	return []string{
+
+{{outColumns}}
+
+	}
+}
+
+
+func (i Item) Row() []string {
+
+	return []string{
+
+{{expandItemFields}}
+
+	}
+}
+
+func (i Item) GetIndex()string{
+	return Getters{{indexcolumn}}(&i)
+}
+
+
+func (i Item) GetGeometry() string {
+	return {{geometryGetter}}
+}
+
+{{columnFilters}}
+
+/*
+// contain filters
+func FilterEkeyContains(i *Item, s string) bool {
+	return strings.Contains(i.Ekey, s)
+}
+
+
+// startswith filters
+func FilterEkeyStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(i.Ekey, s)
+}
+
+
+// match filters
+func FilterEkeyMatch(i *Item, s string) bool {
+	return i.Ekey == s
+}
+
+// getters
+func GettersEkey(i *Item) string {
+	return i.Ekey
+}
+*/
+
+// reduce functions
+func reduceCount(items Items) map[string]string {
+	result := make(map[string]string)
+	result["count"] = strconv.Itoa(len(items))
+	return result
+}
+
+type GroupedOperations struct {
+	Funcs   registerFuncType
+	GroupBy registerGroupByFunc
+	Getters registerGettersMap
+	Reduce  registerReduce
+	BitArrays registerBitArray
+}
+
+var Operations GroupedOperations
+
+var RegisterFuncMap registerFuncType
+var RegisterGroupBy registerGroupByFunc
+var RegisterGetters registerGettersMap
+var RegisterReduce registerReduce
+var RegisterBitArray registerBitArray
+
+// ValidateRegsiters validate exposed columns do match filter names
+func validateRegisters() error {
+	var i = ItemOut{}
+	var filters = []string{"match", "contains", "startswith"}
+	for _, c := range i.Columns() {
+		for _, f := range filters {
+			if _, ok := RegisterFuncMap[f+"-"+c]; !ok {
+				return errors.New(c + " is missing in RegisterMap")
+			}
+		}
+	}
+	return nil
+}
+
+func init() {
+
+	RegisterFuncMap = make(registerFuncType)
+	RegisterGroupBy = make(registerGroupByFunc)
+	RegisterGetters = make(registerGettersMap)
+	RegisterReduce = make(registerReduce)
+
+	// register search filter.
+	//RegisterFuncMap["search"] = 'EDITYOURSELF'
+	// example RegisterFuncMap["search"] = FilterEkeyStartsWith
+
+	//RegisterFuncMap["value"] = 'EDITYOURSELF'
+	// example RegisterGetters["value"] = GettersEkey
+
+	// register filters
+
+{{registerFilters}}
+
+	validateRegisters()
+
+	/*
+	RegisterFuncMap["match-ekey"] = FilterEkeyMatch
+	RegisterFuncMap["contains-ekey"] = FilterEkeyContains
+	// register startswith filters
+	RegisterFuncMap["startswith-ekey"] = FilterEkeyStartsWith
+	// register getters
+	RegisterGetters["ekey"] = GettersEkey
+	// register groupby
+	RegisterGroupBy["ekey"] = GettersEkey
+
+	*/
+
+	// register reduce functions
+	RegisterReduce["count"] = reduceCount
+}
+
+type sortLookup map[string]func(int, int) bool
+
+func createSort(items Items) sortLookup {
+
+	sortFuncs := sortLookup{
+		{{sortColumns}}
+	}
+	return sortFuncs
+}
+
+
+func sortBy(items Items, sortingL []string) (Items, []string) {
+	sortFuncs := createSort(items)
+
+	for _, sortFuncName := range sortingL {
+		sortFunc, ok := sortFuncs[sortFuncName]
+		if ok {
+			sort.Slice(items, sortFunc)
+		}
+	}
+
+	// TODO must be nicer way
+	keys := []string{}
+	for key := range sortFuncs {
+		keys = append(keys, key)
+	}
+
+	return items, keys
+}

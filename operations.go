@@ -4,16 +4,49 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
+
+	// "reflect"
+	"errors"
+	"log"
+	"sort"
+
+	//"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Workiva/go-datastructures/bitarray"
+	"github.com/go-spatial/geom"
+	"github.com/go-spatial/geom/encoding/geojson"
 )
+
+type filterFuncc func(*Item, string) bool
+type registerFuncType map[string]filterFuncc
+
+type bitsetFuncc func(string) bitarray.BitArray
+type registerBitSetType map[string]bitsetFuncc
+
+type filterType map[string][]string
+
+func (ft filterType) CacheKey() string {
+	filterlist := []string{}
+	for k, v := range ft {
+		filterlist = append(filterlist, fmt.Sprintf("%s=%s", k, v))
+	}
+	sort.Strings(filterlist)
+	return strings.Join(filterlist, "-")
+}
+
+type formatRespFunc func(w http.ResponseWriter, r *http.Request, items Items)
+type registerFormatMap map[string]formatRespFunc
 
 type Query struct {
 	Filters  filterType
 	Excludes filterType
 	Anys     filterType
+
+	GroupBy string
+	Reduce  string
 
 	Limit         int
 	LimitGiven    bool
@@ -28,6 +61,9 @@ type Query struct {
 	IndexQuery string
 	IndexGiven bool
 
+	Geometry      geom.Geometry
+	GeometryGiven bool
+
 	ReturnFormat string
 }
 
@@ -35,65 +71,121 @@ func (q Query) EarlyExit() bool {
 	return q.LimitGiven && !q.PageGiven && !q.SortByGiven
 }
 
-func decodeUrl(s string) string {
-	newS, err := url.QueryUnescape(s)
-	if err != nil {
-		fmt.Println("oh no error", err)
-		return s
+// return cachable key for query
+func (q Query) CacheKey() (string, error) {
+
+	if SETTINGS.Get("groupbycache") != "yes" {
+		return "", errors.New("cache disabled")
 	}
-	return newS
+
+	if q.EarlyExit() {
+		return "", errors.New("not cached")
+	}
+	if q.GeometryGiven {
+		return "", errors.New("geo not cached")
+	}
+
+	for k := range RegisterBitArray {
+		_, filterFound := q.Filters[k]
+		if filterFound {
+			return "", errors.New("bitarrays filters do not need to be cached")
+		}
+	}
+
+	if q.EarlyExit() {
+		return "", errors.New("not cached")
+	}
+
+	keys := []string{
+		q.Filters.CacheKey(),
+		q.Excludes.CacheKey(),
+		q.Anys.CacheKey(),
+		q.GroupBy,
+		q.Reduce,
+		q.ReturnFormat,
+	}
+
+	return strings.Join(keys, "-"), nil
+
 }
 
-// util for api
-func parseURLParameters(r *http.Request) Query {
+// parseURLParameters checks parameters and builds a query to be run.
+func parseURLParameters(r *http.Request) (Query, error) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
-	//TODO change query to be based on input.
+	groupBy := ""
+	reduce := ""
 
-	urlItems := r.URL.Query()
+	// parse params and body posts // (geo)json data
+	r.ParseForm()
+
+	if SETTINGS.Get("debug") == "yes" {
+		for key, value := range r.Form {
+			fmt.Printf("F %s = %s\n", key, value)
+		}
+	}
 
 	for k := range RegisterFuncMap {
-		parameter, parameterFound := urlItems[k]
+		parameter, parameterFound := r.Form[k]
 		if parameterFound && parameter[0] != "" {
-			newSl := make([]string, len(parameter))
-			for i, v := range parameter {
-				newSl[i] = decodeUrl(v)
-			}
-			//filterMap[k] = parameter
-			filterMap[k] = newSl
+			filterMap[k] = parameter
 		}
-		parameter, parameterFound = urlItems["!"+k]
+		parameter, parameterFound = r.Form["!"+k]
 		if parameterFound && parameter[0] != "" {
 			excludeMap[k] = parameter
 		}
-		parameter, parameterFound = urlItems["any_"+k]
+		parameter, parameterFound = r.Form["any_"+k]
 		if parameterFound && parameter[0] != "" {
 			anyMap[k] = parameter
 		}
 	}
 
+	// Check and validate groupby parameter
+	parameter, found := r.Form["groupby"]
+
+	if found && parameter[0] != "" {
+		_, funcFound1 := RegisterGroupBy[parameter[0]]
+		_, funcFound2 := RegisterGroupByCustom[parameter[0]]
+
+		if !funcFound1 && !funcFound2 {
+			return Query{}, errors.New("invalid groupby parameter")
+		}
+		groupBy = parameter[0]
+	}
+
+	// Check and validate reduce parameter
+	parameter, found = r.Form["reduce"]
+
+	if found && parameter[0] != "" {
+		_, funcFound := RegisterReduce[parameter[0]]
+		if !funcFound {
+			return Query{}, errors.New("Invalid reduce parameter")
+		}
+		reduce = parameter[0]
+	}
+
 	// TODO there must be better way
 	page := 1
-	pageStr, pageGiven := urlItems["page"]
+	pageStr, pageGiven := r.Form["page"]
 	if pageGiven {
 		page = intMoreDefault(pageStr[0], 1)
 	}
 
 	pageSize := 10
-	pageSizeStr, pageSizeGiven := urlItems["pagesize"]
+	pageSizeStr, pageSizeGiven := r.Form["pagesize"]
 	if pageSizeGiven {
 		pageSize = intMoreDefault(pageSizeStr[0], 1)
 	}
 
 	limit := 0
-	limitStr, limitGiven := urlItems["limit"]
+	limitStr, limitGiven := r.Form["limit"]
 	if limitGiven {
 		limit = intMoreDefault(limitStr[0], 1)
 	}
 
 	format := "json"
-	formatStr, formatGiven := urlItems["format"]
+	formatStr, formatGiven := r.Form["format"]
 
 	if formatGiven {
 		if formatStr[0] == "csv" {
@@ -101,19 +193,36 @@ func parseURLParameters(r *http.Request) Query {
 		}
 	}
 
-	sortingL, sortingGiven := urlItems["sortby"]
+	sortingL, sortingGiven := r.Form["sortby"]
 
 	index := ""
-	indexL, indexGiven := urlItems["search"]
-	indexGiven = indexGiven && (SETTINGS.Get("indexed") == "y")
-	indexUsed := indexGiven && len(indexL[0]) > 2
+	indexL, indexGiven := r.Form["search"]
+	indexUsed := indexGiven && indexL[0] != ""
+
 	if indexUsed {
-		index = strings.ToLower(indexL[0])
+		index = indexL[0]
 	}
+
+	// check for geojson geometry stuff.
+	geometryS, geometryGiven := r.Form["geojson"]
+	var geoinput geojson.Geometry
+	if geometryGiven && geometryS[0] != "" {
+		err := json.Unmarshal([]byte(geometryS[0]), &geoinput)
+		if err != nil {
+			log.Println("parsing geojson error")
+			log.Println(err)
+			geometryGiven = false
+			return Query{}, errors.New("failed to parse geojson")
+		}
+	}
+
 	return Query{
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
+
+		GroupBy: groupBy,
+		Reduce:  reduce,
 
 		Limit:      limit,
 		LimitGiven: limitGiven,
@@ -129,19 +238,31 @@ func parseURLParameters(r *http.Request) Query {
 		IndexQuery: index,
 		IndexGiven: indexUsed,
 
+		Geometry: geoinput.Geometry,
+
+		GeometryGiven: geometryGiven,
+
 		ReturnFormat: format,
-	}
+	}, nil
 }
 
-func groupByRunner(items Items, groubByParameter string) ItemsGroupedBy {
+func groupByRunner(items Items, groupByParameter string) ItemsGroupedBy {
 	grouping := make(ItemsGroupedBy)
-	groupingFunc := RegisterGroupBy[groubByParameter]
-	if groupingFunc == nil {
+	groupingFunc := RegisterGroupBy[groupByParameter]
+
+	customGrouping := RegisterGroupByCustom[groupByParameter]
+
+	if groupingFunc == nil && customGrouping == nil {
 		return grouping
 	}
+
 	for _, item := range items {
-		GroupingKey := groupingFunc(item)
-		grouping[GroupingKey] = append(grouping[GroupingKey], item)
+		if customGrouping == nil {
+			GroupingKey := groupingFunc(item)
+			grouping[GroupingKey] = append(grouping[GroupingKey], item)
+		} else {
+			customGrouping(item, grouping)
+		}
 	}
 	return grouping
 }
@@ -211,9 +332,10 @@ func max(a, b int) int {
 	return b
 }
 
-func filteredEarlyExit(items Items, operations GroupedOperations, query Query) Items {
+func filteredEarlyExit(items *Items, operations GroupedOperations, query Query) Items {
+
 	registerFuncs := operations.Funcs
-	filteredItems := make(Items, 0, len(items)/4)
+	filteredItems := make(Items, 0, len(*items)/4)
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
@@ -222,12 +344,12 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
 	stop := end
+
 	if query.LimitGiven {
 		stop = limit
 	}
 
-	//TODO candidate for speedup
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -243,10 +365,11 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 			break
 		}
 	}
+
 	return filteredItems
 }
 
-func filteredEarlyExitSingle(items Items, column string, operations GroupedOperations, query Query) []string {
+func filteredEarlyExitSingle(items *Items, column string, operations GroupedOperations, query Query) []string {
 	registerFuncs := operations.Funcs
 	filteredItemsSet := make(map[string]bool)
 	excludes := query.Excludes
@@ -257,12 +380,13 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	start := (query.Page - 1) * query.PageSize
 	end := start + query.PageSize
 	stop := end
+
 	if query.LimitGiven {
 		stop = limit
 	}
 
-	//TODO candidate for speedup
-	for _, item := range items {
+	for _, item := range *items {
+
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -272,14 +396,24 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 		if !exclude(item, excludes, registerFuncs) {
 			continue
 		}
-		single := operations.Getters[column](item)
-		filteredItemsSet[single] = true
+
+		// return single example value for search field
+		if f, ok := operations.Getters[column]; ok {
+			single := f(item)
+			filteredItemsSet[single] = true
+		} else {
+			fmt.Print(operations.Getters)
+			fmt.Println(column)
+			fmt.Println("missing getter?")
+		}
 
 		if len(filteredItemsSet) == stop {
 			break
 		}
 	}
+
 	results := []string{}
+
 	for k := range filteredItemsSet {
 		// empty keys crashes frontend.
 		// should be fixed in frontend then below can go.
@@ -291,80 +425,137 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 	return results
 }
 
-func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
+// BitArray Filter.
+// for columns with not so unique values it makes sense te create bitarrays.
+// to enable fast bitwise selection operations.
+func bitArrayFilter(
+	items *Items,
+	query Query) (Items, error) {
+
+	combinedBitArrays := make([]bitarray.BitArray, 0)
+
+	for k := range BitArrays {
+		parameter, foundkey := query.Filters["match-"+k]
+
+		if len(parameter) == 0 {
+			continue
+		}
+
+		if !foundkey {
+			continue
+		}
+
+		ba, err := GetBitArray(k, parameter[0])
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		combinedBitArrays = append(combinedBitArrays, ba)
+
+	}
+
+	var bitArrayResult bitarray.BitArray
+
+	if len(combinedBitArrays) > 0 {
+		bitArrayResult = combinedBitArrays[0]
+	} else {
+		log.Println("no bitarrays found / used")
+		return nil, errors.New("no bitarray found")
+	}
+
+	// combine AND bitarrays
+	if len(combinedBitArrays) > 1 {
+		for i := range combinedBitArrays[1:] {
+			bitArrayResult = bitArrayResult.And(combinedBitArrays[i])
+		}
+	}
+
+	// TODO OR
+	// TODO EXCLUDE
+
+	if bitArrayResult == nil {
+		log.Fatal("something went wrong with bitarray..")
+	}
+
+	newItems := make(Items, 0)
+	labels := bitArrayResult.ToNums()
+
+	for _, l := range labels {
+		newItems = append(newItems, (*items)[int(l)])
+	}
+
+	return newItems, nil
+}
+
+func runQuery(items *Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
+
+	if query.GeometryGiven {
+		cu := CoverDefault(query.Geometry)
+		if len(cu) == 0 {
+			log.Println("covering cell union not created")
+		} else {
+			geoitems := SearchGeoItems(cu)
+			items = &geoitems
+			// log.Printf("geo matched %d \n", len(geoitems))
+		}
+	}
+
+	var nextItems *Items
+	filteredItems, err := bitArrayFilter(items, query)
+
+	if err != nil {
+		nextItems = items
+	} else {
+		nextItems = &filteredItems
+	}
+
+	if query.IndexGiven && len(STR_INDEX) > 0 {
+		items := make(Items, 0)
+		indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+		seen := make(map[string]bool)
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			if !seen[key] {
+				seen[key] = true
+				items = append(items, LOOKUP[key]...)
+			}
+		}
+	}
+
 	var newItems Items
 
-	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
-
-	//if query.IndexGiven && len(STR_INDEX) > 0 {
-	//	items = make(Items, 0)
-	//	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-	//	seen := make(map[string]bool)
-	//	for _, idx := range indices {
-	//		key := getStringFromIndex(STR_INDEX, idx)
-	//		if !seen[key] {
-	//			seen[key] = true
-	//			for _, item := range LOOKUP[key] {
-	//				items = append(items, item)
-	//			}
-	//		}
-
-	//	}
-	//}
-	if query.IndexGiven {
-		items = runIndexQuery(query)
-	}
-
 	if query.EarlyExit() {
-		newItems = filteredEarlyExit(items, operations, query)
+		newItems = filteredEarlyExit(nextItems, operations, query)
 	} else {
-		newItems = filtered(items, operations, query)
+		newItems = filtered(nextItems, operations, query)
 	}
+
 	diff := time.Since(start)
+
+	log.Printf("items matched %d \n", len(newItems))
+
 	return newItems, int64(diff) / int64(1000000)
 }
 
-func runTypeAheadQuery(items Items, column string, query Query, operations GroupedOperations) ([]string, int64) {
+func runTypeAheadQuery(
+	items *Items, column string, query Query,
+	operations GroupedOperations) ([]string, int64) {
 	start := time.Now()
-	if query.IndexGiven {
-		items = runIndexQuery(query)
-	}
 	results := filteredEarlyExitSingle(items, column, operations, query)
 	diff := time.Since(start)
 	return results, int64(diff) / int64(1000000)
 }
 
-func runIndexQuery(query Query) Items {
-	items := make(Items, 0)
-	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
-	seen := make(map[string]bool)
-	added := make(map[int]bool)
-	for _, idx := range indices {
-		key := getStringFromIndex(STR_INDEX, idx)
-		if !seen[key] {
-			seen[key] = true
-			for _, index := range LOOKUPINDEX[key] {
-				if _, ok := added[index]; !ok {
-					added[index] = true
-					items = append(items, ITEMS[index])
-				}
-
-			}
-		}
-
-	}
-	return items
-}
-
-func filtered(items Items, operations GroupedOperations, query Query) Items {
+func filtered(items *Items, operations GroupedOperations, query Query) Items {
 	registerFuncs := operations.Funcs
+	filteredItems := make(Items, 0)
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
 
-	filteredItems := make(Items, 0)
-	for _, item := range items {
+	for _, item := range *items {
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -390,28 +581,20 @@ func mapIndex(items Items, indexes []int) Items {
 type HeaderData map[string]string
 
 func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
-	headerData := make(HeaderData)
-
-	if query.LimitGiven {
-		headerData["Limit"] = strconv.Itoa(query.Limit)
-	}
-
-	if query.PageGiven {
-		headerData["Page"] = strconv.Itoa(query.Page)
-		headerData["Page-Size"] = strconv.Itoa(query.PageSize)
-		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
-	}
-
-	headerData["Total-Items"] = strconv.Itoa(len(items))
-	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
-	bytesQuery, _ := json.Marshal(query)
-	headerData["query"] = string(bytesQuery)
-
+	matched := int64(len(items))
+	headerData := getHeaderDataShared(query, queryDuration, matched)
 	return headerData
 }
 
 //getHeaderDataSlice extract from header information with data slice we want
 func getHeaderDataSlice(items []string, query Query, queryDuration int64) HeaderData {
+	matched := int64(len(items))
+	headerData := getHeaderDataShared(query, queryDuration, matched)
+	return headerData
+}
+
+func getHeaderDataShared(query Query, queryDuration int64, matched int64) HeaderData {
+
 	headerData := make(HeaderData)
 
 	if query.LimitGiven {
@@ -421,10 +604,11 @@ func getHeaderDataSlice(items []string, query Query, queryDuration int64) Header
 	if query.PageGiven {
 		headerData["Page"] = strconv.Itoa(query.Page)
 		headerData["Page-Size"] = strconv.Itoa(query.PageSize)
-		headerData["Total-Pages"] = strconv.Itoa((len(items) / query.PageSize) + 1)
+		headerData["Total-Pages"] = strconv.Itoa(int(matched)/query.PageSize + 1)
 	}
 
-	headerData["Total-Items"] = strconv.Itoa(len(items))
+	headerData["Total-Items"] = strconv.FormatInt(matched, 10)
+	headerData["Cache-Control"] = "public, max-age=300"
 	headerData["Query-Duration"] = strconv.FormatInt(queryDuration, 10) + "ms"
 	bytesQuery, _ := json.Marshal(query)
 	headerData["query"] = string(bytesQuery)
@@ -456,7 +640,6 @@ func sortLimit(items Items, query Query) Items {
 	}
 
 	// Note the slice built on array, slicing a slice larger then the the slice adds array items
-	// https://play.golang.org/p/GxhbBGNaXwL
 	if len(items) < query.Limit {
 		return items
 	}

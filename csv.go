@@ -1,18 +1,17 @@
 package main
 
 import (
-	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"fmt"
+	csv "github.com/JensRantil/go-csv"
+	"github.com/cheggaaa/pb"
+	"github.com/klauspost/pgzip"
 	"io"
 	"log"
 	"os"
 	"strings"
 	"unicode/utf8"
-
-	csv "github.com/JensRantil/go-csv"
-	"github.com/cheggaaa/pb"
 )
 
 func containsDelimiter(col string) bool {
@@ -23,20 +22,27 @@ func containsDelimiter(col string) bool {
 
 // Parse columns from first header row or from flags
 func parseColumns(reader *csv.Reader, skipHeader bool, fields string) ([]string, error) {
+
 	var err error
 	var columns []string
+
 	if fields != "" {
 		columns = strings.Split(fields, ",")
 
 		if skipHeader {
-			reader.Read() //Force consume one row
+			reader.Read() // Force consume one row
 		}
+
 	} else {
 		columns, err = reader.Read()
 		fmt.Printf("%v columns\n%v\n", len(columns), columns)
 		if err != nil {
 			fmt.Printf("FOUND ERR\n")
 			return nil, err
+		}
+		itemIn := ItemIn{}
+		if len(columns) != len(itemIn.Columns()) {
+			panic(errors.New("columns mismatch"))
 		}
 	}
 
@@ -47,24 +53,22 @@ func parseColumns(reader *csv.Reader, skipHeader bool, fields string) ([]string,
 		}
 	}
 
-	//for i, col := range columns {
-	//	columns[i] = postgresify(col)
-	//}
-
 	return columns, nil
 }
 
 func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 	delimiter string, nullDelimiter string) (error, int, int) {
+
 	success := 0
 	failed := 0
 
-	items := Items{}
+	items := ItemsIn{}
 
 	for {
-		item := Item{}
-		columns := item.Columns()
+		itemIn := ItemIn{}
+		columns := itemIn.Columns()
 		cols := make([]interface{}, len(columns))
+
 		record, err := reader.Read()
 
 		if err == io.EOF {
@@ -73,6 +77,7 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		if err != nil {
 			line := strings.Join(record, delimiter)
+
 			failed++
 
 			if ignoreErrors {
@@ -97,8 +102,9 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		// marschall it to bytes
 		b, _ := json.Marshal(itemMap)
+
 		// fill the new Item instance with values
-		if err := json.Unmarshal([]byte(b), &item); err != nil {
+		if err := json.Unmarshal([]byte(b), &itemIn); err != nil {
 			line := strings.Join(record, delimiter)
 			failed++
 
@@ -113,21 +119,24 @@ func copyCSVRows(itemChan ItemsChannel, reader *csv.Reader, ignoreErrors bool,
 
 		if len(items) > 100000 {
 			itemChan <- items
-			items = Items{}
+			items = ItemsIn{}
 		}
-		items = append(items, &item)
+
+		items = append(items, &itemIn)
 		success++
 	}
 
 	// add leftover items
 	itemChan <- items
+	items = nil
 
 	return nil, success, failed
 }
 
 func importCSV(filename string, itemChan ItemsChannel,
 	ignoreErrors bool, skipHeader bool,
-	delimiter string, nullDelimiter string) error {
+	delimiter string, nullDelimiter string,
+) error {
 
 	dialect := csv.Dialect{}
 	dialect.Delimiter, _ = utf8.DecodeRuneInString(delimiter)
@@ -142,14 +151,20 @@ func importCSV(filename string, itemChan ItemsChannel,
 		defer file.Close()
 
 		bar = NewProgressBar(file)
-		fz, err := gzip.NewReader(io.TeeReader(file, bar))
 
-		if err != nil {
-			return err
+		if strings.HasSuffix(filename, ".gz") {
+			fz, err := pgzip.NewReader(io.TeeReader(file, bar))
+
+			if err != nil {
+				return err
+			}
+			defer fz.Close()
+			reader = csv.NewDialectReader(fz, dialect)
+		} else {
+			fz := io.TeeReader(file, bar)
+			reader = csv.NewDialectReader(fz, dialect)
 		}
-		defer fz.Close()
 
-		reader = csv.NewDialectReader(fz, dialect)
 	} else {
 		reader = csv.NewDialectReader(os.Stdin, dialect)
 	}
@@ -157,6 +172,7 @@ func importCSV(filename string, itemChan ItemsChannel,
 	var err error
 
 	_, err = parseColumns(reader, skipHeader, "")
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -179,7 +195,7 @@ func importCSV(filename string, itemChan ItemsChannel,
 		return fmt.Errorf("line %d: %s", lineNumber, err)
 	}
 
-	fmt.Printf("%d rows imported", success)
+	fmt.Printf("%d rows imported\n", success)
 
 	if ignoreErrors && failed > 0 {
 		fmt.Printf("%d rows could not be imported and have been written to stderr.", failed)

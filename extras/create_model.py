@@ -1,277 +1,382 @@
-### First version is going to assume everything is a string
-### also known as string theory:p
+# -*- coding: utf-8 -*-
+"""
+Load first rows from csv, ask some questions
+and generate a models.go to jumpstart
+your lambda_db project for the given csv file
 
-### column with the name "value" or "index" will be used as index
-### else the first column will be set as index, when index is enabled.
-### this can be changed later in the generated model.go file
+models.go contains all the field information
+and functions of rows in your data.
+
+- Repeated option to store repeated
+  values in a map and each individual items
+  only stores uint32 reference to map key.
+
+- BitArray option which is like Repeated
+  value but also creates a map[key]bitmap for all
+  items containing field value. Makes it possible
+  to do fast 'match' lookups.
+
+
+python create_model.py your.csv
+"""
 
 import csv
 import sys
-from filereader import create_reader, supported_fileformats
+import os
+
+from re import sub
+from jinja2 import Environment, FileSystemLoader
+
+import yaml
 
 
-def create_struct(item):
-    start = "type Item struct {\n"
-    # TODO add type
-    lines= [f'{k.capitalize()} string `json:"{k.lower()}"`' for k, v in item.items()]
-    stop = "\n}\n"
-    return start + "\n".join(lines) + stop 
+if '-f' in sys.argv:
+    filename = str(sys.argv[sys.argv.index('-f')+1])
+else:
+    filename = "items.csv"
+
+if '-c' in sys.argv:
+    config = str(sys.argv[sys.argv.index('-c')+1])
+else:
+    config = "config.yaml"
+
+with open(filename) as f:
+    reader = csv.DictReader(f)
+    row = dict(next(reader))
+
+cfg = {}
+
+if os.path.isfile(config):
+    with open(config, 'r') as stream:
+        cfg = yaml.load(stream, Loader=yaml.FullLoader)['model']
 
 
-def create_columns(item):
-    start = """
-    func (i Item) Columns() []string {
-	return []string{
+env = Environment(
+    loader=FileSystemLoader('./templates'),
+)
+
+# keep track of all column names and all original names in csv
+allcolumns = []
+allcolumns_org = []
+repeated = []
+repeated_org = []
+bitarray = []
+bitarray_org = []
+unique = []
+unique = []
+unique_org = []
+ignored = []
+ignored_org = []
+geocolumns = []
+geocolumns_org = []
+
+
+def gocamelCase(string):
+    """convert string to camelCase
+
+    woning_type -> WoningType
     """
-    lines = [f'"{k.lower()}",' for k in item.keys()]
-    stop = """\n}\n}"""
-    return start + "\n".join(lines) + stop
+    string = sub(r"(_|-)+", " ", string).title().replace(" ", "")
+    return string
 
 
-def create_row(item):
-    start = """
-    func (i Item) Row() []string {
-	return []string{
-    """
-    lines = [f"i.{k.capitalize()}," for k in item.keys()]
-    stop = """\n}\n}"""
-    return start + "\n".join(lines) + stop
+# ask some questions about columns.
+index = 0
+for k in row.keys():
+
+    # go camelcase column names
+    kc = gocamelCase(k)
+
+    options = ['r', 'u', 'i', 'g', 'b']
+    while True:
+
+        action = None
+
+        if cfg.get(k):
+            print(f"reading from config {k} {cfg[k]}")
+            action = cfg[k]
+        else:
+            # keep asking for valid input
+            q1 = (
+                "(R)epeated value? has less then (2^16=65536) option.",
+                "(B)itarray, repeated column optimized for fast match.",
+                "(U)nique, (G)eo lat/lon point or (I)gnore ? r/b/u/g/i?."
+            )
+            action = input(f"idx:{index} is {k} {q1}")  # noqa
+
+        if action == '':
+            print(f"pick one from {options}")
+            continue
+        if action not in options:
+            continue
+        break
+
+    cfg[k] = action
+
+    if action == 'r':
+        repeated.append(kc)
+        repeated_org.append(k)
+    elif action == 'u':
+        unique.append(kc)
+        unique_org.append(k)
+    elif action == 'i':
+        ignored.append(kc)
+        ignored_org.append(k)
+    elif action == 'g':
+        geocolumns.append(kc)
+        geocolumns_org.append(k)
+        unique.append(kc)
+        unique_org.append(k)
+    elif action == 'b':
+        # same as repeated  but with some extra bitarray stuff
+        repeated.append(kc)
+        repeated_org.append(k)
+        bitarray.append(kc)
+        bitarray_org.append(k)
+    else:
+        print('invalid input')
+        sys.exit(-1)
+
+    allcolumns.append(kc)
+    allcolumns_org.append(k)
+    index += 1
+
+# ask for a index column
+while True:
+    index = None
+    # keep asking for valid input
+    if cfg.get('index'):
+        index = cfg['index']
+    else:
+        index = input(f"which column is idx? 0 - {len(allcolumns) - 1} ")
+
+    cfg['index'] = index
+
+    try:
+        index = int(index)
+
+        if allcolumns[index] in ignored:
+            print('Selected an ignored column for index')
+            raise ValueError
+
+        if -1 < index < len(allcolumns):
+            break
+
+    except ValueError:
+        continue
+
+    print('try again..')
+
+# save answers in config file
+with open(config, 'w') as f:
+    dict_file = {'model': cfg}
+    yaml.dump(dict_file, f)
+    print(f'saved answers in config {config}')
 
 
-def get_index_column(item):
-    special_columns = ["value", "index"]
-    for column in special_columns:
-        if column in item:
-            return column
-
-    # we tried, let's return the first column
-    n = iter(item.keys())
-    return next(n)
+# setup initial data structs for each repeated column
+initRepeatColumns = []
+repeatColumnNames = []
+loadRepeatColumnNames = []
+mappedColumns = []
+registerColumns = []
 
 
-def create_getindex(item):
-    index_column = get_index_column(item)
-    start = """
-    func (i Item) GetIndex() string {
-	return """
-    middle = f"i.{index_column.capitalize()}"
-    stop = """\n}"""
-    return start + middle + stop
+for columnName, c2 in zip(repeated, repeated_org):
+    initRow = f'\t {columnName} = NewReapeatedColumn("{c2}")\n'
+    initRepeatColumns.append(initRow)
+
+    repeatRow = f"\t {columnName}, \n"
+    repeatColumnNames.append(repeatRow)
+
+    loadRow = f"\t {columnName} = m.{columnName} \n"
+    loadRepeatColumnNames.append(loadRow)
+
+    registerColumnsRow = f"\t RegisteredColumns[{columnName}.Name] = {columnName} \n"
+    registerColumns.append(registerColumnsRow)
+
+    mappedColumnsRow = f"\t {columnName} MappedColumn \n"
+    mappedColumns.append(mappedColumnsRow)
 
 
-def create_filter_contains(column):
-    return (
-            f"func Filter{column.capitalize()}Contains(i *Item, s string) bool"  + "{" + "\n"
-            f"return strings.Contains(i.{column.capitalize()}, s)"
-            "\n" + "}"
-    )
-
-def create_filter_startswith(column):
-    return (
-            f"func Filter{column.capitalize()}StartsWith(i *Item, s string) bool"  + "{" + "\n"
-            f"return strings.HasPrefix(i.{column.capitalize()}, s)"
-            "\n" + "}"
-    )
-
-def create_filter_match(column):
-    return (
-            f"func Filter{column.capitalize()}Match(i *Item, s string) bool"  + "{" + "\n"
-            f"return i.{column.capitalize()} ==  s"
-            "\n" + "}"
-    )
+# create bitarrays with item labels for column values.
+bitArrayStores = []
+for c1, c2 in zip(bitarray, bitarray_org):
+    onerow = f'\tSetBitArray("{c2}", i.{c1}, i.Label)\n'
+    bitArrayStores.append(onerow)
 
 
-def create_getter(column):
-    return (
-            f"func Getters{column.capitalize()}(i *Item) string"  + "{" + "\n"
-            f"return i.{column.capitalize()}"
-            "\n" + "}"
-    )
+# create ItemFull struct fields
+columnsItemIn = []
+
+for c1, c2 in zip(allcolumns, allcolumns_org):
+    onerow = f'\t {c1}	string `json:"{c2}"`\n'
+    columnsItemIn.append(onerow)
+
+# create ItemFull struct fields
+columnsItemOut = []
+for c1, c2 in zip(allcolumns, allcolumns_org):
+
+    if c1 in ignored:
+        continue
+
+    onerow = f'\t {c1}	string `json:"{c2}"`\n'
+    columnsItemOut.append(onerow)
+
+# create Item struct fields
+columnsItem = []
+for c1, c2 in zip(allcolumns, allcolumns_org):
+
+    if c1 in ignored:
+        continue
+
+    onerow = f"\t{c1}  string\n"
+    if c1 in repeated:
+        onerow = f"\t{c1}    uint32\n"
+    columnsItem.append(onerow)
 
 
-def create_reduce(column):
-    return """
-    func reduceCount(items Items) map[string]string {
-	result := make(map[string]string)
-	result["count"] = strconv.Itoa(len(items))
-	return result
-}
-    """
+# create Shrink code for repeated fields
+# where we map uint32 to a string value.
+shrinkVars = []
+shrinkItems = []
 
-def create_init_register():
-    return """
-    RegisterFuncMap = make(registerFuncType)
-    RegisterGroupBy = make(registerGroupByFunc)
-    RegisterGetters = make(registerGettersMap)
-    RegisterReduce = make(registerReduce)
-
-    """
-
-def create_register_match_func(column):
-    return f'RegisterFuncMap["match-{column.lower()}"] = Filter{column.capitalize()}Match'
+for c in repeated:
+    mappedcolumn = f"var {c} MappedColumn\n"
+    shrinkVars.append(mappedcolumn)
+    shrinkItems.append(f"\t {c}.Store(i.{c})\n")
 
 
-def create_register_contains_func(column):
-    return f'RegisterFuncMap["contains-{column.lower()}"] = Filter{column.capitalize()}Contains'
+# create the actual shrinked/expand Item fields.
+shrinkItemFields = []
+expandItemFields = []
+
+for c in allcolumns:
+
+    if c in ignored:
+        continue
+
+    if c in repeated:
+        # string to unint
+        shrinkItemFields.append(f"\t\t{c}.GetIndex(i.{c}),\n")
+        # unint back to string
+        expandItemFields.append(f"\t\t{c}.GetValue(i.{c}),\n")
+    else:
+        shrinkItemFields.append(f"\t\ti.{c},\n")
+        expandItemFields.append(f"\t\ti.{c},\n")
 
 
-def create_register_startswith_func(column):
-    return f'RegisterFuncMap["startswith-{column.lower()}"] = Filter{column.capitalize()}StartsWith'
+# ItemIn Columns
+inColumns = []
+for c in allcolumns_org:
+    inColumns.append(f'\t\t"{c}",\n')
+
+# ItemOut Columns
+outColumns = []
+for cc, c in zip(allcolumns, allcolumns_org):
+    # cc CamelCaseColumn.
+    if cc in ignored:
+        continue
+    outColumns.append(f'\t\t"{c}",\n')
+
+# create column filters.
+# match, startswith, contains etc
+
+columnFilters = []
+filtertemplate = env.get_template("filters.jinja2")
+
+for c in allcolumns:
+    if c in ignored:
+        continue
+
+    lookup = f"i.{c}"
+    if c in repeated:
+        lookup = f"{c}.GetValue(i.{c})"
+
+    txt = filtertemplate.render(column=c, lookup=lookup)
+    columnFilters.append(txt)
+
+registerFilters = []
+rtempl = env.get_template('registerFilters.jinja2')
+# register filters
+for c, co in zip(allcolumns, allcolumns_org):
+    if c in ignored:
+        continue
+    txt = rtempl.render(co=co, columnName=c, bitarray=c in bitarray)
+    registerFilters.append(txt)
+
+sortColumns = []
+sortTemplate = env.get_template('sortfunc.jinja2')
+
+# create sort functions
+for c, co in zip(allcolumns, allcolumns_org):
+    if c in ignored:
+        continue
+
+    c1 = f"items[i].{c} < items[j].{c}"
+    c2 = f"items[i].{c} > items[j].{c}"
+
+    if c in repeated:
+        c1 = f"{c}.GetValue(items[i].{c}) < {c}.GetValue(items[j].{c})"
+        c2 = f"{c}.GetValue(items[i].{c}) > {c}.GetValue(items[j].{c})"
+
+    txt = sortTemplate.render(co=co, c1=c1, c2=c2)
+    sortColumns.append(txt)
 
 
-def create_register_getter(column):
-    return f'RegisterGetters["{column.lower()}"] = Getters{column.capitalize()}'
+csv_columns = []
+for c in allcolumns:
+    csv_columns.append(f'\t"{c}",\n')
 
 
-def create_register_groupby(column):
-    return f'RegisterGroupBy["{column.lower()}"] = Getters{column.capitalize()}'
+# Finally render the model.go template
+modeltemplate = env.get_template('model.template.jinja2')
+mapstemplate = env.get_template('modelmap.template.jinja2')
+
+geometryGetter = '""'
+print('GEOCOLUMNS: ' + " ".join(geocolumns))
+if len(geocolumns) == 1:
+    geometryGetter = f"Getters{geocolumns[0]}(&i)"
+
+output = modeltemplate.render(
+    columnsItemIn=''.join(columnsItemIn),
+    columnsItemOut=''.join(columnsItemOut),
+    columnsItem=''.join(columnsItem),
+    shrinkItems=''.join(shrinkItems),
+    shrinkItemFields=''.join(shrinkItemFields),
+    expandItemFields=''.join(expandItemFields),
+    csv_columns=''.join(csv_columns),
+    inColumns=''.join(inColumns),
+    outColumns=''.join(outColumns),
+    columnFilters=''.join(columnFilters),
+    registerFilters=''.join(registerFilters),
+    sortColumns=''.join(sortColumns),
+    indexcolumn=allcolumns[index],
+    geometryGetter=geometryGetter,
+    bitArrayStores=''.join(bitArrayStores),
+)
+
+f = open('model.go', 'w')
+f.write(output)
+f.close()
+print('saved in model.go')
+print('!!NOTE!! edit the default search filter')
 
 
-def create_register_reduce(column):
-    return 'RegisterReduce["count"] = reduceCount'
+mapsoutput = mapstemplate.render(
+    initRepeatColumns=''.join(initRepeatColumns),
+    repeatColumnNames=''.join(repeatColumnNames),
+    loadRepeatColumnNames=''.join(loadRepeatColumnNames),
+    registerColumns=''.join(registerColumns),
+    mappedColumns=''.join(mappedColumns),
+    shrinkVars=''.join(shrinkVars),
+)
 
+f = open('model_maps.go', 'w')
+f.write(mapsoutput)
+f.close()
+print('model hashmaps  saved in model_maps.go')
 
-def create_grouped():
-    return """
-type GroupedOperations struct {
-	Funcs   registerFuncType
-	GroupBy registerGroupByFunc
-	Getters registerGettersMap
-	Reduce  registerReduce
-}
-
-var Operations GroupedOperations
-
-var RegisterFuncMap registerFuncType
-var RegisterGroupBy registerGroupByFunc
-var RegisterGetters registerGettersMap
-var RegisterReduce registerReduce
-"""
-
-def create_sortby_line_plus(column):
-	return f'"{column.lower()}"' + ": func(i, j int) bool { return " + f"items[i].{column.capitalize()} < items[j].{column.capitalize()} " + " },"
-
-def create_sortby_line_minus(column):
-	return f'"-{column.lower()}"' + ": func(i, j int) bool { return " + f"items[i].{column.capitalize()} > items[j].{column.capitalize()} " + " },"
-
-def create_sortby(row):
-    start = """func sortBy(items Items, sortingL []string) (Items, []string) {
-	sortFuncs := map[string]func(int, int) bool{"""
-    lines = []
-    for k in row.keys():
-        lines.append(create_sortby_line_plus(k))
-        lines.append(create_sortby_line_minus(k))
-        lines.append("\n")
-    lines.append("}")
-    end = """
-    for _, sortFuncName := range sortingL {
-    	sortFunc := sortFuncs[sortFuncName]
-        sort.Slice(items, sortFunc)
-                                }
-        // TODO must be nicer way
-        keys := []string{}
-        for key := range sortFuncs {
-              keys = append(keys, key)
-        }
-
-        return items, keys
-        }"""
-    return start + "\n".join(lines) + end
-
-if __name__ == "__main__":
-
-    filename = str(sys.argv[sys.argv.index('-f')+1]) if '-f' in sys.argv else "items.csv"
-    file_format = str(sys.argv[sys.argv.index('-format')+1]) if '-format' in sys.argv else "csv"
-
-    if file_format not in supported_fileformats():
-        print(f"{file_format} not part of supported file formats {','.join(supported_fileformats())}")
-        sys.exit()
-
-    with open(filename) as f:
-        reader = create_reader(f, file_format)
-        row = dict(next(reader))
-
-    print("package main")
-    print()
-
-    print("import (")
-    print('"sort"')
-    print('"strconv"')
-    print('"strings"')
-    print(")")
-    print(create_struct(row))
-    print()
-    print(create_columns(row))
-    print()
-    print(create_row(row))
-    print()
-    print(create_getindex(row))
-    print()
-
-    print("// contain filters")
-    for k in row.keys():
-        print(create_filter_contains(k))
-
-    print()
-    print("// startswith filters")
-    for k in row.keys():
-        print(create_filter_startswith(k))
-
-    print()
-    print("// match filters")
-    for k in row.keys():
-        print(create_filter_match(k))
-
-    print()
-    print("// reduce functions")
-    print(create_reduce(None))
-
-    print()
-    print("// getters")
-    for k in row.keys():
-        print(create_getter(k))
-    print()
-
-
-    print(create_grouped())
-    print("func init() {")
-    print(create_init_register())
-
-    print()
-    print("// register match filters")
-    for k in row.keys():
-        print(create_register_match_func(k))
-
-    print()
-    print("// register contains filters")
-    for k in row.keys():
-        print(create_register_contains_func(k))
-
-    print()
-    print("// register startswith filters")
-    for k in row.keys():
-        print(create_register_startswith_func(k))
-    print()
-
-    print()
-    print("// register getters ")
-    for k in row.keys():
-        print(create_register_getter(k))
-    print()
-
-    print()
-    print("// register groupby ")
-    for k in row.keys():
-        print(create_register_groupby(k))
-    print()
-
-
-    print()
-    print("// register reduce functions")
-    print(create_register_reduce(None))
-
-    print("}")
-
-    print(create_sortby(row))
-    print()
+os.system("go fmt model.go")
+os.system("go fmt model_maps.go")
 
