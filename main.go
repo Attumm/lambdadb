@@ -66,7 +66,7 @@ func defaultSettings() {
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
 
-	SETTINGS.Set("CORS", "n", "CORS enabled")
+	SETTINGS.Set("CORS", "y", "CORS enabled")
 
 	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
@@ -150,14 +150,14 @@ func setupHandler() http.Handler {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
+	mux.Handle("/", http.FileServer(http.Dir("./files/www")))
+	mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
+
 	if SETTINGS.Get("mgmt") == "y" {
 		mux.HandleFunc("/mgmt/add/", addRest)
 		mux.HandleFunc("/mgmt/rm/", rmRest)
 		mux.HandleFunc("/mgmt/save/", saveRest)
 		mux.HandleFunc("/mgmt/load/", loadRest)
-
-		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
 	}
 
 	if SETTINGS.Get("prometheus-monitoring") == "y" {

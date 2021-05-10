@@ -46,13 +46,17 @@ type ItemIn struct {
 	Pid                     string `json:"pid"`
 	Vid                     string `json:"vid"`
 	Numid                   string `json:"numid"`
+	Straat                  string `json:"straat"`
 	Postcode                string `json:"postcode"`
+	Huisnummer              string `json:"huisnummer"`
+	Huisletter              string `json:"huisletter"`
+	Huisnummertoevoeging    string `json:"huisnummertoevoeging"`
 	Oppervlakte             string `json:"oppervlakte"`
 	Woningequivalent        string `json:"woningequivalent"`
-	Adres                   string `json:"adres"`
 	WoningType              string `json:"woning_type"`
 	LabelscoreVoorlopig     string `json:"labelscore_voorlopig"`
 	LabelscoreDefinitief    string `json:"labelscore_definitief"`
+	Energieklasse           string `json:"energieklasse"`
 	Gemeentecode            string `json:"gemeentecode"`
 	Gemeentenaam            string `json:"gemeentenaam"`
 	Buurtcode               string `json:"buurtcode"`
@@ -77,13 +81,18 @@ type ItemOut struct {
 	Pid                     string `json:"pid"`
 	Vid                     string `json:"vid"`
 	Numid                   string `json:"numid"`
+	Straat                  string `json:"straat"`
 	Postcode                string `json:"postcode"`
+	Huisnummer              string `json:"huisnummer"`
+	Huisletter              string `json:"huisletter"`
+	Huisnummertoevoeging    string `json:"huisnummertoevoeging"`
+	Adres                   string `json:"adres"` // should be removed soon
 	Oppervlakte             string `json:"oppervlakte"`
 	Woningequivalent        string `json:"woningequivalent"`
-	Adres                   string `json:"adres"`
 	WoningType              string `json:"woning_type"`
 	LabelscoreVoorlopig     string `json:"labelscore_voorlopig"`
 	LabelscoreDefinitief    string `json:"labelscore_definitief"`
+	Energieklasse           string `json:"energieklasse"`
 	Gemeentecode            string `json:"gemeentecode"`
 	Gemeentenaam            string `json:"gemeentenaam"`
 	Buurtcode               string `json:"buurtcode"`
@@ -109,13 +118,17 @@ type Item struct {
 	Pid                     uint32
 	Vid                     uint32
 	Numid                   string
+	Straat                  uint32
 	Postcode                uint32
+	Huisnummer              uint32
+	Huisletter              uint32
+	Huisnummertoevoeging    uint32
 	Oppervlakte             uint32
 	Woningequivalent        uint32
-	Adres                   string
 	WoningType              uint32
 	LabelscoreVoorlopig     uint32
 	LabelscoreDefinitief    uint32
+	Energieklasse           uint32
 	Gemeentecode            uint32
 	Gemeentenaam            uint32
 	Buurtcode               uint32
@@ -145,12 +158,17 @@ func (i ItemIn) Shrink(label int) Item {
 
 	Pid.Store(i.Pid)
 	Vid.Store(i.Vid)
+	Straat.Store(i.Straat)
 	Postcode.Store(i.Postcode)
+	Huisnummer.Store(i.Huisnummer)
+	Huisletter.Store(i.Huisletter)
+	Huisnummertoevoeging.Store(i.Huisnummertoevoeging)
 	Oppervlakte.Store(i.Oppervlakte)
 	Woningequivalent.Store(i.Woningequivalent)
 	WoningType.Store(i.WoningType)
 	LabelscoreVoorlopig.Store(i.LabelscoreVoorlopig)
 	LabelscoreDefinitief.Store(i.LabelscoreDefinitief)
+	Energieklasse.Store(i.Energieklasse)
 	Gemeentecode.Store(i.Gemeentecode)
 	Gemeentenaam.Store(i.Gemeentenaam)
 	Buurtcode.Store(i.Buurtcode)
@@ -176,13 +194,17 @@ func (i ItemIn) Shrink(label int) Item {
 		Pid.GetIndex(i.Pid),
 		Vid.GetIndex(i.Vid),
 		i.Numid,
+		Straat.GetIndex(i.Straat),
 		Postcode.GetIndex(i.Postcode),
+		Huisnummer.GetIndex(i.Huisnummer),
+		Huisletter.GetIndex(i.Huisletter),
+		Huisnummertoevoeging.GetIndex(i.Huisnummertoevoeging),
 		Oppervlakte.GetIndex(i.Oppervlakte),
 		Woningequivalent.GetIndex(i.Woningequivalent),
-		i.Adres,
 		WoningType.GetIndex(i.WoningType),
 		LabelscoreVoorlopig.GetIndex(i.LabelscoreVoorlopig),
 		LabelscoreDefinitief.GetIndex(i.LabelscoreDefinitief),
+		Energieklasse.GetIndex(i.Energieklasse),
 		Gemeentecode.GetIndex(i.Gemeentecode),
 		Gemeentenaam.GetIndex(i.Gemeentenaam),
 		Buurtcode.GetIndex(i.Buurtcode),
@@ -209,9 +231,11 @@ func (i ItemIn) Shrink(label int) Item {
 func (i *Item) StoreBitArrayColumns() {
 
 	SetBitArray("pid", i.Pid, i.Label)
+	SetBitArray("postcode", i.Postcode, i.Label)
 	SetBitArray("woning_type", i.WoningType, i.Label)
-	// SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
-	// SetBitArray("labelscore_definitief", i.LabelscoreDefinitief, i.Label)
+	SetBitArray("labelscore_voorlopig", i.LabelscoreVoorlopig, i.Label)
+	SetBitArray("labelscore_definitief", i.LabelscoreDefinitief, i.Label)
+	SetBitArray("energieklasse", i.Energieklasse, i.Label)
 	SetBitArray("gemeentecode", i.Gemeentecode, i.Label)
 	SetBitArray("buurtcode", i.Buurtcode, i.Label)
 	SetBitArray("wijkcode", i.Wijkcode, i.Label)
@@ -225,13 +249,18 @@ func (i Item) Serialize() ItemOut {
 		Pid.GetValue(i.Pid),
 		Vid.GetValue(i.Vid),
 		i.Numid,
+		Straat.GetValue(i.Straat),
 		Postcode.GetValue(i.Postcode),
+		Huisnummer.GetValue(i.Huisnummer),
+		Huisletter.GetValue(i.Huisletter),
+		Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging),
+		GetAdres(&i),
 		Oppervlakte.GetValue(i.Oppervlakte),
 		Woningequivalent.GetValue(i.Woningequivalent),
-		i.Adres,
 		WoningType.GetValue(i.WoningType),
 		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
 		LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief),
+		Energieklasse.GetValue(i.Energieklasse),
 		Gemeentecode.GetValue(i.Gemeentecode),
 		Gemeentenaam.GetValue(i.Gemeentenaam),
 		Buurtcode.GetValue(i.Buurtcode),
@@ -259,13 +288,17 @@ func (i ItemIn) Columns() []string {
 		"pid",
 		"vid",
 		"numid",
+		"straat",
 		"postcode",
+		"huisnummer",
+		"huisletter",
+		"huisnummertoevoeging",
 		"oppervlakte",
 		"woningequivalent",
-		"adres",
 		"woning_type",
 		"labelscore_voorlopig",
 		"labelscore_definitief",
+		"energieklasse",
 		"gemeentecode",
 		"gemeentenaam",
 		"buurtcode",
@@ -293,13 +326,17 @@ func (i ItemOut) Columns() []string {
 		"pid",
 		"vid",
 		"numid",
+		"straat",
 		"postcode",
+		"huisnummer",
+		"huisletter",
+		"huisnummertoevoeging",
 		"oppervlakte",
 		"woningequivalent",
-		"adres",
 		"woning_type",
 		"labelscore_voorlopig",
 		"labelscore_definitief",
+		"energieklasse",
 		"gemeentecode",
 		"gemeentenaam",
 		"buurtcode",
@@ -328,13 +365,17 @@ func (i Item) Row() []string {
 		Pid.GetValue(i.Pid),
 		Vid.GetValue(i.Vid),
 		i.Numid,
+		Straat.GetValue(i.Straat),
 		Postcode.GetValue(i.Postcode),
+		Huisnummer.GetValue(i.Huisnummer),
+		Huisletter.GetValue(i.Huisletter),
+		Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging),
 		Oppervlakte.GetValue(i.Oppervlakte),
 		Woningequivalent.GetValue(i.Woningequivalent),
-		i.Adres,
 		WoningType.GetValue(i.WoningType),
 		LabelscoreVoorlopig.GetValue(i.LabelscoreVoorlopig),
 		LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief),
+		Energieklasse.GetValue(i.Energieklasse),
 		Gemeentecode.GetValue(i.Gemeentecode),
 		Gemeentenaam.GetValue(i.Gemeentenaam),
 		Buurtcode.GetValue(i.Buurtcode),
@@ -424,6 +465,26 @@ func GettersNumid(i *Item) string {
 	return i.Numid
 }
 
+// contain filter Straat
+func FilterStraatContains(i *Item, s string) bool {
+	return strings.Contains(Straat.GetValue(i.Straat), s)
+}
+
+// startswith filter Straat
+func FilterStraatStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Straat.GetValue(i.Straat), s)
+}
+
+// match filters Straat
+func FilterStraatMatch(i *Item, s string) bool {
+	return Straat.GetValue(i.Straat) == s
+}
+
+// getter Straat
+func GettersStraat(i *Item) string {
+	return Straat.GetValue(i.Straat)
+}
+
 // contain filter Postcode
 func FilterPostcodeContains(i *Item, s string) bool {
 	return strings.Contains(Postcode.GetValue(i.Postcode), s)
@@ -442,6 +503,66 @@ func FilterPostcodeMatch(i *Item, s string) bool {
 // getter Postcode
 func GettersPostcode(i *Item) string {
 	return Postcode.GetValue(i.Postcode)
+}
+
+// contain filter Huisnummer
+func FilterHuisnummerContains(i *Item, s string) bool {
+	return strings.Contains(Huisnummer.GetValue(i.Huisnummer), s)
+}
+
+// startswith filter Huisnummer
+func FilterHuisnummerStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Huisnummer.GetValue(i.Huisnummer), s)
+}
+
+// match filters Huisnummer
+func FilterHuisnummerMatch(i *Item, s string) bool {
+	return Huisnummer.GetValue(i.Huisnummer) == s
+}
+
+// getter Huisnummer
+func GettersHuisnummer(i *Item) string {
+	return Huisnummer.GetValue(i.Huisnummer)
+}
+
+// contain filter Huisletter
+func FilterHuisletterContains(i *Item, s string) bool {
+	return strings.Contains(Huisletter.GetValue(i.Huisletter), s)
+}
+
+// startswith filter Huisletter
+func FilterHuisletterStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Huisletter.GetValue(i.Huisletter), s)
+}
+
+// match filters Huisletter
+func FilterHuisletterMatch(i *Item, s string) bool {
+	return Huisletter.GetValue(i.Huisletter) == s
+}
+
+// getter Huisletter
+func GettersHuisletter(i *Item) string {
+	return Huisletter.GetValue(i.Huisletter)
+}
+
+// contain filter Huisnummertoevoeging
+func FilterHuisnummertoevoegingContains(i *Item, s string) bool {
+	return strings.Contains(Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging), s)
+}
+
+// startswith filter Huisnummertoevoeging
+func FilterHuisnummertoevoegingStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging), s)
+}
+
+// match filters Huisnummertoevoeging
+func FilterHuisnummertoevoegingMatch(i *Item, s string) bool {
+	return Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging) == s
+}
+
+// getter Huisnummertoevoeging
+func GettersHuisnummertoevoeging(i *Item) string {
+	return Huisnummertoevoeging.GetValue(i.Huisnummertoevoeging)
 }
 
 // contain filter Oppervlakte
@@ -484,6 +605,7 @@ func GettersWoningequivalent(i *Item) string {
 	return Woningequivalent.GetValue(i.Woningequivalent)
 }
 
+/*
 // contain filter Adres
 func FilterAdresContains(i *Item, s string) bool {
 	return strings.Contains(i.Adres, s)
@@ -503,6 +625,7 @@ func FilterAdresMatch(i *Item, s string) bool {
 func GettersAdres(i *Item) string {
 	return i.Adres
 }
+*/
 
 // contain filter WoningType
 func FilterWoningTypeContains(i *Item, s string) bool {
@@ -562,6 +685,26 @@ func FilterLabelscoreDefinitiefMatch(i *Item, s string) bool {
 // getter LabelscoreDefinitief
 func GettersLabelscoreDefinitief(i *Item) string {
 	return LabelscoreDefinitief.GetValue(i.LabelscoreDefinitief)
+}
+
+// contain filter Energieklasse
+func FilterEnergieklasseContains(i *Item, s string) bool {
+	return strings.Contains(Energieklasse.GetValue(i.Energieklasse), s)
+}
+
+// startswith filter Energieklasse
+func FilterEnergieklasseStartsWith(i *Item, s string) bool {
+	return strings.HasPrefix(Energieklasse.GetValue(i.Energieklasse), s)
+}
+
+// match filters Energieklasse
+func FilterEnergieklasseMatch(i *Item, s string) bool {
+	return Energieklasse.GetValue(i.Energieklasse) == s
+}
+
+// getter Energieklasse
+func GettersEnergieklasse(i *Item) string {
+	return Energieklasse.GetValue(i.Energieklasse)
 }
 
 // contain filter Gemeentecode
@@ -943,15 +1086,6 @@ func GettersGebruiksdoelen(i *Item) string {
 	return Gebruiksdoelen.GetArrayValue(i.Gebruiksdoelen)
 }
 
-// getter Gebruiksdoelen
-func GroupByGettersGebruiksdoelen(item *Item, grouping ItemsGroupedBy) {
-
-	for i := range item.Gebruiksdoelen {
-		groupkey := Gebruiksdoelen.GetValue(item.Gebruiksdoelen[i])
-		grouping[groupkey] = append(grouping[groupkey], item)
-	}
-}
-
 /*
 // contain filters
 func FilterEkeyContains(i *Item, s string) bool {
@@ -1025,7 +1159,7 @@ func init() {
 	// example RegisterFuncMap["search"] = FilterEkeyStartsWith
 
 	//RegisterFuncMap["value"] = 'EDITYOURSELF'
-	RegisterGetters["value"] = GettersAdres
+	RegisterGetters["value"] = GettersGemeentecode
 
 	// register filters
 
@@ -1050,12 +1184,40 @@ func init() {
 	RegisterGetters["numid"] = GettersNumid
 	RegisterGroupBy["numid"] = GettersNumid
 
+	//register filters for Straat
+	RegisterFuncMap["match-straat"] = FilterStraatMatch
+	RegisterFuncMap["contains-straat"] = FilterStraatContains
+	RegisterFuncMap["startswith-straat"] = FilterStraatStartsWith
+	RegisterGetters["straat"] = GettersStraat
+	RegisterGroupBy["straat"] = GettersStraat
+
 	//register filters for Postcode
 	RegisterFuncMap["match-postcode"] = FilterPostcodeMatch
 	RegisterFuncMap["contains-postcode"] = FilterPostcodeContains
 	RegisterFuncMap["startswith-postcode"] = FilterPostcodeStartsWith
 	RegisterGetters["postcode"] = GettersPostcode
 	RegisterGroupBy["postcode"] = GettersPostcode
+
+	//register filters for Huisnummer
+	RegisterFuncMap["match-huisnummer"] = FilterHuisnummerMatch
+	RegisterFuncMap["contains-huisnummer"] = FilterHuisnummerContains
+	RegisterFuncMap["startswith-huisnummer"] = FilterHuisnummerStartsWith
+	RegisterGetters["huisnummer"] = GettersHuisnummer
+	RegisterGroupBy["huisnummer"] = GettersHuisnummer
+
+	//register filters for Huisletter
+	RegisterFuncMap["match-huisletter"] = FilterHuisletterMatch
+	RegisterFuncMap["contains-huisletter"] = FilterHuisletterContains
+	RegisterFuncMap["startswith-huisletter"] = FilterHuisletterStartsWith
+	RegisterGetters["huisletter"] = GettersHuisletter
+	RegisterGroupBy["huisletter"] = GettersHuisletter
+
+	//register filters for Huisnummertoevoeging
+	RegisterFuncMap["match-huisnummertoevoeging"] = FilterHuisnummertoevoegingMatch
+	RegisterFuncMap["contains-huisnummertoevoeging"] = FilterHuisnummertoevoegingContains
+	RegisterFuncMap["startswith-huisnummertoevoeging"] = FilterHuisnummertoevoegingStartsWith
+	RegisterGetters["huisnummertoevoeging"] = GettersHuisnummertoevoeging
+	RegisterGroupBy["huisnummertoevoeging"] = GettersHuisnummertoevoeging
 
 	//register filters for Oppervlakte
 	RegisterFuncMap["match-oppervlakte"] = FilterOppervlakteMatch
@@ -1070,14 +1232,6 @@ func init() {
 	RegisterFuncMap["startswith-woningequivalent"] = FilterWoningequivalentStartsWith
 	RegisterGetters["woningequivalent"] = GettersWoningequivalent
 	RegisterGroupBy["woningequivalent"] = GettersWoningequivalent
-
-	//register filters for Adres
-	RegisterFuncMap["match-adres"] = FilterAdresMatch
-	RegisterFuncMap["contains-adres"] = FilterAdresContains
-	RegisterFuncMap["startswith-adres"] = FilterAdresStartsWith
-	RegisterGetters["adres"] = GettersAdres
-	RegisterGroupBy["adres"] = GettersAdres
-
 	//register filters for WoningType
 	RegisterFuncMap["match-woning_type"] = FilterWoningTypeMatch
 	RegisterFuncMap["contains-woning_type"] = FilterWoningTypeContains
@@ -1098,6 +1252,13 @@ func init() {
 	RegisterFuncMap["startswith-labelscore_definitief"] = FilterLabelscoreDefinitiefStartsWith
 	RegisterGetters["labelscore_definitief"] = GettersLabelscoreDefinitief
 	RegisterGroupBy["labelscore_definitief"] = GettersLabelscoreDefinitief
+
+	//register filters for Energieklasse
+	RegisterFuncMap["match-energieklasse"] = FilterEnergieklasseMatch
+	RegisterFuncMap["contains-energieklasse"] = FilterEnergieklasseContains
+	RegisterFuncMap["startswith-energieklasse"] = FilterEnergieklasseStartsWith
+	RegisterGetters["energieklasse"] = GettersEnergieklasse
+	RegisterGroupBy["energieklasse"] = GettersEnergieklasse
 
 	//register filters for Gemeentecode
 	RegisterFuncMap["match-gemeentecode"] = FilterGemeentecodeMatch
@@ -1225,6 +1386,8 @@ func init() {
 	RegisterGetters["gebruiksdoelen"] = GettersGebruiksdoelen
 	RegisterGroupBy["gebruiksdoelen"] = GettersGebruiksdoelen
 
+	RegisterGroupBy["postcodehuisnummer"] = GettersToevoegingen
+
 	validateRegisters()
 
 	/*
@@ -1259,11 +1422,35 @@ func createSort(items Items) sortLookup {
 		"numid":  func(i, j int) bool { return items[i].Numid < items[j].Numid },
 		"-numid": func(i, j int) bool { return items[i].Numid > items[j].Numid },
 
+		"straat":  func(i, j int) bool { return Straat.GetValue(items[i].Straat) < Straat.GetValue(items[j].Straat) },
+		"-straat": func(i, j int) bool { return Straat.GetValue(items[i].Straat) > Straat.GetValue(items[j].Straat) },
+
 		"postcode": func(i, j int) bool {
 			return Postcode.GetValue(items[i].Postcode) < Postcode.GetValue(items[j].Postcode)
 		},
 		"-postcode": func(i, j int) bool {
 			return Postcode.GetValue(items[i].Postcode) > Postcode.GetValue(items[j].Postcode)
+		},
+
+		"huisnummer": func(i, j int) bool {
+			return Huisnummer.GetValue(items[i].Huisnummer) < Huisnummer.GetValue(items[j].Huisnummer)
+		},
+		"-huisnummer": func(i, j int) bool {
+			return Huisnummer.GetValue(items[i].Huisnummer) > Huisnummer.GetValue(items[j].Huisnummer)
+		},
+
+		"huisletter": func(i, j int) bool {
+			return Huisletter.GetValue(items[i].Huisletter) < Huisletter.GetValue(items[j].Huisletter)
+		},
+		"-huisletter": func(i, j int) bool {
+			return Huisletter.GetValue(items[i].Huisletter) > Huisletter.GetValue(items[j].Huisletter)
+		},
+
+		"huisnummertoevoeging": func(i, j int) bool {
+			return Huisnummertoevoeging.GetValue(items[i].Huisnummertoevoeging) < Huisnummertoevoeging.GetValue(items[j].Huisnummertoevoeging)
+		},
+		"-huisnummertoevoeging": func(i, j int) bool {
+			return Huisnummertoevoeging.GetValue(items[i].Huisnummertoevoeging) > Huisnummertoevoeging.GetValue(items[j].Huisnummertoevoeging)
 		},
 
 		"oppervlakte": func(i, j int) bool {
@@ -1279,9 +1466,6 @@ func createSort(items Items) sortLookup {
 		"-woningequivalent": func(i, j int) bool {
 			return Woningequivalent.GetValue(items[i].Woningequivalent) > Woningequivalent.GetValue(items[j].Woningequivalent)
 		},
-
-		"adres":  func(i, j int) bool { return items[i].Adres < items[j].Adres },
-		"-adres": func(i, j int) bool { return items[i].Adres > items[j].Adres },
 
 		"woning_type": func(i, j int) bool {
 			return WoningType.GetValue(items[i].WoningType) < WoningType.GetValue(items[j].WoningType)
@@ -1302,6 +1486,13 @@ func createSort(items Items) sortLookup {
 		},
 		"-labelscore_definitief": func(i, j int) bool {
 			return LabelscoreDefinitief.GetValue(items[i].LabelscoreDefinitief) > LabelscoreDefinitief.GetValue(items[j].LabelscoreDefinitief)
+		},
+
+		"energieklasse": func(i, j int) bool {
+			return Energieklasse.GetValue(items[i].Energieklasse) < Energieklasse.GetValue(items[j].Energieklasse)
+		},
+		"-energieklasse": func(i, j int) bool {
+			return Energieklasse.GetValue(items[i].Energieklasse) > Energieklasse.GetValue(items[j].Energieklasse)
 		},
 
 		"gemeentecode": func(i, j int) bool {

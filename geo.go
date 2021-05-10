@@ -120,9 +120,9 @@ func (i Item) GeoIndex(label int) error {
 	S2CELLMAP[i.Label] = cell.ID()
 
 	// Update index while loading data so queries already work
-	if label%100000 == 0 {
-		S2CELLS.Sort()
-	}
+	//if label%1000000 == 0 {
+	//	S2CELLS.Sort()
+	//}
 
 	return nil
 

@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 	defaultSettings()
 
 	SETTINGS.Set(
-		"csv", "./testdata/dataselectie_vbo_energie_20210217.head.csv.gz",
+		"csv", "./testdata/dataselectie_vbo_energie_20210505.head.csv",
 		"test dataset")
 
 	SETTINGS.Set("channelwait", "0.01s", "timeout for channel loading")
@@ -72,7 +72,7 @@ func TestBasicHandlers(t *testing.T) {
 
 	tests := []testCase{
 		testCase{"/list/?search=1", "10"},
-		testCase{"/typeahead/gemeentecode/?search=1", "2"},
+		testCase{"/typeahead/huisnummer/?search=1", "3"},
 		testCase{"/typeahead/pid/?search=1", "2"},
 		testCase{"/help/", ""},
 	}

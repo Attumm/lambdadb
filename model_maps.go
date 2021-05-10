@@ -10,12 +10,17 @@ package main
 type ModelMaps struct {
 	Pid                     MappedColumn
 	Vid                     MappedColumn
+	Straat                  MappedColumn
 	Postcode                MappedColumn
+	Huisnummer              MappedColumn
+	Huisletter              MappedColumn
+	Huisnummertoevoeging    MappedColumn
 	Oppervlakte             MappedColumn
 	Woningequivalent        MappedColumn
 	WoningType              MappedColumn
 	LabelscoreVoorlopig     MappedColumn
 	LabelscoreDefinitief    MappedColumn
+	Energieklasse           MappedColumn
 	Gemeentecode            MappedColumn
 	Gemeentenaam            MappedColumn
 	Buurtcode               MappedColumn
@@ -38,12 +43,17 @@ var BitArrays map[string]fieldBitarrayMap
 
 var Pid MappedColumn
 var Vid MappedColumn
+var Straat MappedColumn
 var Postcode MappedColumn
+var Huisnummer MappedColumn
+var Huisletter MappedColumn
+var Huisnummertoevoeging MappedColumn
 var Oppervlakte MappedColumn
 var Woningequivalent MappedColumn
 var WoningType MappedColumn
 var LabelscoreVoorlopig MappedColumn
 var LabelscoreDefinitief MappedColumn
+var Energieklasse MappedColumn
 var Gemeentecode MappedColumn
 var Gemeentenaam MappedColumn
 var Buurtcode MappedColumn
@@ -73,12 +83,17 @@ func init() {
 func setUpRepeatedColumns() {
 	Pid = NewReapeatedColumn("pid")
 	Vid = NewReapeatedColumn("vid")
+	Straat = NewReapeatedColumn("straat")
 	Postcode = NewReapeatedColumn("postcode")
+	Huisnummer = NewReapeatedColumn("huisnummer")
+	Huisletter = NewReapeatedColumn("huisletter")
+	Huisnummertoevoeging = NewReapeatedColumn("huisnummertoevoeging")
 	Oppervlakte = NewReapeatedColumn("oppervlakte")
 	Woningequivalent = NewReapeatedColumn("woningequivalent")
 	WoningType = NewReapeatedColumn("woning_type")
 	LabelscoreVoorlopig = NewReapeatedColumn("labelscore_voorlopig")
 	LabelscoreDefinitief = NewReapeatedColumn("labelscore_definitief")
+	Energieklasse = NewReapeatedColumn("energieklasse")
 	Gemeentecode = NewReapeatedColumn("gemeentecode")
 	Gemeentenaam = NewReapeatedColumn("gemeentenaam")
 	Buurtcode = NewReapeatedColumn("buurtcode")
@@ -102,12 +117,17 @@ func CreateMapstore() ModelMaps {
 	return ModelMaps{
 		Pid,
 		Vid,
+		Straat,
 		Postcode,
+		Huisnummer,
+		Huisletter,
+		Huisnummertoevoeging,
 		Oppervlakte,
 		Woningequivalent,
 		WoningType,
 		LabelscoreVoorlopig,
 		LabelscoreDefinitief,
+		Energieklasse,
 		Gemeentecode,
 		Gemeentenaam,
 		Buurtcode,
@@ -131,12 +151,17 @@ func LoadMapstore(m ModelMaps) {
 
 	Pid = m.Pid
 	Vid = m.Vid
+	Straat = m.Straat
 	Postcode = m.Postcode
+	Huisnummer = m.Huisnummer
+	Huisletter = m.Huisletter
+	Huisnummertoevoeging = m.Huisnummertoevoeging
 	Oppervlakte = m.Oppervlakte
 	Woningequivalent = m.Woningequivalent
 	WoningType = m.WoningType
 	LabelscoreVoorlopig = m.LabelscoreVoorlopig
 	LabelscoreDefinitief = m.LabelscoreDefinitief
+	Energieklasse = m.Energieklasse
 	Gemeentecode = m.Gemeentecode
 	Gemeentenaam = m.Gemeentenaam
 	Buurtcode = m.Buurtcode
@@ -157,12 +182,17 @@ func LoadMapstore(m ModelMaps) {
 	// register the columns
 	RegisteredColumns[Pid.Name] = Pid
 	RegisteredColumns[Vid.Name] = Vid
+	RegisteredColumns[Straat.Name] = Straat
 	RegisteredColumns[Postcode.Name] = Postcode
+	RegisteredColumns[Huisnummer.Name] = Huisnummer
+	RegisteredColumns[Huisletter.Name] = Huisletter
+	RegisteredColumns[Huisnummertoevoeging.Name] = Huisnummertoevoeging
 	RegisteredColumns[Oppervlakte.Name] = Oppervlakte
 	RegisteredColumns[Woningequivalent.Name] = Woningequivalent
 	RegisteredColumns[WoningType.Name] = WoningType
 	RegisteredColumns[LabelscoreVoorlopig.Name] = LabelscoreVoorlopig
 	RegisteredColumns[LabelscoreDefinitief.Name] = LabelscoreDefinitief
+	RegisteredColumns[Energieklasse.Name] = Energieklasse
 	RegisteredColumns[Gemeentecode.Name] = Gemeentecode
 	RegisteredColumns[Gemeentenaam.Name] = Gemeentenaam
 	RegisteredColumns[Buurtcode.Name] = Buurtcode

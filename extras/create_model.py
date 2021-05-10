@@ -179,6 +179,8 @@ initRepeatColumns = []
 repeatColumnNames = []
 loadRepeatColumnNames = []
 mappedColumns = []
+registerColumns = []
+
 
 for columnName, c2 in zip(repeated, repeated_org):
     initRow = f'\t {columnName} = NewReapeatedColumn("{c2}")\n'
@@ -189,6 +191,9 @@ for columnName, c2 in zip(repeated, repeated_org):
 
     loadRow = f"\t {columnName} = m.{columnName} \n"
     loadRepeatColumnNames.append(loadRow)
+
+    registerColumnsRow = f"\t RegisteredColumns[{columnName}.Name] = {columnName} \n"
+    registerColumns.append(registerColumnsRow)
 
     mappedColumnsRow = f"\t {columnName} MappedColumn \n"
     mappedColumns.append(mappedColumnsRow)
@@ -362,6 +367,7 @@ mapsoutput = mapstemplate.render(
     initRepeatColumns=''.join(initRepeatColumns),
     repeatColumnNames=''.join(repeatColumnNames),
     loadRepeatColumnNames=''.join(loadRepeatColumnNames),
+    registerColumns=''.join(registerColumns),
     mappedColumns=''.join(mappedColumns),
     shrinkVars=''.join(shrinkVars),
 )

@@ -62,6 +62,8 @@ func (items *Items) FillIndexes() {
 		ITEMS[i].GeoIndex(ITEMS[i].Label)
 	}
 
+	S2CELLS.Sort()
+
 	diff := time.Since(start)
 	msg := fmt.Sprint("Index set time: ", diff)
 	fmt.Printf(WarningColorN, msg)

@@ -2,10 +2,14 @@ model:
   adres: u
   buurtcode: b
   buurtnaam: r
+  energieklasse: b
   gebruiksdoelen: r
   gemeentecode: b
   gemeentenaam: r
   group_id_2020: u
+  huisletter: r
+  huisnummer: r
+  huisnummertoevoeging: r
   index: '0'
   labelscore_definitief: b
   labelscore_voorlopig: b
@@ -20,9 +24,10 @@ model:
   pand_gas_ean_aansluitingen: r
   pid: b
   point: g
-  postcode: r
+  postcode: b
   provinciecode: b
   provincienaam: r
+  straat: r
   vid: r
   wijkcode: b
   wijknaam: r

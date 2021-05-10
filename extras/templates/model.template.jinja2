@@ -85,7 +85,7 @@ func (i ItemIn) Shrink(label int) Item {
 
 // Store selected columns in seperate map[columnvalue]bitarray
 // for fast item selection
-func (i Item) StoreBitArrayColumns() {
+func (i *Item) StoreBitArrayColumns() {
 	{{ bitArrayStores }}
 }
 

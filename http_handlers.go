@@ -413,6 +413,10 @@ func corsEnabled(h http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Headers", "Page, Page-Size, Total-Pages, query, Total-Items, Query-Duration, Content-Type, X-CSRF-Token, Authorization")
 			return
 		} else {
+			// make sure items are not being modified during request
+			// otherwise wait..
+			lock.RLock()
+			defer lock.RUnlock()
 			h.ServeHTTP(w, r)
 		}
 	})
@@ -420,20 +424,19 @@ func corsEnabled(h http.Handler) http.Handler {
 }
 func passThrough(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// make sure items are not being modified during request
+		// otherwise wait..
+		lock.RLock()
+		defer lock.RUnlock()
 		h.ServeHTTP(w, r)
-
 	})
 }
 
 func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
+
 	if cors {
 		return corsEnabled
 	}
-
-	// make sure items are not being modified during request
-	// otherwise wait..
-	lock.RLock()
-	defer lock.RUnlock()
 
 	return passThrough
 }
