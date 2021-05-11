@@ -389,10 +389,6 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 		query := parseURLParameters(r)
 
 		items, queryTime := runQuery(ITEMS, query, operations)
-		if len(items) == 0 {
-			w.WriteHeader(404)
-			return
-		}
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderData(items, query, queryTime)
@@ -404,6 +400,10 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 		w.Header().Set("Content-Type", "application/json")
 		for key, val := range headerData {
 			w.Header().Set(key, val)
+		}
+		if len(items) == 0 {
+			w.WriteHeader(404)
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
