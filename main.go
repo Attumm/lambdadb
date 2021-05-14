@@ -82,11 +82,14 @@ func main() {
 	SETTINGS.Set("debug", "n", "Add memory debug information during run")
 
 	SETTINGS.Set("indexed", "n", "is the data indexed, for more information read the documenation?")
+	SETTINGS.SetInt("INDEXEDGC", 500000, "Set the gc cycles per items during indexing, could save 30% memory at the cost of time and cpu. 0 means off")
 	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
 	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
+
+	SETTINGS.Set("frontend", "n", "Use Example frontend. ('y', 'n')")
 	SETTINGS.Parse()
 
 	//Construct yes or no to booleans in SETTINGS
@@ -130,14 +133,15 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
+	if SETTINGS.Get("frontend") == "y" {
+		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
+	}
+
 	if SETTINGS.Get("mgmt") == "y" {
 		mux.HandleFunc("/mgmt/add/", addRest)
 		mux.HandleFunc("/mgmt/rm/", rmRest)
 		mux.HandleFunc("/mgmt/save/", saveRest)
 		mux.HandleFunc("/mgmt/load/", loadRest)
-
-		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
-		mux.Handle("/dsm-search", http.FileServer(http.Dir("./files/www")))
 	}
 
 	if SETTINGS.Get("prometheus-monitoring") == "y" {
@@ -147,7 +151,7 @@ func main() {
 
 	cors := SETTINGS.Get("CORS") == "y"
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with:", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with: ", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
 	fmt.Printf(InfoColorN, msg)
 
 	middleware := MIDDLEWARE(cors)

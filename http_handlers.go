@@ -4,13 +4,11 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"index/suffixarray"
 	"log"
 	"net/http"
 	"runtime"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -141,68 +139,6 @@ func rmRest(w http.ResponseWriter, r *http.Request) {
 		runtime.GC()
 	}()
 	w.WriteHeader(204)
-}
-
-var LOOKUP map[string]Items
-var LOOKUPINDEX map[string][]int
-var INDEX *suffixarray.Index
-var STR_INDEX []byte
-
-const FILENAME = "./files/name"
-
-func getStringFromIndex(data []byte, index int) string {
-	var start, end int
-	for i := index - 1; i >= 0; i-- {
-		if data[i] == 0 {
-			start = i + 1
-			break
-		}
-	}
-	for i := index + 1; i < len(data); i++ {
-		if data[i] == 0 {
-			end = i
-			break
-		}
-	}
-	return string(data[start:end])
-}
-
-//make an index on column values in dataset
-func makeIndex() {
-
-	sort.Slice(ITEMS, func(i, j int) bool {
-		return ITEMS[i].GetIndex() < ITEMS[j].GetIndex()
-	})
-
-	LOOKUP = make(map[string]Items)
-	LOOKUPINDEX = make(map[string][]int)
-	kSet := make(map[string]bool)
-
-	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
-	//for _, item := range ITEMS {
-	//	key := strings.ToLower(item.GetIndex())
-	//	kSet[key] = true
-	//	LOOKUP[key] = append(LOOKUP[key], item)
-	//}
-
-	for index, item := range ITEMS {
-		for _, v := range item.Row() {
-			v := strings.ToLower(v)
-			kSet[v] = true
-			//LOOKUP[v] = append(LOOKUP[v], item)
-			LOOKUPINDEX[v] = append(LOOKUPINDEX[v], index)
-		}
-	}
-
-	//make a list of all used keys
-	keys := []string{}
-	for key := range kSet {
-		keys = append(keys, key)
-	}
-
-	//join all keys together
-	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
-	INDEX = suffixarray.New(STR_INDEX)
 }
 
 func writeCSV(items Items, w http.ResponseWriter) {
