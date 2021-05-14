@@ -402,7 +402,7 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 			w.Header().Set(key, val)
 		}
 		if len(items) == 0 {
-			w.WriteHeader(404)
+			w.WriteHeader(204)
 			return
 		}
 
