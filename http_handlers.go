@@ -97,6 +97,7 @@ func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Group
 func ItemChanWorker(itemChan ItemsChannel) {
 	for items := range itemChan {
 		ITEMS = append(ITEMS, items...)
+		runtime.GC()
 	}
 }
 
