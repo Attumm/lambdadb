@@ -1,8 +1,12 @@
-python3 extras/create_model.py  -f examples/movies.tsv -format tsv > model.go 
-go build
-python3 extras/ingestion.py  -f examples/movies.tsv -format tsv -dbhost 127.0.0.1:8128
+# run from root of the project
+# bash example/run.sh
 
-curl 127.0.0.1:8128/mgmt/save/
-curl 127.0.0.1:8128/mgmt/rm/
-curl 127.0.0.1:8128/mgmt/load/
+python3 extras/create_model.py -f examples/movies_subset.tsv -format tsv > model.go
+go build -o lambda_db
+go fmt
+
+bash examples/ingest.sh &
+
+./lambda_db -indexed y -frontend y
+
 
