@@ -196,7 +196,6 @@ func init() {
 	RegisterReduce = make(registerReduce)
 
 	// register match filters
-
 	RegisterFuncMap["match-tconst"] = FilterTconstMatch
 	RegisterFuncMap["match-titletype"] = FilterTitletypeMatch
 	RegisterFuncMap["match-primarytitle"] = FilterPrimarytitleMatch

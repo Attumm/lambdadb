@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/Attumm/settingo/settingo"
 	"index/suffixarray"
 	"net/http"
 	"net/url"
@@ -108,7 +109,7 @@ func parseURLParameters(r *http.Request) Query {
 
 	index := ""
 	indexL, indexGiven := urlItems["search"]
-	indexGiven = indexGiven && (SETTINGS.Get("indexed") == "y")
+	indexGiven = indexGiven && SETTINGS.GetBool("indexed")
 	indexUsed := indexGiven && len(indexL[0]) > 2
 	if indexUsed {
 		index = strings.ToLower(indexL[0])
