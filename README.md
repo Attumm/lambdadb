@@ -5,6 +5,11 @@ Can be used for your needs by changing the models.go file to your needs.
 Creating and registering of the functionality that is needed.
 
 
+### example
+LambdaDB loaded with dataset from imdb at around 7 million items.
+frontend is added in the database as option.
+[Imgur](https://i.imgur.com/JPGAb3wh.mp4)
+
 ### Steps
 You can start the database with only a csv.
 Go over steps below, And see the result in your browser.
