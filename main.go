@@ -69,7 +69,6 @@ func loadcsv(itemChan ItemsChannel) {
 }
 
 func main() {
-	//SETTINGS = settingo.SETTINGS
 	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
 	SETTINGS.SetBool("JWTENABLED", false, "JWT enabled")
