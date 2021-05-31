@@ -7,8 +7,8 @@ Creating and registering of the functionality that is needed.
 
 ### example
 LambdaDB loaded with dataset from imdb at around 7 million items.
-frontend is added in the database as option.
-![](https://i.imgur.com/JPGAb3wh.mp4)
+Frontend of LambdaDB shows the database in action.
+![](https://i.imgur.com/JPGAb3wh.gif)
 
 ### Steps
 You can start the database with only a csv.
