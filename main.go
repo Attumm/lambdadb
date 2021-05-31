@@ -6,6 +6,7 @@ import (
 	"net/http" //	"runtime/debug" "github.com/pkg/profile")
 	//"github.com/prometheus/client_golang/prometheus"
 	//"github.com/prometheus/client_golang/prometheus/promauto"
+	. "github.com/Attumm/settingo/settingo"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -70,26 +71,26 @@ func loadcsv(itemChan ItemsChannel) {
 func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
 	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
-	SETTINGS.Set("JWTENABLED", "y", "JWT enabled")
+	SETTINGS.SetBool("JWTENABLED", false, "JWT enabled")
 
-	SETTINGS.Set("CORS", "n", "CORS enabled")
+	SETTINGS.SetBool("CORS", false, "CORS enabled")
 
 	SETTINGS.Set("csv", "", "load a gzipped csv file on starup")
 	SETTINGS.Set("null-delimiter", "\\N", "null delimiter")
 	SETTINGS.Set("delimiter", ",", "delimiter")
 
-	SETTINGS.Set("mgmt", "y", "enable the management api's for lambdadb")
-	SETTINGS.Set("debug", "n", "Add memory debug information during run")
+	SETTINGS.SetBool("mgmt", true, "enable the management api's for lambdadb")
+	SETTINGS.SetBool("debug", false, "Add memory debug information during run")
 
-	SETTINGS.Set("indexed", "n", "is the data indexed, for more information read the documenation?")
+	SETTINGS.SetBool("indexed", false, "is the data indexed, for more information read the documenation?")
 	SETTINGS.SetInt("INDEXEDGC", 500000, "Set the gc cycles per items during indexing, could save 30% memory at the cost of time and cpu. 0 means off")
-	SETTINGS.Set("strict-mode", "y", "strict mode does not allow ingestion of invalid items and will reject the batch")
+	SETTINGS.SetBool("strict-mode", true, "strict mode does not allow ingestion of invalid items and will reject the batch")
 
-	SETTINGS.Set("prometheus-monitoring", "n", "add promethues monitoring endpoint")
+	SETTINGS.SetBool("prometheus-monitoring", false, "add promethues monitoring endpoint")
 	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
-	SETTINGS.Set("LOADATSTARTUP", "n", "Load data at startup. ('y', 'n')")
+	SETTINGS.SetBool("LOADATSTARTUP", false, "Load data at startup. ('y', 'n')")
 
-	SETTINGS.Set("frontend", "n", "Use Example frontend. ('y', 'n')")
+	SETTINGS.SetBool("frontend", false, "Use Example frontend. ('y', 'n')")
 	SETTINGS.Parse()
 
 	//Construct yes or no to booleans in SETTINGS
@@ -105,16 +106,16 @@ func main() {
 		go loadcsv(itemChan)
 	}
 
-	if SETTINGS.Get("debug") == "y" {
+	if SETTINGS.GetBool("debug") {
 		go runPrintMem()
 	}
 
-	if SETTINGS.Get("LOADATSTARTUP") == "y" {
+	if SETTINGS.GetBool("LOADATSTARTUP") {
 		fmt.Println("start loading")
-		go loadAtStart(SETTINGS.Get("STORAGEMETHOD"), FILENAME, SETTINGS.Get("indexed") == "y")
+		go loadAtStart(SETTINGS.Get("STORAGEMETHOD"), FILENAME, SETTINGS.GetBool("indexed"))
 	}
 	JWTConfig := jwtConfig{
-		Enabled:      SETTINGS.Get("JWTENABLED") == "yes",
+		Enabled:      SETTINGS.GetBool("JWTENABLED"),
 		SharedSecret: SETTINGS.Get("SHAREDSECRET"),
 	}
 
@@ -133,25 +134,25 @@ func main() {
 	mux.HandleFunc("/list/", listRest)
 	mux.HandleFunc("/help/", helpRest)
 
-	if SETTINGS.Get("frontend") == "y" {
+	if SETTINGS.GetBool("frontend") {
 		mux.Handle("/", http.FileServer(http.Dir("./files/www")))
 	}
 
-	if SETTINGS.Get("mgmt") == "y" {
+	if SETTINGS.GetBool("mgmt") {
 		mux.HandleFunc("/mgmt/add/", addRest)
 		mux.HandleFunc("/mgmt/rm/", rmRest)
 		mux.HandleFunc("/mgmt/save/", saveRest)
 		mux.HandleFunc("/mgmt/load/", loadRest)
 	}
 
-	if SETTINGS.Get("prometheus-monitoring") == "y" {
+	if SETTINGS.GetBool("prometheus-monitoring") {
 		mux.Handle("/metrics", promhttp.Handler())
 	}
 	fmt.Println("indexed: ", SETTINGS.Get("indexed"))
 
-	cors := SETTINGS.Get("CORS") == "y"
+	cors := SETTINGS.GetBool("CORS")
 
-	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with: ", len(ITEMS), "items ", "management api's: ", SETTINGS.Get("mgmt") == "y", " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.Get("prometheus-monitoring") == "yes", " CORS: ", cors)
+	msg := fmt.Sprint("starting server\nhost: ", ipPort, " with: ", len(ITEMS), "items ", "management api's: ", SETTINGS.GetBool("mgmt"), " jwt enabled: ", JWTConfig.Enabled, " monitoring: ", SETTINGS.GetBool("prometheus-monitoring"), " CORS: ", cors)
 	fmt.Printf(InfoColorN, msg)
 
 	middleware := MIDDLEWARE(cors)

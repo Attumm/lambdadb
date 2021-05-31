@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	. "github.com/Attumm/settingo/settingo"
 	"log"
 	"net/http"
 	"runtime"
@@ -114,7 +115,7 @@ func contextAddRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Groupe
 		msg := fmt.Sprint("adding ", len(items))
 		fmt.Printf(WarningColorN, msg)
 
-		strictMode := SETTINGS.Get("strict-mode") == "y"
+		strictMode := SETTINGS.GetBool("strict-mode")
 		for n, item := range items {
 			if (*item == Item{}) {
 				fmt.Printf("unable to process item %d of batch\n", n)
@@ -164,7 +165,7 @@ func loadRest(w http.ResponseWriter, r *http.Request) {
 	msg = fmt.Sprint("Loaded new items in memory amount: ", itemsAdded)
 	fmt.Printf(WarningColorN, msg)
 
-	if SETTINGS.Get("indexed") == "y" {
+	if SETTINGS.GetBool("indexed") {
 		msg := fmt.Sprint("Creating index")
 		fmt.Printf(WarningColorN, msg)
 		makeIndex()
@@ -213,7 +214,7 @@ func saveRest(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	msg = fmt.Sprintf("filname %s, filesize: %d mb\n", filename, size/1024/1025)
+	msg = fmt.Sprintf("filename %s, filesize: %d mb\n", filename, size/1024/1025)
 	fmt.Printf(WarningColor, msg)
 
 	w.WriteHeader(204)

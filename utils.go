@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -40,48 +39,4 @@ func intMoreDefault(s string, defaultN int) int {
 		return defaultN
 	}
 	return n
-}
-
-// add me
-const ITEM_DELIMITER = ";"
-const VAL_SEP = ","
-const KEY_SEP = ":"
-
-// should refactor to use error.
-// Now I gotta go fast
-func parseKeyValue(s string) (string, []string, bool) {
-	items := strings.Split(s, KEY_SEP)
-	if len(items) != 2 {
-		return "", nil, true
-	}
-	values := strings.Split(items[1], VAL_SEP)
-	return items[0], values, false
-}
-
-func ParseLineToMap(s string) map[string][]string {
-	parsed := make(map[string][]string)
-	items := strings.Split(s, ITEM_DELIMITER)
-	for _, item := range items {
-		key, values, err := parseKeyValue(item)
-		if err {
-			fmt.Println("Unable to parse line, discarded:", item)
-			continue
-		}
-		parsed[key] = values
-	}
-	return parsed
-}
-
-func FlattenMapStrSlice(ss map[string][]string) []string {
-	uniqItems := make(map[string]bool)
-	for _, values := range ss {
-		for _, val := range values {
-			uniqItems[val] = true
-		}
-	}
-	items := []string{}
-	for item := range uniqItems {
-		items = append(items, item)
-	}
-	return items
 }
