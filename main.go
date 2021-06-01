@@ -87,7 +87,7 @@ func main() {
 	SETTINGS.SetBool("strict-mode", true, "strict mode does not allow ingestion of invalid items and will reject the batch")
 
 	SETTINGS.SetBool("prometheus-monitoring", false, "add promethues monitoring endpoint")
-	SETTINGS.Set("STORAGEMETHOD", "bytes", "Storagemethod available options are json, jsonz, bytes, bytesz")
+	SETTINGS.Set("STORAGEMETHOD", "bytesz", "Storagemethod available options are json, jsonz, bytes, bytesz")
 	SETTINGS.SetBool("LOADATSTARTUP", false, "Load data at startup. ('y', 'n')")
 
 	SETTINGS.SetBool("frontend", false, "Use Example frontend. ('y', 'n')")
