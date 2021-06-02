@@ -70,7 +70,10 @@ func loadcsv(itemChan ItemsChannel) {
 
 func main() {
 	SETTINGS.Set("http_db_host", "0.0.0.0:8128", "host with port")
-	SETTINGS.Set("SHAREDSECRET", "", "jwt shared secret")
+	SETTINGS.Set("JWTSECRET", "", "jwt shared secret")
+	SETTINGS.Set("JWTCOLUMN", "", "The column that will be used for valid authorization")
+	SETTINGS.Set("JWTHEADER", "", "Header containing the JWT")
+	SETTINGS.SetMap("JWTGROUPSTOVALUES", make(map[string][]string), "JWT groups to values in the specified column")
 	SETTINGS.SetBool("JWTENABLED", false, "JWT enabled")
 
 	SETTINGS.SetBool("CORS", false, "CORS enabled")
@@ -83,6 +86,7 @@ func main() {
 	SETTINGS.SetBool("debug", false, "Add memory debug information during run")
 
 	SETTINGS.SetBool("indexed", false, "is the data indexed, for more information read the documenation?")
+	SETTINGS.SetBool("INDEXSTORED", false, "check if indexes are stored")
 	SETTINGS.SetInt("INDEXEDGC", 500000, "Set the gc cycles per items during indexing, could save 30% memory at the cost of time and cpu. 0 means off")
 	SETTINGS.SetBool("strict-mode", true, "strict mode does not allow ingestion of invalid items and will reject the batch")
 
