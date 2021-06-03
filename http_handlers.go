@@ -39,7 +39,11 @@ func setHeader(items Items, w http.ResponseWriter, query Query, queryTime int64)
 
 func contextListRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, valid := parseURLParameters(r)
+		if !valid {
+			w.WriteHeader(401)
+			return
+		}
 
 		items, queryTime := runQuery(ITEMS, query, operations)
 
@@ -324,7 +328,11 @@ func MIDDLEWARE(cors bool) func(http.Handler) http.Handler {
 
 func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, valid := parseURLParameters(r)
+		if !valid {
+			w.WriteHeader(401)
+			return
+		}
 
 		items, queryTime := runQuery(ITEMS, query, operations)
 		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(items), " time: ", queryTime, "ms ", "url: ", r.URL)
@@ -354,7 +362,11 @@ func contextSearchRest(JWTConig jwtConfig, itemChan ItemsChannel, operations Gro
 
 func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations GroupedOperations) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		query := parseURLParameters(r)
+		query, valid := parseURLParameters(r)
+		if !valid {
+			w.WriteHeader(401)
+			return
+		}
 		column := r.URL.Path[len("/typeahead/"):]
 		if column[len(column)-1] == '/' {
 			column = column[:len(column)-1]

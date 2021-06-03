@@ -112,6 +112,24 @@ func DecodeToItems(s []byte) Items {
 	}
 	return items
 }
+func EncodeMapStrSInt(a map[string][]int) []byte {
+	buf := bytes.Buffer{}
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(a)
+	if err != nil {
+		fmt.Println("error encoding", err)
+	}
+	return buf.Bytes()
+}
+func DecodeMapStrSInt(s []byte) map[string][]int {
+	m := make(map[string][]int)
+	decoder := gob.NewDecoder(bytes.NewReader(s))
+	err := decoder.Decode(&m)
+	if err != nil {
+		fmt.Println("Unable to DecodeToItems", err)
+	}
+	return m
+}
 
 func WriteToFile(s []byte, filename string) {
 	f, err := os.Create(filename)
