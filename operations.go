@@ -49,7 +49,7 @@ func decodeUrl(s string) string {
 }
 
 // util for api
-func parseURLParameters(r *http.Request) Query {
+func parseURLParameters(r *http.Request) (Query, bool) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
@@ -114,6 +114,20 @@ func parseURLParameters(r *http.Request) Query {
 	if indexUsed {
 		index = strings.ToLower(indexL[0])
 	}
+	validQuery := true
+	if SETTINGS.GetBool("JWTENABLED") {
+		token, err := getJWT(r, SETTINGS.Get("JWTSECRET"), SETTINGS.Get("JWTHEADER"))
+		if err != nil {
+			validQuery = false
+			fmt.Println("jwt token had a issue:", err)
+			return Query{}, validQuery
+		}
+		column := SETTINGS.Get("JWTCOLUMN")
+		columnValues := getColumnValues(token.Groups, SETTINGS.GetMap("JWTGROUPSTOVALUES"))
+		if !containsWildCard(columnValues) {
+			overrideAnyFilter(anyMap, column, columnValues)
+		}
+	}
 	return Query{
 		Filters:  filterMap,
 		Excludes: excludeMap,
@@ -134,7 +148,7 @@ func parseURLParameters(r *http.Request) Query {
 		IndexGiven: indexUsed,
 
 		ReturnFormat: format,
-	}
+	}, validQuery
 }
 
 func groupByRunner(items Items, groubByParameter string) ItemsGroupedBy {
@@ -467,7 +481,6 @@ func sortLimit(items Items, query Query) Items {
 	return items[:query.Limit]
 }
 
-var LOOKUP map[string]Items
 var LOOKUPINDEX map[string][]int
 var INDEX *suffixarray.Index
 var STR_INDEX []byte
@@ -492,16 +505,31 @@ func getStringFromIndex(data []byte, index int) string {
 }
 
 //make an index on column values in dataset
+var F_INDEX = "files/STR_INDEX"
+var F_LOOKUP = "files/LOOKUPINDEX"
+
 func makeIndex() {
 	gcCount := SETTINGS.GetInt("INDEXEDGC")
 
 	sort.Slice(ITEMS, func(i, j int) bool {
 		return ITEMS[i].GetIndex() < ITEMS[j].GetIndex()
 	})
-
-	LOOKUP = make(map[string]Items)
 	LOOKUPINDEX = make(map[string][]int)
-	kSet := make(map[string]bool)
+
+	if SETTINGS.GetBool("INDEXSTORED") {
+		fmt.Println("index is stored, trying to load")
+		LOOKUPINDEX = DecodeMapStrSInt(ReadFromFile(F_LOOKUP))
+		runtime.GC()
+		STR_INDEX = ReadFromFile(F_INDEX)
+		if len(LOOKUPINDEX) != 0 && len(STR_INDEX) != 0 {
+			runtime.GC()
+			INDEX = suffixarray.New(STR_INDEX)
+			runtime.GC()
+			fmt.Println("loading index from file is done")
+			return
+		}
+		fmt.Println("failed to set indexes from files us")
+	}
 
 	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
 	//for _, item := range ITEMS {
@@ -510,6 +538,7 @@ func makeIndex() {
 	//	LOOKUP[key] = append(LOOKUP[key], item)
 	//}
 
+	kSet := make(map[string]bool)
 	for index, item := range ITEMS {
 		if gcCount != 0 && index%gcCount == 0 {
 			runtime.GC()
@@ -532,6 +561,9 @@ func makeIndex() {
 	runtime.GC()
 	//join all keys together
 	STR_INDEX = []byte("\x00" + strings.Join(keys, "\x00") + "\x00")
+
+	WriteToFile(STR_INDEX, F_INDEX)
+	WriteToFile(EncodeMapStrSInt(LOOKUPINDEX), F_LOOKUP)
 
 	runtime.GC()
 	INDEX = suffixarray.New(STR_INDEX)
