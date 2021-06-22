@@ -8,7 +8,7 @@ Creating and registering of the functionality that is needed.
 ### example
 LambdaDB loaded with dataset from imdb at around 7 million items.
 Frontend of LambdaDB shows the database in action.
-![LambdaDB](https://imgur.com/JPGAb3w.gif)
+![LambdaDB](https://imgur.com/JPGAb3w)
 
 ### Steps
 You can start the database with only a csv.
@@ -16,7 +16,7 @@ Go over steps below, And see the result in your browser.
 1. `python3 extras/create_model.py -f <path_to_file> ../model.go`
 2. go fmt
 3. go build
-4. ./lambda_db --help
+4. ./lambdadb --help
 5. python3 extras/ingestion.py -f  <path_to_file>
 6. curl 127.0.0.1:8128/help/
 7. browser http://127.0.0.1:8128/
