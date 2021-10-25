@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	. "github.com/Attumm/settingo/settingo"
 	"index/suffixarray"
 	"net/http"
 	"net/url"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	. "github.com/Attumm/settingo/settingo"
 )
 
 type Query struct {
@@ -311,7 +312,6 @@ func filteredEarlyExitSingle(items Items, column string, operations GroupedOpera
 
 func runQuery(items Items, query Query, operations GroupedOperations) (Items, int64) {
 	start := time.Now()
-	var newItems Items
 
 	//TODO this still needs a cleanup, but it's currently the solution to solve column and the indexes
 
@@ -330,10 +330,14 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 
 	//	}
 	//}
+
+	// OLD
+	//
 	if query.IndexGiven {
-		items = runIndexQuery(query)
+		return filteredIndexed(operations, query), int64(time.Since(start)) / int64(1000000)
 	}
 
+	var newItems Items
 	if query.EarlyExit() {
 		newItems = filteredEarlyExit(items, operations, query)
 	} else {
@@ -395,6 +399,62 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 		filteredItems = append(filteredItems, item)
 	}
 	return filteredItems
+}
+
+func filteredIndexed(operations GroupedOperations, query Query) Items {
+	registerFuncs := operations.Funcs
+	excludes := query.Excludes
+	filters := query.Filters
+	anys := query.Anys
+	items := make(Items, 0)
+	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+	added := make(map[int]struct{})
+	for _, idx := range indices {
+		key := getStringFromIndex(STR_INDEX, idx)
+		for _, index := range LOOKUPINDEX[key] {
+			added[index] = struct{}{}
+		}
+	}
+	//for _, idx := range indices {
+	//	key := getStringFromIndex(STR_INDEX, idx)
+	//	if !seen[key] {
+	//		seen[key] = true
+	//		for _, index := range LOOKUPINDEX[key] {
+	//			if _, ok := added[index]; !ok {
+	//				added[index] = true
+	//				items = append(items, ITEMS[index])
+	//			}
+
+	//		}
+	//	}
+
+	//}
+	if len(excludes) == 0 && len(filters) == 0 && len(anys) == 0 {
+		for index, _ := range added {
+			items = append(items, ITEMS[index])
+
+		}
+		added = nil
+		return items
+
+	} else {
+		for index, _ := range added {
+			item := ITEMS[index]
+			if !any(item, anys, registerFuncs) {
+				continue
+			}
+			if !all(item, filters, registerFuncs) {
+				continue
+			}
+			if !exclude(item, excludes, registerFuncs) {
+				continue
+			}
+			items = append(items, ITEMS[index])
+		}
+
+		added = nil
+		return items
+	}
 }
 
 func mapIndex(items Items, indexes []int) Items {
