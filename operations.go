@@ -266,6 +266,7 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 }
 
 func filteredEarlyExitSingle(items Items, column string, operations GroupedOperations, query Query) []string {
+
 	registerFuncs := operations.Funcs
 	filteredItemsSet := make(map[string]bool)
 	excludes := query.Excludes
@@ -334,7 +335,11 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 	// OLD
 	//
 	if query.IndexGiven {
-		return filteredIndexed(operations, query), int64(time.Since(start)) / int64(1000000)
+		if query.EarlyExit() {
+			return filteredIndexedEarlyExit(operations, query), int64(time.Since(start)) / int64(1000000)
+		} else {
+			return filteredIndexed(operations, query), int64(time.Since(start)) / int64(1000000)
+		}
 	}
 
 	var newItems Items
@@ -415,20 +420,6 @@ func filteredIndexed(operations GroupedOperations, query Query) Items {
 			added[index] = struct{}{}
 		}
 	}
-	//for _, idx := range indices {
-	//	key := getStringFromIndex(STR_INDEX, idx)
-	//	if !seen[key] {
-	//		seen[key] = true
-	//		for _, index := range LOOKUPINDEX[key] {
-	//			if _, ok := added[index]; !ok {
-	//				added[index] = true
-	//				items = append(items, ITEMS[index])
-	//			}
-
-	//		}
-	//	}
-
-	//}
 	if len(excludes) == 0 && len(filters) == 0 && len(anys) == 0 {
 		for index, _ := range added {
 			items = append(items, ITEMS[index])
@@ -436,25 +427,83 @@ func filteredIndexed(operations GroupedOperations, query Query) Items {
 		}
 		added = nil
 		return items
+	}
+	for index, _ := range added {
+		item := ITEMS[index]
+		if !any(item, anys, registerFuncs) {
+			continue
+		}
+		if !all(item, filters, registerFuncs) {
+			continue
+		}
+		if !exclude(item, excludes, registerFuncs) {
+			continue
+		}
+		items = append(items, ITEMS[index])
+	}
+	added = nil
+	return items
+}
 
-	} else {
+func filteredIndexedEarlyExit(operations GroupedOperations, query Query) Items {
+	registerFuncs := operations.Funcs
+	excludes := query.Excludes
+	filters := query.Filters
+	anys := query.Anys
+	items := make(Items, 0)
+	indices := INDEX.Lookup([]byte(query.IndexQuery), -1)
+	added := make(map[int]struct{})
+	limit := query.Limit
+	start := (query.Page - 1) * query.PageSize
+	end := start + query.PageSize
+	stop := end
+	if query.LimitGiven {
+		stop = limit
+	}
+	filtersGiven := len(excludes) == 0 && len(filters) == 0 && len(anys) == 0
+
+	if !filtersGiven {
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			for _, index := range LOOKUPINDEX[key] {
+				added[index] = struct{}{}
+				if len(added) == stop {
+					break
+				}
+			}
+		}
 		for index, _ := range added {
-			item := ITEMS[index]
-			if !any(item, anys, registerFuncs) {
-				continue
-			}
-			if !all(item, filters, registerFuncs) {
-				continue
-			}
-			if !exclude(item, excludes, registerFuncs) {
-				continue
-			}
 			items = append(items, ITEMS[index])
 		}
-
 		added = nil
 		return items
 	}
+
+	for _, idx := range indices {
+		key := getStringFromIndex(STR_INDEX, idx)
+		for _, index := range LOOKUPINDEX[key] {
+			added[index] = struct{}{}
+		}
+	}
+
+	for index, _ := range added {
+		item := ITEMS[index]
+		if !any(item, anys, registerFuncs) {
+			continue
+		}
+		if !all(item, filters, registerFuncs) {
+			continue
+		}
+		if !exclude(item, excludes, registerFuncs) {
+			continue
+		}
+		items = append(items, ITEMS[index])
+		if len(items) == stop {
+			break
+		}
+	}
+	added = nil
+	return items
 }
 
 func mapIndex(items Items, indexes []int) Items {

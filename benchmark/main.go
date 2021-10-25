@@ -60,7 +60,7 @@ func worker(id int, urls <-chan string, responses chan<- *Resp) {
 
 		responses <- &Resp{
 			Duration: getDuration(resp.Header["Query-Duration"][0]),
-			Found:    getDuration(resp.Header["Total-Items"][0]),
+			Found:    toInt(resp.Header["Total-Items"][0]),
 			Body:     string(body),
 			URL:      url,
 		}
@@ -149,18 +149,29 @@ func main() {
 		durations[resp.URL] = append(durations[resp.URL], resp.Duration)
 	}
 
+	fmt.Println("total,\tmean,\tmin,\tmax,\tstdev,\ttime,\tregs,\turl")
 	for url, duration := range durations {
-		fmt.Println(
-			"\nhost: ", createQuery(settingo.Get("host"), "ams", 1, 10),
-			"\nurl: ", url,
-			"\ntime:", time.Now().Sub(running),
-			"\nreqs: ", len(durations),
-			"\ntotal: ", sum(duration),
-			"\nmean: ", mean(duration),
-			"\nstdev: ", stdev(duration),
-			"\nmin: ", min(duration),
-			"\nmax: ", max(duration),
+		fmt.Printf("%d,\t%d,\t%d,\t%d,\t%.2f,\t%v,\t%d,\t%s\n",
+			sum(duration),
+			mean(duration),
+			min(duration),
+			max(duration),
+			stdev(duration),
+			time.Now().Sub(running),
+			len(durations),
+			url,
 		)
+		//fmt.Println(
+		//	"\nhost: ", createQuery(settingo.Get("host"), "ams", 1, 10),
+		//	"\nurl: ", url,
+		//	"\ntime:", time.Now().Sub(running),
+		//	"\nreqs: ", len(durations),
+		//	"\ntotal: ", sum(duration),
+		//	"\nmean: ", mean(duration),
+		//	"\nstdev: ", stdev(duration),
+		//	"\nmin: ", min(duration),
+		//	"\nmax: ", max(duration),
+		//)
 	}
 
 	if DEBUG {
