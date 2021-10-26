@@ -111,7 +111,7 @@ func parseURLParameters(r *http.Request) (Query, bool) {
 	index := ""
 	indexL, indexGiven := urlItems["search"]
 	indexGiven = indexGiven && SETTINGS.GetBool("indexed")
-	indexUsed := indexGiven && len(indexL[0]) > 2
+	indexUsed := indexGiven // && len(indexL[0]) > 2
 	if indexUsed {
 		index = strings.ToLower(indexL[0])
 	}
@@ -354,12 +354,111 @@ func runQuery(items Items, query Query, operations GroupedOperations) (Items, in
 
 func runTypeAheadQuery(items Items, column string, query Query, operations GroupedOperations) ([]string, int64) {
 	start := time.Now()
-	if query.IndexGiven {
-		items = runIndexQuery(query)
+	var results []string
+	if true || query.IndexGiven {
+		results = runIndexQueryPrefix(column, operations, query)
+	} else {
+		results = filteredEarlyExitSingle(items, column, operations, query)
 	}
-	results := filteredEarlyExitSingle(items, column, operations, query)
 	diff := time.Since(start)
 	return results, int64(diff) / int64(1000000)
+}
+
+func runIndexQueryPrefix(column string, operations GroupedOperations, query Query) []string {
+	searchTerm := query.IndexQuery
+	seen := make(map[string]bool)
+	results := []string{}
+	registerFuncs := operations.Funcs
+	excludes := query.Excludes
+	filters := query.Filters
+	anys := query.Anys
+	limit := query.Limit
+	start := (query.Page - 1) * query.PageSize
+	end := start + query.PageSize
+	stop := end
+	if query.LimitGiven {
+		stop = limit
+	}
+	filteredItemsSet := make(map[string]bool)
+	indices := INDEX.Lookup([]byte(searchTerm), -1)
+	filtersGiven := len(excludes) == 0 && len(filters) == 0 && len(anys) == 0
+	if filtersGiven {
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			if !seen[key] {
+				seen[key] = true
+				for _, index := range LOOKUPINDEX[key] {
+					item := ITEMS[index]
+					single := operations.Getters[column](item)
+
+					if !strings.HasPrefix(strings.ToLower(single), searchTerm) {
+						continue
+					}
+					if !any(item, anys, registerFuncs) {
+						continue
+					}
+					if !all(item, filters, registerFuncs) {
+						continue
+					}
+					if !exclude(item, excludes, registerFuncs) {
+						continue
+					}
+					filteredItemsSet[single] = true
+
+					if len(filteredItemsSet) == stop {
+						for k := range filteredItemsSet {
+							// empty keys crashes frontend.
+							// should be fixed in frontend then below can go.
+							// NOTE: add a special field so we can filter on 'nil' / empty values.
+							if len(k) > 0 {
+								results = append(results, k)
+							}
+						}
+						return results
+					}
+				}
+			}
+		}
+	} else {
+		for _, idx := range indices {
+			key := getStringFromIndex(STR_INDEX, idx)
+			if !seen[key] {
+				seen[key] = true
+				for _, index := range LOOKUPINDEX[key] {
+					item := ITEMS[index]
+					single := operations.Getters[column](item)
+
+					if !strings.HasPrefix(strings.ToLower(single), searchTerm) {
+						continue
+					}
+					filteredItemsSet[single] = true
+
+					if len(filteredItemsSet) == stop {
+						for k := range filteredItemsSet {
+							// empty keys crashes frontend.
+							// should be fixed in frontend then below can go.
+							// NOTE: add a special field so we can filter on 'nil' / empty values.
+							if len(k) > 0 {
+								results = append(results, k)
+							}
+						}
+						return results
+					}
+				}
+			}
+		}
+
+	}
+	for k := range filteredItemsSet {
+		// empty keys crashes frontend.
+		// should be fixed in frontend then below can go.
+		// NOTE: add a special field so we can filter on 'nil' / empty values.
+		if len(k) > 0 {
+			results = append(results, k)
+		}
+	}
+
+	return results
 }
 
 func runIndexQuery(query Query) Items {

@@ -4,13 +4,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	. "github.com/Attumm/settingo/settingo"
 	"log"
 	"net/http"
 	"runtime"
 	"sort"
 	"strconv"
 	"time"
+
+	. "github.com/Attumm/settingo/settingo"
 )
 
 // API list headers
@@ -382,7 +383,7 @@ func contextTypeAheadRest(JWTConig jwtConfig, itemChan ItemsChannel, operations 
 			w.WriteHeader(404)
 			return
 		}
-		msg := fmt.Sprint("total: ", len(ITEMS), " hits: ", len(results), " time: ", queryTime, "ms ", "url: ", r.URL)
+		msg := fmt.Sprint("typeahead total: ", len(ITEMS), " hits: ", len(results), " time: ", queryTime, "ms ", "url: ", r.URL)
 		fmt.Printf(NoticeColorN, msg)
 		headerData := getHeaderDataSlice(results, query, queryTime)
 

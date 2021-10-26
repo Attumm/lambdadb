@@ -32,10 +32,30 @@ func toInt(s string) int {
 	return n
 
 }
-func createQuery(host string, query string, page, pagesize int) string {
+func createQuery(host string, query string, page, pagesize, limit int) string {
+	if limit != -1 {
+		return fmt.Sprintf(
+			"%s/list/?limit=%d&search=%s",
+			host, limit, query,
+		)
+
+	}
 	return fmt.Sprintf(
-		"%s/search/?page=%d&pagesize=%d&search=%s",
+		"%s/list/?page=%d&pagesize=%d&search=%s",
 		host, page, pagesize, query,
+	)
+}
+func createTypeAheadQuery(host string, column string, query string, limit int) string {
+	if limit != -1 {
+		return fmt.Sprintf(
+			"%s/typeahead/%s/?limit=%d&search=%s",
+			host, column, limit, query,
+		)
+
+	}
+	return fmt.Sprintf(
+		"%s/typeahead/%s/?search=%s",
+		host, column, query,
 	)
 }
 
@@ -119,6 +139,7 @@ const DEBUG = false
 func main() {
 	settingo.SetInt("c", 5, "concurrency for the requests e.g workers")
 	settingo.SetInt("n", 1000, "how many requests")
+	settingo.SetBool("typeahead", true, "test typeahead")
 	settingo.Set("host", "http://127.0.0.1:8128", "host to run on")
 
 	settingo.Parse()
@@ -134,11 +155,23 @@ func main() {
 	}
 	go func() {
 		for i := 0; i < REGS; i++ {
-			urls <- createQuery(settingo.Get("host"), "ams", 1, 10)
-			urls <- createQuery(settingo.Get("host"), "drama", 1, 10)
-			urls <- createQuery(settingo.Get("host"), "tvepis", 1, 10)
-			urls <- createQuery(settingo.Get("host"), "amsterdam", 1, 10)
-			urls <- createQuery(settingo.Get("host"), "hollywood", 1, 10)
+			if settingo.GetBool("typeahead") {
+				urls <- createTypeAheadQuery(settingo.Get("host"), "primarytitle", "b", -1)
+				urls <- createTypeAheadQuery(settingo.Get("host"), "primarytitle", "ba", -1)
+				urls <- createTypeAheadQuery(settingo.Get("host"), "primarytitle", "barq", -1)
+				urls <- createTypeAheadQuery(settingo.Get("host"), "primarytitle", "ap", -1)
+				urls <- createTypeAheadQuery(settingo.Get("host"), "primarytitle", "a", -1)
+
+			} else {
+				urls <- createQuery(settingo.Get("host"), "ams", 1, 10, -1)
+				//urls <- createQuery(settingo.Get("host"), "drama", 1, 1, 100)
+				urls <- createQuery(settingo.Get("host"), "drama_", 1, 1, 100)
+				//urls <- createQuery(settingo.Get("host"), "tvepis", 1, 10)
+				urls <- createQuery(settingo.Get("host"), "amsterdam", 4, 10, -1)
+				urls <- createQuery(settingo.Get("host"), "amsterdam", 1, 10, -1)
+				urls <- createQuery(settingo.Get("host"), "hollywood", 1, 10, -1)
+
+			}
 		}
 	}()
 
