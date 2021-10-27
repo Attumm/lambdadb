@@ -111,7 +111,7 @@ func parseURLParameters(r *http.Request) (Query, bool) {
 	index := ""
 	indexL, indexGiven := urlItems["search"]
 	indexGiven = indexGiven && SETTINGS.GetBool("indexed")
-	indexUsed := indexGiven // && len(indexL[0]) > 2
+	indexUsed := indexGiven && len(indexL[0]) > 0
 	if indexUsed {
 		index = strings.ToLower(indexL[0])
 	}
@@ -381,7 +381,7 @@ func runIndexQueryPrefix(column string, operations GroupedOperations, query Quer
 	}
 	filteredItemsSet := make(map[string]bool)
 	indices := INDEX.Lookup([]byte(searchTerm), -1)
-	filtersGiven := len(excludes) == 0 && len(filters) == 0 && len(anys) == 0
+	filtersGiven := len(excludes) > 0 || len(filters) > 0 || len(anys) > 0
 	if filtersGiven {
 		for _, idx := range indices {
 			key := getStringFromIndex(STR_INDEX, idx)
@@ -559,7 +559,7 @@ func filteredIndexedEarlyExit(operations GroupedOperations, query Query) Items {
 	if query.LimitGiven {
 		stop = limit
 	}
-	filtersGiven := len(excludes) == 0 && len(filters) == 0 && len(anys) == 0
+	filtersGiven := len(excludes) > 0 || len(filters) > 0 || len(anys) > 0
 
 	if !filtersGiven {
 		for _, idx := range indices {
