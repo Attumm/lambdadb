@@ -77,7 +77,7 @@ func worker(id int, urls <-chan string, responses chan<- *Resp) {
 				fmt.Println(key, "=", val)
 			}
 		}
-
+		resp.Body.Close()
 		responses <- &Resp{
 			Duration: getDuration(resp.Header["Query-Duration"][0]),
 			Found:    toInt(resp.Header["Total-Items"][0]),
