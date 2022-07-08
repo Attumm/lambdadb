@@ -6,7 +6,6 @@
 		 -->
 		<!-- production version, optimized for size and speed -->
 		<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-		
 		<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 
 
@@ -21,7 +20,6 @@
 		<div id="app">
 			<div id="search-results">
 				<v-app id="inspire">
-					
 					<v-card>
 						<v-card-title>
 							<h2>LambdaDB </h2>
@@ -56,6 +54,10 @@
 								:loading="loading"
 								:dark=false
 								:dense=true
+
+							        :sort-by.sync="sortBy"
+							        :sort-desc.sync="sortDesc"
+
 								@update:sort-by="handleEvent('sort-by', $event)"
 								@update:sort-desc="handleEvent('sort-desc', $event)"
 
@@ -84,7 +86,7 @@
 											label="startswith"
 											class="pt-1 pl-1 rounded-1 "
 											dense
-											
+
 											:flat=true
 											></v-select>
 											</v-col>
@@ -92,7 +94,7 @@
 											<v-text-field
 											v-model="columnSearchTerm[index]"
 											v-on:input="runSearch()"
-											
+
 											dense
 											clearable
 											elevation=5
@@ -102,7 +104,7 @@
 											:flat=true
 											hide-details
 											class="styled-input">
-										></v-text-field> 
+										></v-text-field>
 									</v-card>
 									</th>
 					  			</template>
@@ -114,7 +116,7 @@
 			</div>
 		</div>
 
-	
+
 	<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
 	<script>
@@ -154,14 +156,14 @@
 					}
 
 					sortingOrders= []
+
 					if (this.sortBy && this.sortBy[0] !== undefined ) {
-						console.log("iji")
-							for(i=0;i<this.sortBy.length;i++) {
-								isDesc = this.sortDesc[i] ? "" : "-"
-								sortingOrders.push(`&sortby=${isDesc}${this.sortBy[i]}`)
-							}
+						for(i=0;i<this.sortBy.length;i++) {
+							isDesc = this.sortDesc[i] ? "" : "-"
+							sortingOrders.push(`&sortby=${isDesc}${this.sortBy[i]}`)
 						}
-						return this.apiHost + "/" + "search/?page=" + this.currentPage + "&pagesize=" + this.pageSize +  "&search=" + this.searchTerm  +  n.join("") + sortingOrders.join("")
+					}
+					return this.apiHost + "/" + "search/?page=" + this.currentPage + "&pagesize=" + this.pageSize +  "&search=" + this.searchTerm  +  n.join("") + sortingOrders.join("")
 
 				}
 			},
@@ -172,8 +174,8 @@
 			},
 			data: {
 				searchResults: [],
-				sortDesc: null,
-				sortBy: null,
+				sortDesc: [],
+				sortBy: [],
 				searchTerm: "",
 				count: 0,
 				loading: false,
@@ -190,7 +192,7 @@
 				columnSearchTerm: [],
 				columnSort: [],
 				sortingOrder: [],
-				
+
 				columnOptions: ["match", "contains", "startswith", "!match", "!contains", "!startswith"],
 				columnOptionsValues: [],
 				columnOptionsValuesInitial: "startswith",
@@ -211,13 +213,10 @@
 			},
 			methods: {
 				handleEvent(name, event) {
-					if (name === "sort-by") {
-						this.sortBy = event  
-					}
-					if (name === "sort-desc") {
-						this.sortDesc = event
-						this.runApiCall()
-					}
+
+					console.log(event)
+
+					this.runApiCall()
 
 					console.log("handle", name, event)
 					console.log("sort sync", this.sortBy, this.sortDesc)
@@ -227,7 +226,7 @@
 						source.cancel('Operation canceled by the user.');
 					}
 					axios.get(this.apiUrl, {
-						
+
 						cancelToken: new CancelToken(function executor(c) {
             				source.cancel = c;
          				 }),
@@ -281,7 +280,7 @@
 						source.cancel('Operation canceled by the user.');
 					}
 					axios.get(this.typeAheadUrl(columnName), {
-						
+
 						cancelToken: new CancelToken(function executor(c) {
             				source.cancel = c;
          				 }),
@@ -369,7 +368,7 @@
 											clearable
 											hide-details
 											hide-selected
-											
+
 											item-text="name"
 											item-value="symbol"
 											label="Search..."
