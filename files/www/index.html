@@ -16,6 +16,12 @@
 
 
 	</head>
+
+	<!-- somehow darkmode was not always obeyed. -->
+	<style>
+	body {color: rgba(255,255,255,0.7) }
+	</style>
+
 	<body>
 		<div id="app">
 			<div id="search-results">
@@ -124,7 +130,7 @@
 		const source = CancelToken.source();
 		var app = new Vue({
 			el: "#app",
-			vuetify: new Vuetify(),
+			vuetify: new Vuetify({theme: { dark: true }, }),
 			created() {
       				if (this.apiHost.length == 0 ) {
         				this.apiHost = location.origin
