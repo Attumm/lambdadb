@@ -18,6 +18,7 @@ type Query struct {
 	Filters  filterType
 	Excludes filterType
 	Anys     filterType
+	MustAnys filterType
 
 	Limit         int
 	LimitGiven    bool
@@ -53,6 +54,7 @@ func parseURLParameters(r *http.Request) (Query, bool) {
 	filterMap := make(filterType)
 	excludeMap := make(filterType)
 	anyMap := make(filterType)
+	mustAnyMap := make(filterType)
 	//TODO change query to be based on input.
 
 	urlItems := r.URL.Query()
@@ -75,6 +77,11 @@ func parseURLParameters(r *http.Request) (Query, bool) {
 		if parameterFound && parameter[0] != "" {
 			anyMap[k] = parameter
 		}
+		parameter, parameterFound = urlItems["must-any_"+k]
+		if parameterFound && parameter[0] != "" {
+			mustAnyMap[k] = parameter
+		}
+
 	}
 
 	// TODO there must be better way
@@ -132,6 +139,7 @@ func parseURLParameters(r *http.Request) (Query, bool) {
 		Filters:  filterMap,
 		Excludes: excludeMap,
 		Anys:     anyMap,
+		MustAnys: mustAnyMap,
 
 		Limit:      limit,
 		LimitGiven: limitGiven,
@@ -164,7 +172,7 @@ func groupByRunner(items Items, groubByParameter string) ItemsGroupedBy {
 	return grouping
 }
 
-//Runner of filter functions, Item Should pass all
+// Runner of filter functions, Item Should pass all
 func all(item *Item, filters filterType, registerFuncs registerFuncType) bool {
 	for funcName, args := range filters {
 		filterFunc := registerFuncs[funcName]
@@ -180,7 +188,7 @@ func all(item *Item, filters filterType, registerFuncs registerFuncType) bool {
 	return true
 }
 
-//Runner of filter functions, Item Should pass all
+// Runner of filter functions, Item Should pass all
 func any(item *Item, filters filterType, registerFuncs registerFuncType) bool {
 	if len(filters) == 0 {
 		return true
@@ -199,7 +207,7 @@ func any(item *Item, filters filterType, registerFuncs registerFuncType) bool {
 	return false
 }
 
-//Runner of exlude functions, Item Should pass all
+// Runner of exlude functions, Item Should pass all
 func exclude(item *Item, excludes filterType, registerFuncs registerFuncType) bool {
 	for funcName, args := range excludes {
 		excludeFunc := registerFuncs[funcName]
@@ -235,6 +243,7 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
+	mustAnys := query.Anys
 
 	limit := query.Limit
 	start := (query.Page - 1) * query.PageSize
@@ -246,6 +255,9 @@ func filteredEarlyExit(items Items, operations GroupedOperations, query Query) I
 
 	//TODO candidate for speedup
 	for _, item := range items {
+		if !any(item, mustAnys, registerFuncs) {
+			continue
+		}
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -380,9 +392,13 @@ func filtered(items Items, operations GroupedOperations, query Query) Items {
 	excludes := query.Excludes
 	filters := query.Filters
 	anys := query.Anys
+	mustAnys := query.MustAnys
 
 	filteredItems := make(Items, 0)
 	for _, item := range items {
+		if !any(item, mustAnys, registerFuncs) {
+			continue
+		}
 		if !any(item, anys, registerFuncs) {
 			continue
 		}
@@ -428,7 +444,7 @@ func getHeaderData(items Items, query Query, queryDuration int64) HeaderData {
 	return headerData
 }
 
-//getHeaderDataSlice extract from header information with data slice we want
+// getHeaderDataSlice extract from header information with data slice we want
 func getHeaderDataSlice(items []string, query Query, queryDuration int64) HeaderData {
 	headerData := make(HeaderData)
 
@@ -504,7 +520,7 @@ func getStringFromIndex(data []byte, index int) string {
 	return string(data[start:end])
 }
 
-//make an index on column values in dataset
+// make an index on column values in dataset
 var F_INDEX = "files/STR_INDEX"
 var F_LOOKUP = "files/LOOKUPINDEX"
 
