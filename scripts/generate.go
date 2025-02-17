@@ -1,3 +1,9 @@
+// Package main provides a tool for generating Go code based on input data structures.
+//
+// This package reads column headers from various sources (CSV files, JSON files,
+// or command-line arguments) and uses them to generate a Go struct with associated
+// methods and functions. The generated code includes filter functions, getter
+// functions, and sorting capabilities for the struct.
 package main
 
 import (
@@ -10,12 +16,17 @@ import (
 	"text/template"
 )
 
-// TemplateData holds the data passed to the template.
+// TemplateData holds the column names for use in code generation.
 type TemplateData struct {
 	Columns []string
 }
 
-// capitalize returns the string with its first letter in uppercase.
+// capitalize returns the input string with its first letter capitalized.
+//
+// Example:
+//
+//	fmt.Println(capitalize("hello"))
+//	// Output: Hello
 func capitalize(s string) string {
 	if s == "" {
 		return s
@@ -23,12 +34,26 @@ func capitalize(s string) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// toLower returns the lower-case version of the string.
+// toLower returns the input string converted to lowercase.
+//
+// Example:
+//
+//	fmt.Println(toLower("Hello"))
+//	// Output: hello
 func toLower(s string) string {
 	return strings.ToLower(s)
 }
 
-// getCsvHeaders reads the headers from the first row of a CSV file.
+// getCsvHeaders reads the first row of a CSV file and returns it as a slice of strings.
+//
+// Example:
+//
+//	headers, err := getCsvHeaders("data.csv")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Println(headers)
+//	// Output: [ID Name Age]
 func getCsvHeaders(csvFilePath string) ([]string, error) {
 	file, err := os.Open(csvFilePath)
 	if err != nil {
@@ -44,8 +69,17 @@ func getCsvHeaders(csvFilePath string) ([]string, error) {
 	return headers, nil
 }
 
-// getJsonHeaders reads the keys from the first JSON object in a JSON file as headers.
-// It assumes the JSON file contains either a JSON object or a JSON array of objects.
+// getJsonHeaders reads a JSON file and extracts the keys as headers.
+// It supports both single JSON objects and arrays of objects.
+//
+// Example:
+//
+//	headers, err := getJsonHeaders("data.json")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Println(headers)
+//	// Output: [id name age]
 func getJsonHeaders(jsonFilePath string) ([]string, error) {
 	file, err := os.Open(jsonFilePath)
 	if err != nil {
@@ -85,6 +119,14 @@ func getJsonHeaders(jsonFilePath string) ([]string, error) {
 	return headers, nil
 }
 
+// main is the entry point of the program. It parses command-line flags,
+// reads headers from the specified source, and generates Go code based on those headers.
+//
+// Example:
+//
+//	go run main.go --columns "id,name,age" > model.go
+//	go run main.go --csv-file data.csv > model.go
+//	go run main.go --json-file data.json > model.go
 func main() {
 	columnsStr := flag.String("columns", "", "Comma-separated list of column headers")
 	csvFile := flag.String("csv-file", "", "Path to a CSV file to read headers from")
