@@ -92,7 +92,7 @@ func main() {
 	flag.Parse()
 
 	var columns []string
-	var err error // Declare err here to use in the outer scope
+	var err error
 
 	if *csvFile != "" {
 		columns, err = getCsvHeaders(*csvFile)
@@ -116,6 +116,11 @@ func main() {
 	} else {
 		fmt.Println("Error: No column headers provided.")
 		fmt.Println("Please provide column headers using either --columns, --csv-file, or --json-file flags.")
+
+		fmt.Println("go run scripts/generate.go --columns \"id,title,slug\" > model.go")
+		fmt.Println("go run scripts/generate.go --csv-file data/game_headers.csv > model.go")
+		fmt.Println("go run scripts/generate.go --json-file data/game_headers.json > model.go")
+
 		flag.Usage()
 		os.Exit(1)
 	}
