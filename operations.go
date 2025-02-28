@@ -360,17 +360,15 @@ func runIndexQuery(query Query) Items {
 	added := make(map[int]bool)
 	for _, idx := range indices {
 		key := getStringFromIndex(STR_INDEX, idx)
-		if !seen[key] {
-			seen[key] = true
-			for _, index := range LOOKUPINDEX[key] {
-				if _, ok := added[index]; !ok {
-					added[index] = true
-					items = append(items, ITEMS[index])
-				}
-
-			}
+		seen[key] = true
+	}
+	for key := range seen {
+		for _, index := range LOOKUPINDEX[key] {
+			added[index] = true
 		}
-
+	}
+	for index := range added {
+		items = append(items, ITEMS[index])
 	}
 	return items
 }
