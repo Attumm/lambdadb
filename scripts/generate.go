@@ -124,9 +124,9 @@ func getJsonHeaders(jsonFilePath string) ([]string, error) {
 //
 // Example:
 //
-//	go run main.go --columns "id,name,age" > model.go
-//	go run main.go --csv-file data.csv > model.go
-//	go run main.go --json-file data.json > model.go
+//	go run scripts/generate.go --columns "id,name,age" > model.go
+//	go run scripts/generate.go --csv-file test_data.csv > model.go
+//	go run scripts/generate.go --json-file data.json > model.go
 func main() {
 	columnsStr := flag.String("columns", "", "Comma-separated list of column headers")
 	csvFile := flag.String("csv-file", "", "Path to a CSV file to read headers from")
@@ -142,14 +142,12 @@ func main() {
 			fmt.Println("Error getting CSV headers:", err)
 			os.Exit(1)
 		}
-		fmt.Println("Headers read from CSV file:", *csvFile)
 	} else if *jsonFile != "" {
 		columns, err = getJsonHeaders(*jsonFile)
 		if err != nil {
 			fmt.Println("Error getting JSON headers:", err)
 			os.Exit(1)
 		}
-		fmt.Println("Headers read from JSON file:", *jsonFile)
 	} else if *columnsStr != "" {
 		columns = strings.Split(*columnsStr, ",")
 		for i := range columns {
